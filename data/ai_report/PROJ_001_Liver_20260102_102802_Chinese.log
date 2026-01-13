@@ -1,0 +1,10 @@
+2026-01-02 10:28:02.974 | INFO     | bioreport.ai.wrapper:configure_logging:43 - 日志将记录到: ./ai_report/PROJ_001_Liver_20260102_102802_Chinese.log
+2026-01-02 10:28:02.975 | INFO     | bioreport.ai.wrapper:run_interpretation_task:183 - [6b1955b7] Starting interpretation task for Project: [bold cyan]PROJ_001[/bold cyan]
+2026-01-02 10:28:02.976 | DEBUG    | bioreport.ai.wrapper:run_interpretation_task:184 - [6b1955b7] Config: Default, Provider: volcengine, Model: doubao-seed-1-6-251015
+2026-01-02 10:28:02.976 | INFO     | bioreport.ai.wrapper:run_interpretation_task:185 - [6b1955b7] Report will be saved to: ./ai_report/PROJ_001_Liver_20260102_102802_Chinese.md
+2026-01-02 10:28:02.994 | DEBUG    | bioreport.ai.engine:generate_report:371 - [6b1955b7] 开始执行 generate_report...
+2026-01-02 10:28:03.070 | INFO     | bioreport.ai.engine:_call_provider_internal:237 - [6b1955b7] 调用模型 doubao-seed-1-6-251015 (volcengine) | Params: temp=0.6, top_p=0.9
+2026-01-02 10:28:03.071 | DEBUG    | bioreport.ai.engine:_call_provider_internal:238 - System Prompt: You are a professional expert in bioinformatics. You MUST write the entire report in Chinese. Even if the input data or headers are in English, translate and generate the content in Chinese. Ensure the output is wrapped in <bio_report> tags.
+2026-01-02 10:29:04.781 | DEBUG    | bioreport.ai.engine:_call_provider_internal:254 - Token Usage: completion_tokens=2927 prompt_tokens=1024 total_tokens=3951 prompt_tokens_details=PromptTokensDetails(cached_tokens=0, provisioned_tokens=None) completion_tokens_details=CompletionTokensDetails(reasoning_tokens=2117, provisioned_tokens=None)
+2026-01-02 10:29:04.782 | INFO     | bioreport.ai.engine:generate_report:417 - [6b1955b7] 生成成功 | Cost: ¥0.006673 | Tokens: {'prompt_tokens': 1024, 'completion_tokens': 2927, 'total_tokens': 3951}
+2026-01-02 10:29:04.785 | INFO     | bioreport.ai.engine:generate_report:431 - [6b1955b7] 报告已保存至: ./ai_report/PROJ_001_Liver_20260102_102802_Chinese.md
