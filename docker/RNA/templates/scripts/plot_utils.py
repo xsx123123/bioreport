@@ -141,147 +141,102 @@ def show_gene_table(
     )
 
 
-def plot_volcano(
+def plot_volcano_pvalue(
     df: pd.DataFrame, 
     title: str,
     col_logfc: str = 'log2FC',
-    col_pval: str = 'Pvalue',
-    col_padj: str = 'Padj',
+    col_pval: str = 'Pvalue',      # 核心修改：主要依赖这个列
+    col_padj: str = 'Padj',        # 仅作保留，不再用于核心筛选
     col_symbol: str = 'Symbol',
     col_status: str = 'Status',
     fc_cutoff: float = 1.0,
-    pval_cutoff: float = 0.05,
+    pval_cutoff: float = 0.05,     # 现在的含义是 P-value < 0.05
     palette: Optional[dict] = None
 ) -> go.Figure:
     """
-    绘制交互式火山图 (Volcano Plot).
-    
-    Args:
-        df: 包含差异分析结果的 DataFrame.
-        title: 图表标题.
-        col_logfc: log2 FoldChange 列名 (默认 'log2FC').
-        col_pval: P-value 列名 (默认 'Pvalue'，用于 Y 轴).
-        col_padj: Adj. P-value 列名 (默认 'Padj'，用于阈值筛选).
-        col_symbol: 基因名称列名 (默认 'Symbol').
-        col_status: 上下调状态列名 (默认 'Status'，需包含 'Up', 'Down', 'NS').
-        fc_cutoff: 辅助线 - log2FC 阈值 (默认 1.0).
-        pval_cutoff: 辅助线 - P-value 阈值 (默认 0.05).
-        palette: 颜色配置字典，例如 {'Up': '#red', 'Down': '#blue', 'NS': 'grey'}
-        
-    Returns:
-        plotly.graph_objects.Figure 对象.
+    绘制交互式火山图 (使用 Raw P-value 进行筛选).
     """
     
-    # 为了不修改原始数据，创建副本
     df = df.copy()
 
-    # --- 1. 列名自动推断与映射 ---
-    # 定义常见列名别名映射表 (Target -> Candidates)
+    # --- 1. 列名映射 ---
     col_mappings = {
         'logfc': [col_logfc, 'log2FoldChange', 'logFC', 'Log2FC'],
         'pval': [col_pval, 'pvalue', 'PValue', 'P_Value'],
-        'padj': [col_padj, 'padj', 'FDR', 'adj.P.Val', 'qvalue'],
-        'symbol': [col_symbol, 'symbol', 'gene_name', 'Gene', 'GeneName']
+        'symbol': [col_symbol, 'symbol', 'gene_name', 'Gene']
     }
 
     resolved_cols = {}
-
     for key, candidates in col_mappings.items():
-        found_col = None
-        for candidate in candidates:
-            if candidate in df.columns:
-                found_col = candidate
-                break
-        
-        # 如果没找到，打印警告并回退到默认值 (后续步骤可能会报错)
-        if found_col:
-            resolved_cols[key] = found_col
-        else:
-            print(f"[Warn] 缺少列 '{key}' 的对应列 (尝试寻找: {candidates})")
-            # 如果没找到，保留用户传入的 key (例如 'log2FC')，以便后续逻辑统一处理
-            resolved_cols[key] = candidates[0] 
+        found_col = next((c for c in candidates if c in df.columns), candidates[0])
+        resolved_cols[key] = found_col
 
-    # 提取最终确定的列名
     c_logfc = resolved_cols['logfc']
     c_pval = resolved_cols['pval']
-    c_padj = resolved_cols['padj']
     c_symbol = resolved_cols['symbol']
 
-    # --- 2. 确保 Status 列存在 ---
+    # --- 2. 核心修改：使用 P-value 确定状态 ---
+    # 只有当 DataFrame 里没有预先定义好的 Status 列时，才重新计算
     if col_status not in df.columns:
-        # 确保用于计算的列存在
-        if c_logfc in df.columns and c_padj in df.columns:
+        if c_logfc in df.columns and c_pval in df.columns:
             df[col_status] = 'NS'
-            # 注意：这里使用 resolved_cols 里的列名进行筛选
-            df.loc[(df[c_logfc] > fc_cutoff) & (df[c_padj] < pval_cutoff), col_status] = 'Up'
-            df.loc[(df[c_logfc] < -fc_cutoff) & (df[c_padj] < pval_cutoff), col_status] = 'Down'
+            
+            # === [修改处] 这里全部改为使用了 c_pval (Raw P-value) ===
+            # 上调：LogFC > 阈值 且 Pvalue < 阈值
+            df.loc[(df[c_logfc] > fc_cutoff) & (df[c_pval] < pval_cutoff), col_status] = 'Up'
+            
+            # 下调：LogFC < -阈值 且 Pvalue < 阈值
+            df.loc[(df[c_logfc] < -fc_cutoff) & (df[c_pval] < pval_cutoff), col_status] = 'Down'
         else:
-            print(f"[Error] 无法计算 '{col_status}': 缺少 {c_logfc} 或 {c_padj}")
-            # 为了防止后续绘图报错，创建一个全 NS 的列 (或者直接返回空图)
+            print(f"[Error] 无法计算状态: 缺少 {c_logfc} 或 {c_pval}")
             df[col_status] = 'NS'
 
     # --- 3. 绘图逻辑 ---
-    # 默认颜色配置
     default_palette = {'Up': '#ef4444', 'Down': '#3b82f6', 'NS': 'lightgrey'}
     if palette:
         default_palette.update(palette)
     colors = default_palette
 
-    # 分组提取数据
-    df_up = df[df[col_status] == 'Up']
-    df_down = df[df[col_status] == 'Down']
-    df_ns = df[df[col_status] == 'NS']
-    
     fig = go.Figure()
     
-    # 辅助函数：添加 Trace
-    def add_volcano_trace(sub_df, name, color, opacity=0.8, size=7):
-        if sub_df.empty: return
+    # 按顺序绘制：NS -> Down -> Up (避免显著点被遮挡)
+    for status in ['NS', 'Down', 'Up']:
+        sub_df = df[df[col_status] == status]
+        if sub_df.empty: continue
+        
+        # 视觉调整：NS 点稍微小一点、透一点
+        opacity = 0.5 if status == 'NS' else 0.8
+        size = 5 if status == 'NS' else 7
+        
         fig.add_trace(go.Scatter(
             x=sub_df[c_logfc], 
-            y=-np.log10(sub_df[c_pval] + 1e-300), # 避免 log(0)
-            mode='markers', name=name,
-            marker=dict(color=color, size=size, opacity=opacity),
+            y=-np.log10(sub_df[c_pval] + 1e-300), 
+            mode='markers', name=status,
+            marker=dict(color=colors.get(status, 'grey'), size=size, opacity=opacity),
             text=sub_df[c_symbol],
-            hoverinfo='text+x+y'
+            # 悬停显示详细信息
+            hovertemplate=(
+                "<b>%{text}</b><br>" +
+                "LogFC: %{x:.2f}<br>" +
+                "P-val: %{y:.2f} (-log10)<br>" +
+                "<extra></extra>"
+            )
         ))
 
-    # 1. 绘制背景点 (NS - Not Significant)
-    add_volcano_trace(df_ns, 'Normal', colors.get('NS', 'lightgrey'), opacity=0.5, size=5)
-    
-    # 2. 绘制上调基因 (Up)
-    add_volcano_trace(df_up, 'Up', colors.get('Up', '#ef4444'))
-    
-    # 3. 绘制下调基因 (Down)
-    add_volcano_trace(df_down, 'Down', colors.get('Down', '#3b82f6'))
-    
-    # 4. 添加辅助线 (Cutoff lines)
+    # --- 4. 辅助线 ---
     fig.add_vline(x=fc_cutoff, line_dash="dash", line_color="grey", line_width=1)
     fig.add_vline(x=-fc_cutoff, line_dash="dash", line_color="grey", line_width=1)
+    # 这里的横线现在完美对应颜色的分界了
     fig.add_hline(y=-np.log10(pval_cutoff), line_dash="dash", line_color="grey", line_width=1)
     
-    # 5. 布局美化
     fig.update_layout(
         title=title,
-        xaxis_title=f"{c_logfc}",
+        xaxis_title=c_logfc,
         yaxis_title=f"-log10({c_pval})",
         template="simple_white",
-        hovermode="closest",
-        width=800,
-        height=600,
-        legend=dict(
-            yanchor="top", y=0.99,
-            xanchor="right", x=0.99,
-            bgcolor="rgba(255,255,255,0.8)",
-            bordercolor="Black",
-            borderwidth=1
-        )
+        width=800, height=600
     )
 
-    # 6. 配置导出选项 (Screenshot button)
-    # 将配置嵌入 figure 对象中，方便后续调用
-    fig.update_layout(dragmode='zoom') # 默认启用缩放模式
-    
     return fig
 
 # --- 新增功能 ---
