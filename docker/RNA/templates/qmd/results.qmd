@@ -19,7 +19,7 @@ if script_dir not in sys.path:
     sys.path.append(script_dir)
 
 try:
-    from plot_utils import plot_pca_static, plot_pca_interactive, show_gene_table, plot_volcano
+    from plot_utils import plot_pca_static, plot_pca_interactive, show_gene_table, plot_volcano_pvalue
     from visualize_utils import display_fastp_table, display_gene_expression_table
     from plotly_heatmap import draw_interactive_heatmap
     from pca_plotly import draw_pca_plotly
@@ -235,9 +235,9 @@ for comp in comparisons:
     if deg_file and os.path.exists(deg_file):
         try:
             df_deg = pd.read_csv(deg_file)
-            fig = plot_volcano(df_deg, title=f'{comp} Volcano',
+            fig = plot_volcano_pvalue(df_deg, title=f'{comp} Volcano',
                 col_logfc = 'log2FoldChange',col_pval = 'pvalue',
-                col_padj = 'padj',col_symbol  = 'Symbol')
+                col_padj = 'padj',col_symbol  = 'Symbol',col_status='Status_By_Pval')
             fig.show()
         except Exception as e:
             print(f"Error plotting volcano for {comp}: {e}")

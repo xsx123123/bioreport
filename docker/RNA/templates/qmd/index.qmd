@@ -25,6 +25,10 @@ from metadata import load_project_metadata
 project_info = load_project_metadata("/app/project_summary.json")
 input_files = project_info['input_files']
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2fc7f1c365009c5c4fad51cb3a0c358e7d868297
 # 2. 加载并计算项目统计数据 (使用配置中的路径)
 stats, df_final = get_project_summary_stats(
     data_dir=input_files.get('data_dir', "../data/index/"), 
@@ -34,6 +38,10 @@ stats, df_final = get_project_summary_stats(
     sample_filename=input_files.get('sample_file', "sample.csv")
 )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2fc7f1c365009c5c4fad51cb3a0c358e7d868297
 # 解包统计指标，方便后续调用
 total_samples_count = stats['total_samples']
 total_groups = stats['total_groups']
