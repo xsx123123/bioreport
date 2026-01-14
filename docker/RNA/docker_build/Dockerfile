@@ -16,7 +16,9 @@ ENV HOME=/tmp_home
 # fonts-noto-cjk: 解决绘图和报告中的中文乱码
 # gdebi-core: 用于安装 Quarto deb 包
 # procps: 某些监控工具可能需要 ps 命令
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
     curl \
     gdebi-core \
     fonts-noto-cjk \

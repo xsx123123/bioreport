@@ -1,6 +1,6 @@
 project:
   type: website
-  output-dir: /workspace/BFP_Report
+  output-dir: /workspace
 
 website:
   title: "BFP Report"
