@@ -25,7 +25,6 @@ from metadata import load_project_metadata
 project_info = load_project_metadata("/app/project_summary.json")
 input_files = project_info['input_files']
 
-
 # 2. 加载并计算项目统计数据 (使用配置中的路径)
 stats, df_final = get_project_summary_stats(
     data_dir=input_files.get('data_dir', "../data/index/"), 
@@ -34,7 +33,6 @@ stats, df_final = get_project_summary_stats(
     tpm_filename=input_files.get('tpm_file', "merge_rsem_tpm.tsv"),
     sample_filename=input_files.get('sample_file', "sample.csv")
 )
-
 
 # 解包统计指标，方便后续调用
 total_samples_count = stats['total_samples']
