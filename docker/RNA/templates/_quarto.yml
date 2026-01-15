@@ -8,7 +8,7 @@ website:
   page-navigation: true
   navbar:
     logo: /logo/logo.png
-    logo-href: https://www.hzau.edu.cn/
+    logo-href: https://github.com/xsx123123
     background: primary
     search: true
     left:
@@ -50,7 +50,7 @@ website:
   sidebar:
     title: "RNA-seq Report"
     logo: /logo/logo.png
-    logo-href: https://www.hzau.edu.cn/
+    logo-href: https://github.com/xsx123123
     alignment: left
     style: "floating"
     pinned: true
