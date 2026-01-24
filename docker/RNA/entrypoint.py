@@ -165,6 +165,58 @@ def check_quarto_env():
     version = res.stdout.strip()
     console.print(f"🛠️  Quarto Environment: [bold green]{version}[/]")
 
+def run_ai_pipeline(config_path, output_dir):
+    """
+    Run the AI consolidation and reporting pipeline before Quarto rendering.
+    """
+    logger.info("启动 AI 分析流程...")
+    
+    # Define paths
+    # Assuming the script is located relative to app root or known location
+    # Since render_report uses "/app/templates", we stick to that convention
+    script_path = "/app/templates/scripts/consolidate_rna_seq_data.py"
+    
+    if not os.path.exists(script_path):
+        logger.warning(f"AI 脚本未找到: {script_path}，跳过 AI 分析。")
+        return
+
+    # Step 1: Generate consolidated data
+    cmd_gen = [
+        "python3", script_path, "generate",
+        "--config", config_path,
+        "--verbose"
+    ]
+    
+    logger.info(f"正在执行数据整合...")
+    try:
+        subprocess.run(cmd_gen, check=True, text=True)
+    except subprocess.CalledProcessError as e:
+        logger.error(f"AI 数据整合失败: {e}")
+        sys.exit(1)
+
+    # Step 2: Report
+    # We need to know where the consolidated file went.
+    # Default is DATA_DIR/consolidated_rna_seq_data.txt
+    # DATA_DIR = /app/templates/data
+    consolidated_file = "/app/templates/data/consolidated_rna_seq_data.txt"
+    consolidated_md = "/app/templates/data/consolidated_rna_seq_report.md"
+    
+    cmd_report = [
+        "python3", script_path, "report",
+        "--input", consolidated_file,
+        '--output-dir',consolidated_md,
+        "--verbose"
+    ]
+    
+    logger.info(f"正在生成 AI 解读报告...")
+    try:
+        subprocess.run(cmd_report, check=True, text=True)
+    except subprocess.CalledProcessError as e:
+        logger.error(f"AI 报告生成失败: {e}")
+        sys.exit(1)
+        
+    console.print(Panel("✨ AI 分析流程完成！", border_style="purple"))
+
 def render_report(config_path, output_dir):
     logger.info("启动 Quarto 渲染引擎...")
     
@@ -250,10 +302,13 @@ def main():
     check_input_files(config)
     check_quarto_env()
 
-    # 6. 执行
+    # 6. 执行 AI 分析
+    run_ai_pipeline(args.config, args.output)
+
+    # 7. 执行 Quarto 渲染
     render_report(args.config, args.output)
     
-    # 7. 备份
+    # 8. 备份
     backup_config(args.config, args.output)
 
 if __name__ == "__main__":

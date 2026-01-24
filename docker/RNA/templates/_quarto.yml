@@ -20,8 +20,8 @@ website:
         text: QC Report
       - href: ./qmd/results.qmd
         text: Result
-      #- href: ./qmd/AI.qmd
-      #  text: AI Assistant
+      - href: ./qmd/AI.qmd
+        text: AI Assistant
       - text: Help
         menu:
           - text: About
@@ -63,7 +63,7 @@ website:
           - ./qmd/workflow.qmd
           - ./qmd/qc.qmd
           - ./qmd/results.qmd
-          #- ./qmd/AI.qmd
+          - ./qmd/AI.qmd
     tools:
       - icon: twitter
         href: https://twitter.com
