@@ -5,7 +5,8 @@ FROM python:3.12.12-slim-bookworm
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     DEBIAN_FRONTEND=noninteractive \
-    TZ=Asia/Shanghai
+    TZ=Asia/Shanghai \
+    PYTHONPATH=/app
 
 # --- 关键修复：解决非 Root 用户运行时的权限问题 ---
 # 创建一个所有用户可写的目录作为 HOME
@@ -33,24 +34,30 @@ RUN wget https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.26/quar
 # 验证安装
 RUN quarto check install
 
-# 4. 安装 Python 依赖
-COPY docker_build/requirements.txt /tmp/requirements.txt
-
-# 使用清华源加速
-RUN pip install --no-cache-dir -i https://mirrors.ustc.edu.cn/pypi/simple \
-    -r /tmp/requirements.txt
-
-# 5. 部署应用代码
+# 4. 部署应用代码
 # 建议保持在 /app 目录下，结构清晰
 WORKDIR /app
 
-COPY entrypoint.py /app/
-# 复制一个默认配置作为 fallback (运行时会被挂载覆盖)
-COPY project_summary.json /app/project_summary.json
-COPY templates /app/templates/
+# 先复制依赖与包配置，利用 Docker 缓存层
+COPY requirements.txt pyproject.toml ./
 
-RUN chmod -R 777 /app/templates /tmp_home/
+# 使用清华源加速安装依赖
+RUN pip install --no-cache-dir -i https://mirrors.ustc.edu.cn/pypi/simple \
+    -r requirements.txt
 
-# 6. 启动命令
+# 安装 rnareport 包（editable 模式，方便调试）
+COPY rnareport ./rnareport
+RUN pip install --no-cache-dir -e .
+
+# 复制 Quarto 模板、配置与入口脚本
+COPY templates ./templates
+COPY configs ./configs
+COPY requirements.yaml ./requirements.yaml
+COPY project_summary.json ./project_summary.json
+COPY entrypoint.py ./entrypoint.py
+
+RUN chmod -R 777 /app/templates /app/configs /tmp_home/
+
+# 5. 启动命令
 # 确保使用 list 格式 ["executable", "param"]
 ENTRYPOINT ["python", "entrypoint.py"]

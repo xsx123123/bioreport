@@ -7,7 +7,7 @@ import os
 import json
 from itables import show
 from itables import options
-from visualize_utils import plot_software_table,plot_software_table_modern
+from rnareport.utils.visualize_utils import plot_software_table, plot_software_table_modern
 
 # ... (keep existing imports and functions)
 

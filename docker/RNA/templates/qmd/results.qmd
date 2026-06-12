@@ -8,31 +8,26 @@ execute:
 #| label: setup-import-res
 #| echo: false
 
-import sys
 import os
 import pandas as pd
 from IPython.display import display, Markdown
 
-script_dir = os.path.abspath(os.path.join(os.getcwd(), '..', 'scripts'))
-
-if script_dir not in sys.path:
-    sys.path.append(script_dir)
-
 try:
-    from plot_utils import plot_pca_static, plot_pca_interactive, show_gene_table, plot_volcano_pvalue
-    from visualize_utils import display_fastp_table, display_gene_expression_table
-    from plotly_heatmap import draw_interactive_heatmap
-    from pca_plotly import draw_pca_plotly
-    from enrichment_plotly import draw_fancy_dotplot
-    from distribution_plotly import draw_expression_distribution_plotly
-    from report_utils import load_analysis_config, get_file_path,find_comparisons,get_comparisons_from_csv
-    from metadata import load_project_metadata
+    from rnareport.plots.plot_utils import plot_pca_static, plot_pca_interactive, show_gene_table, plot_volcano_pvalue
+    from rnareport.utils.visualize_utils import display_fastp_table, display_gene_expression_table
+    from rnareport.plots.plotly_heatmap import draw_interactive_heatmap
+    from rnareport.plots.pca_plotly import draw_pca_plotly
+    from rnareport.plots.enrichment_plotly import draw_fancy_dotplot
+    from rnareport.plots.distribution_plotly import draw_expression_distribution_plotly
+    from rnareport.utils.report_utils import load_analysis_config, get_file_path, find_comparisons, get_comparisons_from_csv
+    from rnareport.config import load_project_metadata
 except ImportError as e:
     print(f"❌ 导入失败: {e}")
     print(f"🔍 Python 当前在这些地方寻找: {sys.path}")
 
 # 1. 加载项目配置
-project_info = load_project_metadata("/app/project_summary.json")
+# 优先使用 REPORT_CONFIG 环境变量，兼容 YAML 与旧版 JSON
+project_info = load_project_metadata()
 input_files = project_info['input_files']
 
 

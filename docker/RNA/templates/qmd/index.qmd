@@ -12,17 +12,14 @@ execute:
 import pandas as pd
 import datetime
 import os
-import sys
 
-# 引入 report_utils (确保路径正确)
-script_dir = os.path.abspath(os.path.join(os.getcwd(), '..', 'scripts'))
-if script_dir not in sys.path:
-    sys.path.append(script_dir)
-from report_utils import get_project_summary_stats,Sample_Info_table,Sample_Info_table_modern
-from metadata import load_project_metadata
+# 从 rnareport 包导入工具函数
+from rnareport.utils.report_utils import get_project_summary_stats, Sample_Info_table, Sample_Info_table_modern
+from rnareport.config import load_project_metadata
 
 # 1. 加载项目元数据 (包含 input_files 配置)
-project_info = load_project_metadata("/app/project_summary.json")
+# 优先使用 REPORT_CONFIG 环境变量，兼容 YAML 与旧版 JSON
+project_info = load_project_metadata()
 input_files = project_info['input_files']
 
 # 2. 加载并计算项目统计数据 (使用配置中的路径)

@@ -13,28 +13,17 @@ execute:
 #| echo: false
 
 import sys
-import os
 
-# 1. 动态添加脚本路径
-# os.path.abspath('..') 会指向项目的根目录
-# 我们把 'root/scripts' 加入到 Python 的搜索路径中
-script_dir = os.path.abspath(os.path.join(os.getcwd(), '..', 'scripts'))
-
-if script_dir not in sys.path:
-    sys.path.append(script_dir)
-
-# 2. 现在可以像标准库一样导入啦！
-# 从 qc_utils.py 中导入 visualize_multiqc_logs 函数
+# 从 rnareport 包导入工具函数
 try:
-    from qc_vis import visualize_multiqc_logs
-    from visualize_utils import display_fastp_table,display_fastq_screen_table
-    from metadata import load_project_metadata
+    from rnareport.plots.qc_vis import visualize_multiqc_logs
+    from rnareport.utils.visualize_utils import display_fastp_table, display_fastq_screen_table
+    from rnareport.config import load_project_metadata
     
     # 加载项目配置
-    project_info = load_project_metadata("/app/project_summary.json")
+    # 优先使用 REPORT_CONFIG 环境变量，兼容 YAML 与旧版 JSON
+    project_info = load_project_metadata()
     input_files = project_info['input_files']
-    
-    # print(f"✅ 成功导入工具函数，脚本路径: {script_dir}")
 except ImportError as e:
     print(f"❌ 导入失败: {e}")
     print(f"🔍 Python 当前在这些地方寻找: {sys.path}")

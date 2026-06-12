@@ -1,0 +1,69 @@
+# RNA-seq 报告模块 Python 运行环境依赖
+# 对应 entrypoint.py 及其调用的脚本所需的 Python 包
+# 构建 Docker 镜像时会解析该文件并安装所有列出的依赖
+
+name: rnaflow-report
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  # -------------------- Python 解释器 --------------------
+  - python=3.12
+
+  # -------------------- 核心数据处理 --------------------
+  - pandas
+  - numpy
+  - scipy
+  - scikit-learn
+  - polars-lts-cpu
+  - pyarrow
+
+  # -------------------- 报告与可视化 --------------------
+  - plotly
+  - matplotlib
+  - plotnine
+  - kaleido
+  - itables
+  - ipykernel
+  - ipython
+
+  # -------------------- YAML / JSON / 模板 --------------------
+  - pyyaml
+  - jinja2
+  - markdown
+  - pydantic
+
+  # -------------------- 日志与 CLI 美化 --------------------
+  - loguru
+  - rich
+  - rich-click
+  - rich-argparse
+  - tqdm
+
+  # -------------------- AI / LLM --------------------
+  - openai
+  - tiktoken
+  - tenacity
+
+  # -------------------- 其他工具 --------------------
+  - python-dateutil
+  - pytz
+  - requests
+  - beautifulsoup4
+  - lxml
+
+  # -------------------- Jupyter / Quarto 生态 --------------------
+  - jupyter
+  - jupyterlab
+  - nbconvert
+  - nbformat
+
+  # -------------------- Bioinfo 相关 --------------------
+  - multiqc
+
+  # pip-only 包（未在 conda 主频道提供）
+  - pip
+  - pip:
+      - volcenginesdkarkruntime

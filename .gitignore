@@ -1,0 +1,6 @@
+.codex
+.quarto
+.DS_Store
+/site
+.python-version
+__pycache__

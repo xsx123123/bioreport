@@ -1,0 +1,67 @@
+---
+title: "{{ report.title | default('BFP RNA-seq 完整分析报告') }}"
+date: last-modified
+author: "RNA-seq Team"
+format:
+  html:
+    embed-resources: true
+    self-contained: true
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "导航目录"
+    number-sections: true
+{% if report.theme %}
+    theme:
+{% if report.theme.light %}
+      light: [{{ report.theme.light }}]
+{% endif %}
+{% if report.theme.dark %}
+      dark: [{{ report.theme.dark }}]
+{% endif %}
+{% endif %}
+{% if report.css %}
+    css:
+{% for css_file in report.css %}
+      - {{ css_file }}
+{% endfor %}
+{% endif %}
+    code-copy: true
+    smooth-scroll: true
+    df-print: paged
+---
+
+{% if 'index' in sections %}
+# 项目概况 (Project Info)
+{{ "{{" }}< include index.qmd >{{ "}}" }}
+{% endif %}
+
+{% if 'workflow' in sections %}
+# 分析流程 (Workflow)
+{{ "{{" }}< include workflow.qmd >{{ "}}" }}
+{% endif %}
+
+{% if 'qc' in sections %}
+# 质量控制 (QC Report)
+{{ "{{" }}< include qc.qmd >{{ "}}" }}
+{% endif %}
+
+{% if 'results' in sections %}
+# 分析结果 (Results)
+{{ "{{" }}< include results.qmd >{{ "}}" }}
+{% endif %}
+
+{% if 'ai' in sections %}
+# AI 解读 (AI Assistant)
+{{ "{{" }}< include AI.qmd >{{ "}}" }}
+{% endif %}
+
+{% if 'about' in sections %}
+# 关于 (About)
+{{ "{{" }}< include about.qmd >{{ "}}" }}
+{% endif %}
+
+---
+<div style="text-align: center; margin-top: 50px; color: gray;">
+  报告生成于 {{ "{{" }}< meta date >{{ "}}" }} | Proudly supported by Quarto
+</div>

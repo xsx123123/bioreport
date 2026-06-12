@@ -6,7 +6,6 @@ Supports two subcommands:
   2. report: Send the consolidated text to an AI model for interpretation.
 """
 
-import json
 import os
 import argparse
 import csv
@@ -20,20 +19,14 @@ from rich.panel import Panel
 
 from rich.logging import RichHandler
 
+from rnareport.config import load_config, resolve_path
+
 # Import RichHelpFormatter
 try:
     from rich_argparse import RichHelpFormatter
 except ImportError:
     # Fallback if not installed (though user just requested it)
     RichHelpFormatter = argparse.RawDescriptionHelpFormatter
-
-# Import AI Engine
-try:
-    from ai.engine import AIInterpreter
-except ImportError:
-    # Handle case where ai package is not in python path directly
-    sys.path.append(str(Path(__file__).resolve().parent))
-    from ai.engine import AIInterpreter
 
 # -----------------------------------------------------------------------------
 # Configuration & Constants
@@ -82,23 +75,28 @@ def setup_logging(verbose: bool = False):
     )
 
 
-def safe_resolve_path(path_str: str) -> Optional[Path]:
+def safe_resolve_path(path_str: str, config: Dict[str, Any] = None) -> Optional[Path]:
     """
     Safely resolve path relative to the data directory.
     Handles paths starting with '../data/' by mapping them to DATA_DIR.
+    If a unified config is provided, uses resolve_path() from config_loader.
     """
     if not path_str:
         return None
     
     path_str = str(path_str)
     
-    # Handle relative paths that start with ../data/
+    # Prefer the new config-aware resolver when a config is available.
+    if config is not None:
+        resolved = resolve_path(config, path_str)
+        logger.debug(f"Resolved path via config: {path_str} -> {resolved}")
+        return resolved
+    
+    # Legacy fallback
     if path_str.startswith('../data/'):
-        # Remove ../data/ prefix and join with DATA_DIR
         relative_part = path_str.replace('../data/', '', 1)
         resolved_path = DATA_DIR / relative_part
     else:
-        # Resolve relative to CWD or absolute
         resolved_path = Path(path_str).resolve()
     
     logger.debug(f"Resolved path: {path_str} -> {resolved_path}")
@@ -215,7 +213,7 @@ def run_generate(
     logger.info("Starting RNA-seq data consolidation")
     console.print(Panel("[bold blue]Task: Generate Consolidated Data[/bold blue]", expand=False))
 
-    # 1. Load Project Summary
+    # 1. Load Project Summary (YAML or legacy JSON)
     target_summary_path = project_summary_path if project_summary_path else PROJECT_SUMMARY_PATH
 
     with Progress(
@@ -226,13 +224,8 @@ def run_generate(
     ) as progress:
         task = progress.add_task(f"Loading project summary from {target_summary_path}...", total=None)
         
-        if not target_summary_path.exists():
-            console.print(f"[red]Error: Project summary not found at {target_summary_path}[/red]")
-            return
-
         try:
-            with open(target_summary_path, 'r', encoding='utf-8') as f:
-                project_summary = json.load(f)
+            project_summary = load_config(target_summary_path)
         except Exception as e:
             console.print(f"[red]Error parsing project summary: {e}[/red]")
             return
@@ -240,9 +233,10 @@ def run_generate(
         progress.update(task, completed=True)
 
     # 2. Extract Data
-    project_meta = project_summary.get('project_meta', {})
+    project_meta = project_summary.get('project', project_summary.get('project_meta', {}))
     stats = project_summary.get('stats', {})
     input_files = project_summary.get('input_files', {})
+    config = project_summary
 
     output_lines = []
 
@@ -261,14 +255,14 @@ def run_generate(
     output_lines.append("\n")
 
     # -- FASTP Stats --
-    fastp_path = safe_resolve_path(input_files.get('fastp_stats_file'))
+    fastp_path = safe_resolve_path(input_files.get('fastp_stats_file'), config)
     if fastp_path and fastp_path.exists():
         output_lines.append("## 3. QC: FASTP Trimming Statistics\n")
         output_lines.append(csv_to_markdown_table(fastp_path, delimiter='\t', max_rows=10))
         output_lines.append("\n")
 
     # -- Mapping Stats --
-    mapping_path = safe_resolve_path(input_files.get('mapping_file'))
+    mapping_path = safe_resolve_path(input_files.get('mapping_file'), config)
     if mapping_path and mapping_path.exists():
         output_lines.append("## 4. QC: Mapping Statistics\n")
         
@@ -288,21 +282,21 @@ def run_generate(
         output_lines.append("\n")
 
     # -- Expression (TPM) --
-    tpm_path = safe_resolve_path(input_files.get('tpm_file'))
+    tpm_path = safe_resolve_path(input_files.get('tpm_file'), config)
     if tpm_path and tpm_path.exists():
         output_lines.append("## 5. Expression Levels (TPM - Preview)\n")
         output_lines.append(csv_to_markdown_table(tpm_path, delimiter='\t', max_rows=10))
         output_lines.append("\n")
 
     # -- Contrasts --
-    contrasts_path = safe_resolve_path(input_files.get('contrasts_file'))
+    contrasts_path = safe_resolve_path(input_files.get('contrasts_file'), config)
     if contrasts_path and contrasts_path.exists():
         output_lines.append("## 6. Experimental Contrasts\n")
         output_lines.append(csv_to_markdown_table(contrasts_path, delimiter=',')) # Usually CSV
         output_lines.append("\n")
 
     # -- Differential Expression --
-    deg_dir = safe_resolve_path(input_files.get('deg_dir'))
+    deg_dir = safe_resolve_path(input_files.get('deg_dir'), config)
     if deg_dir and deg_dir.exists():
         deg_files = list(deg_dir.glob("*_DEG.csv"))
         if deg_files:
@@ -313,7 +307,7 @@ def run_generate(
             output_lines.append("\n")
 
     # -- Enrichment --
-    enrichment_dir = safe_resolve_path(input_files.get('enrichment_dir'))
+    enrichment_dir = safe_resolve_path(input_files.get('enrichment_dir'), config)
     if enrichment_dir and enrichment_dir.exists():
         output_lines.append("## 8. Enrichment Analysis (Top Terms)\n")
         
@@ -393,8 +387,9 @@ def run_report(
         console.print(f"[red]Error reading input file: {e}[/red]")
         return
 
-    # 2. Initialize AI Interpreter
+    # 2. Initialize AI Interpreter (lazy import so `generate` works without AI deps)
     try:
+        from rnareport.ai import AIInterpreter
         interpreter = AIInterpreter(model=model) if model else AIInterpreter()
     except Exception as e:
         console.print(f"[red]Error initializing AI Interpreter: {e}[/red]")

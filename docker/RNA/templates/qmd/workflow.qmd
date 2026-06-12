@@ -13,16 +13,10 @@ format:
 #| echo: false
 
 import sys
-import os
-
-script_dir = os.path.abspath(os.path.join(os.getcwd(), '..', 'scripts'))
-
-if script_dir not in sys.path:
-    sys.path.append(script_dir)
 
 try:
-    from visualize_utils import load_software_data
-    from report_utils import software_version_table
+    from rnareport.utils.visualize_utils import load_software_data
+    from rnareport.utils.report_utils import software_version_table
 except ImportError as e:
     print(f"❌ 导入失败: {e}")
     print(f"🔍 Python 当前在这些地方寻找: {sys.path}")
