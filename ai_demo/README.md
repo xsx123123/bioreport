@@ -77,14 +77,14 @@ engine = AIInterpreter(model="doubao-seed-1-8-251215")
 # 2. 生成报告 (内置校验和重试)
 report = engine.generate_report(
     data_json=raw_data_dict,
-    template_path="./templates/common/ai/standard_rna.j2",
+    template_path="data/prompts/report/rnaseq_standard.md.j2",
     attachments=["plot.png"],
     output_path="result.md"
 )
 ```
 
 ### 如何修改 AI 的逻辑？
-- **改指令**: 编辑 `templates/common/ai/standard_rna.j2`。
+- **改指令**: 编辑 `data/prompts/report/rnaseq_standard.md.j2`。
 - **改校验**: 修改 `bioreport/ai/schemas.py`。
 - **改重试策略**: 调整 `bioreport/ai/engine.py` 中的 `@retry` 参数。
 
