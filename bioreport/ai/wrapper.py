@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.columns import Columns
 from .engine import AIInterpreter
+from .prompt_assets import prompt_root
 
 DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "config.yaml")
 
@@ -192,6 +193,8 @@ def run_interpretation_task(
     logger.info(f"[{trace_id}] Report will be saved to: {final_output_path}")
     
     engine = AIInterpreter(model=final_model, provider=final_provider, base_url=final_base_url, config=ai_config)
+    if not template_file:
+        template_file = str(prompt_root() / "report" / "rnaseq_standard.md.j2")
     
     engine.generate_report(
         data_json=raw_data,

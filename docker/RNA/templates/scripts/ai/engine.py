@@ -397,11 +397,9 @@ class AIInterpreter:
         # 5. 执行调用
         try:
             target_lang = validated_data.project_info.language
-            sys_prompt = (
-                f"You are a professional expert in bioinformatics. "
-                f"You MUST write the entire report in {target_lang}. "
-                f"Even if the input data or headers are in English, translate and generate the content in {target_lang}. "
-                f"Ensure the output is wrapped in <bio_report> tags."
+            from .prompt_assets import load_report_prompt
+            sys_prompt = load_report_prompt("system.md").replace(
+                "{{target_language}}", str(target_lang)
             )
             
             ai_response = self.execute_inference(

@@ -46,7 +46,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 
 # Default paths
 DEFAULT_OUTPUT_PATH = DATA_DIR / "consolidated_rna_seq_data.txt"
-DEFAULT_PROMPT_PATH = SCRIPT_DIR / "prompt.txt"
+DEFAULT_PROMPT_PATH = Path(os.environ.get("OMICHUB_PROMPT_ROOT", "/opt/omichub/prompts")) / "report" / "rnaseq_compact.md"
 PROJECT_SUMMARY_PATH = DATA_DIR / "project_summary.json"
 DEFAULT_REPORT_DIR = DATA_DIR / "ai_reports"
 
@@ -401,7 +401,8 @@ def run_report(
     console.print("[dim]Sending data to AI model... (This may take a minute)[/dim]")
     
     try:
-        system_prompt = "You are a helpful expert bioinformatics assistant. You are analyzing RNA-seq data."
+        prompt_root = Path(os.environ.get("OMICHUB_PROMPT_ROOT", "/opt/omichub/prompts"))
+        system_prompt = (prompt_root / "report" / "compact_system.md").read_text(encoding="utf-8").strip()
         user_content = [{"type": "text", "text": input_text}]
         trace_id = f"cli-report-{os.getpid()}"
         

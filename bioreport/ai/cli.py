@@ -30,7 +30,7 @@ def model_check(config):
 @cli.command()
 @click.option('--project-id', required=True, help='项目 ID')
 @click.option('--data-file', required=True, help='JSON 数据文件路径')
-@click.option('--template-file', default="./templates/common/ai/standard_rna.j2", help='Jinja2 模板路径')
+@click.option('--template-file', default=None, help='Jinja2 模板路径；缺省读取 OMICHUB_PROMPT_ROOT/report/rnaseq_standard.md.j2')
 @click.option('--attachment', '-a', multiple=True, help='附加文件路径 (PDF/PNG/JPG)')
 @click.option('--output', default="./ai_report/", help='结果输出目录或文件路径')
 @click.option('--tissue-type', help='样本组织/细胞类型 (e.g. "Liver", "Hela Cells")')
