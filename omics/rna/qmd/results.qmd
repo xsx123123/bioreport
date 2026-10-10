@@ -1,0 +1,13 @@
+---
+title: "分析结果"
+execute:
+  echo: false
+  warning: false
+---
+
+{{< include modules/results/setup.qmd >}}
+{{< include modules/results/samples.qmd >}}
+{{< include modules/results/matrix.qmd >}}
+{{< include modules/results/heatmap.qmd >}}
+{{< include modules/results/deg.qmd >}}
+{{< include modules/results/enrichment.qmd >}}

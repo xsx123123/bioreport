@@ -1,0 +1,24 @@
+### 基因表达矩阵 (Gene Expression Matrix)
+
+在此展示了各样本中所有基因的标准化表达量（TPM）。该矩阵是后续差异分析、热图绘制及功能富集的基础数据。您可以通过表格上方的工具栏进行搜索、筛选，或下载完整数据进行个性化探究。
+
+```{python}
+#| label: table-tpm-preview
+#| output: asis
+if tpm_file and os.path.exists(tpm_file):
+    display_gene_expression_table(tpm_file, top_n=analysis.get('expression', {}).get('preview_rows', 100))
+else:
+    raise FileNotFoundError(f"TPM matrix is missing: {tpm_file}")
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**表注说明: Gene Expression Units (基因表达量单位说明)**
+
+此表展示了基因的标准化表达水平。为便于理解，以下是对两种常见计量单位的说明：
+
+1. **TPM (Transcripts Per Million)**:
+   * **含义**: 每百万转录本。它是目前更受推崇的标准化单位。
+   * **特点**: 与 FPKM 类似，但计算逻辑略有不同。**TPM 的最大优势在于其总和在每个样本中恒定为 $10^6$**，这一特性使其在进行**样本间（Sample-to-Sample）** 的平行比较时比 FPKM 更准确。
+2. **Data Filtering (数据筛选)**:
+   * 为便于浏览，本表仅展示输入矩阵的部分行。HTML 表格的 CSV 按钮可导出当前预览数据；完整表达矩阵以输入文件为准。
+:::

@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bioreport"
+version = "2.0.0"
+description = "Multi-omics report generator based on Quarto"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "Zhang Jian"}
+]
+keywords = ["rna-seq", "bioinformatics", "quarto", "report"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = ["pyyaml", "jinja2", "jsonschema>=4.26", "loguru", "rich", "rich-argparse"]
+
+[project.optional-dependencies]
+rna = ["pandas", "numpy", "scipy", "scikit-learn", "plotly", "matplotlib", "plotnine", "kaleido", "itables", "tabulate>=0.9", "python-dateutil", "pytz", "requests", "beautifulsoup4", "lxml", "ipython", "ipykernel", "jupyter", "jupyterlab", "nbconvert", "nbformat", "multiqc", "openai", "tiktoken", "tenacity"]
+ai = [
+    "volcenginesdkarkruntime",
+    "openai",
+    "tiktoken",
+    "tenacity",
+    "pydantic",
+]
+dev = [
+    "pytest",
+    "black",
+    "ruff",
+]
+
+[project.scripts]
+bioreport = "bioreport.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/xsx123123/bioreport"
+Repository = "https://github.com/xsx123123/bioreport"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bioreport*", "omics*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.setuptools.package-data]
+bioreport = ["utils/prompt.txt", "report.schema.json"]
+"omics.rna" = ["qmd/**/*.qmd", "schema.json"]
+
+[tool.setuptools.data-files]
+"share/bioreport/templates" = ["templates/_quarto.yml.j2", "templates/_quarto-single.yml.j2"]
+"share/bioreport/templates/theme" = ["templates/theme/*"]
+"share/bioreport/templates/reference" = ["templates/reference/*"]
+"share/bioreport/templates/logo" = ["templates/logo/*"]

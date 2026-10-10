@@ -11,8 +11,6 @@ from loguru import logger
 from jinja2 import Template, Environment, FileSystemLoader
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from pydantic import ValidationError
-from volcenginesdkarkruntime import Ark
-from volcenginesdkarkruntime.types.chat import ChatCompletion
 from openai import OpenAI
 
 
@@ -70,6 +68,7 @@ class AIInterpreter:
             if not key:
                 logger.warning(f"未检测到 ARK_API_KEY (Provider: {provider})")
             else:
+                from volcenginesdkarkruntime import Ark
                 client = Ark(api_key=key, timeout=120)
                 
         elif provider == "aliyun":

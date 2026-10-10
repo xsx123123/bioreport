@@ -1,0 +1,41 @@
+{
+  "report": {
+    "type": "rna-seq",
+    "title": "RNA-seq 本地测试报告",
+    "language": "zh",
+    "layout": "single",
+    "modules": ["index", "rna.workflow", "rna.qc", "rna.results", "about"],
+    "output_format": ["html", "pdf"]
+  },
+  "project": {
+    "client": "本地测试课题组",
+    "species": "Mus musculus",
+    "genome_version": "GRCm39",
+    "pipeline_version": "RNAFlow example"
+  },
+  "input_files": {
+    "data_dir": "../examples/rna-seq/data",
+    "qc_file": "index/multiqc_qc_general_stats.txt",
+    "mapping_file": "index/multiqc_mapping_general_stats.txt",
+    "tpm_file": "index/merge_rsem_tpm.tsv",
+    "sample_file": "index/sample.csv",
+    "software_versions_file": "software_versions.yaml",
+    "contrasts_file": "index/contrasts.csv",
+    "fastp_stats_file": "fastp_trim_report/multiqc_general_stats.txt",
+    "fastp_report_dir": "fastp_trim_report/multiqc_short_read_trim_report_data",
+    "fastq_screen_r1_dir": "fastq_screen_report/fastq_screen_multiqc_r1/multiqc_r1_fastq_screen_report_data",
+    "fastq_screen_r2_dir": "fastq_screen_report/fastq_screen_multiqc_r2/multiqc_r2_fastq_screen_report_data",
+    "qualimap_dir": "QualiMap/multiqc_data",
+    "deg_dir": "res/DEG",
+    "enrichment_dir": "res/Enrichments"
+  },
+  "analysis": {
+    "deg": {"log2fc_threshold": 1.0, "pvalue_threshold": 0.05},
+    "enrichment": {"p_cutoff": 0.1, "top_n": 20},
+    "heatmap": {"top_n": 1000},
+    "pca": {"height": 500, "width": 1000},
+    "distribution": {"threshold": 1, "width": 1000, "height": 500},
+    "expression": {"preview_rows": 100}
+  },
+  "ai": {"enabled": false}
+}

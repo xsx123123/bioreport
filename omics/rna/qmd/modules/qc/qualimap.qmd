@@ -1,0 +1,25 @@
+## QualiMap
+
+`QualiMap` 对比对后的 `BAM` 文件进行深度的质量控制分析。该工具通过评估基因组覆盖度均匀性、`5'-3'` 端偏好性以及 `Reads` 在基因组特征（如外显子、内含子、基因间区）上的分布情况，来衡量文库制备的完整性和测序比对的整体质量[@okonechnikov2016qualimap]。
+
+```{python}
+#| label: QualiMap
+#| results: asis
+visualize_multiqc_logs(
+    analysis_dir=input_files["qualimap_dir"],
+    target_modules=['QualiMap']
+)
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**图注说明**:
+
+1. **Coverage Histogram**: **覆盖度直方图**。展示了参考基因组上不同测序深度（Coverage）的频率分布。
+    - **含义**: 峰型越集中且偏向右侧，说明测序覆盖越均匀；若出现原本为 0 的高峰，可能提示参考基因组与样本差异较大或存在未测序区域。
+2. **Genome Fraction Covered**: **基因组覆盖比例累积图**。展示了达到特定覆盖深度阈值的基因组比例变化。
+    - **含义**: 曲线下降越平缓（即在高深度 X 轴处仍保持较高 Y 轴数值），表明高深度覆盖的区域占比越高，测序数据的完整性越好。
+3. **Insert Size Histogram**: **插入片段长度分布图**。展示了双端测序（PE）文库中插入片段长度的频率分布。
+    - **含义**: 反映了文库构建时的打断效果。理想情况下应呈现单峰正态分布；若出现双峰或多峰，可能提示文库构建过程中存在片段筛选偏差或接头污染。
+4. **GC Content Distribution**: **GC 含量分布图**。展示了比对 Reads 的 GC 含量分布与参考基因组理论分布的对比。
+    - **含义**: 实线代表实际测序数据的 GC 分布，虚线/阴影代表参考基因组的理论分布。两者重合度越高，说明测序过程中的 PCR 扩增偏好性 (PCR Bias) 越小，且无明显的外源物种污染。
+:::

@@ -1,0 +1,39 @@
+### 基因表达热图 (Heatmap)
+
+通过聚类热图直观展示了高变异基因在不同样本中的表达模式。色阶变化反映了基因表达量的相对高低（Z-Score），聚类树则揭示了样本间及基因间的相似性，有助于快速识别具有特定表达趋势的基因簇。
+
+```{python}
+#| label: plot-heatmap
+#| fig-cap: "TPM 基因表达热图 (高变异基因)"
+
+if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
+    # 调用函数
+    fig, config_plot = draw_interactive_heatmap(
+        input_file=tpm_file,
+        metadata_file=meta_file,
+        top_n=heatmap_settings.get('top_n', 1000),
+        do_cluster=True
+    )
+
+    # 在 Quarto 中显示
+    show_figure(fig, config=config_plot)
+else:
+    raise FileNotFoundError(f"Heatmap requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}")
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**图注说明: Clustered Heatmap (基因表达聚类热图)**
+
+此图基于 TPM 表达量矩阵，展示了在样本间变异程度最高的基因表达模式，直观反映了组间差异。
+
+1. **Data Selection (数据选择)**:
+   * **High-variance genes**: 图中选取样本间方差最大的基因进行绘制，具体数量由报告配置决定。
+2. **Color Scale: Z-Score (颜色标度)**:
+   * **含义**: 图中颜色代表经过 **Z-Score 标准化**（按行/基因归一化）后的相对表达量，而非原始 TPM 值。
+   * **解读**:
+     * <span style="color:#b2182b">■</span> **红色 (Red, Z > 0)**: 代表该基因在对应样本中的表达量**高于**其在所有样本中的平均水平（相对高表达）。
+     * <span style="color:#2166ac">■</span> **蓝色 (Blue, Z < 0)**: 代表该基因的表达量**低于**平均水平（相对低表达）。
+     * **白色**: 代表接近平均水平。
+3. **Cluster Analysis (聚类分析)**:
+   * **基因聚类 (行)**: 具有相似表达模式的基因被聚集在一起，形成了明显的红/蓝颜色模块（Block），揭示了受实验处理影响而协同上调或下调的基因集。
+:::

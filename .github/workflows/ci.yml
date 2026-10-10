@@ -1,0 +1,20 @@
+name: bioreport
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[rna,dev]"
+      - run: python -m pytest -q tests -k "not integration"
+      - run: make lint-imports
+      - run: python -m bioreport validate -c configs/report.example.json
+      - run: python -m bioreport run -c configs/report.example.json -o /tmp/bioreport-output --dry-run
+      - run: docker build -f deploy/Dockerfile -t bioreport:ci .

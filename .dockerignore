@@ -1,0 +1,14 @@
+.git
+.pytest_cache
+__pycache__
+*.pyc
+output
+legacy-old-bioreport
+legacy-old-templates
+docs
+tests
+ai_demo
+data
+build
+dist
+*.egg-info

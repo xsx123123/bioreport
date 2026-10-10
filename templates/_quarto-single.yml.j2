@@ -1,0 +1,29 @@
+project:
+  type: default
+  render:
+    - qmd/report.qmd
+    - qmd/report_pdf.qmd
+  output-dir: {{ output_dir }}
+
+format:
+  html:
+    embed-resources: true
+    html-math-method: katex
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: 导航目录
+    number-sections: true
+    code-copy: true
+    smooth-scroll: true
+    df-print: paged
+    theme:
+      light: [{{ (report.get('theme') or {}).get('light', 'theme/New_Brutalism.scss') }}]
+      dark: [{{ (report.get('theme') or {}).get('dark', 'theme/Dark_New_Brutalism.scss') }}]
+    css:
+{% for css_file in (report.get('css') or ['theme/styles.css', 'theme/itables_saas.css']) %}
+      - {{ css_file }}
+{% endfor %}
+  typst:
+    toc: true
+    number-sections: true

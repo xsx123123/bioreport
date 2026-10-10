@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bioreport.dev/schema/omics/rna.json",
+  "title": "RNA-seq analysis parameters",
+  "type": "object",
+  "properties": {
+    "deg": {"type": "object", "properties": {"log2fc_threshold": {"type": "number"}, "pvalue_threshold": {"type": "number"}}},
+    "enrichment": {"type": "object", "properties": {"p_cutoff": {"type": "number"}, "top_n": {"type": "integer", "minimum": 1}}}
+  },
+  "additionalProperties": true
+}

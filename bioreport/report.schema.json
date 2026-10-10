@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bioreport.local/schemas/rna-report.json",
+  "title": "Quarto report configuration",
+  "type": "object",
+  "properties": {
+    "report": {
+      "type": "object",
+      "properties": {
+        "type": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "language": {"type": "string", "minLength": 1},
+        "layout": {"enum": ["single", "website"]},
+        "modules": {"$ref": "#/$defs/modules"},
+        "sections": {"$ref": "#/$defs/modules"},
+        "module_definitions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+              "path": {"type": "string", "minLength": 1},
+              "title": {"type": "string", "minLength": 1},
+              "params": {"type": "object"},
+              "required_inputs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+            },
+            "additionalProperties": false
+          }
+        },
+        "output_format": {
+          "oneOf": [
+            {"enum": ["html", "pdf"]},
+            {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["html", "pdf"]}}
+          ]
+        },
+        "theme": {"type": "object", "properties": {"light": {"type": "string"}, "dark": {"type": "string"}}},
+        "css": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "navbar_right": {"type": "array", "items": {"type": "object"}},
+        "announcement": {"type": ["object", "null"]}
+      }
+    },
+    "project": {"type": "object"},
+    "stats": {"type": "object"},
+    "input_files": {"$ref": "#/$defs/paths"},
+    "files": {"$ref": "#/$defs/paths"},
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "deg": {
+          "type": "object",
+          "properties": {
+            "log2fc_threshold": {"type": "number", "exclusiveMinimum": 0},
+            "pvalue_threshold": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1}
+          }
+        },
+        "enrichment": {
+          "type": "object",
+          "properties": {
+            "p_cutoff": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+            "top_n": {"type": "integer", "minimum": 1}
+          }
+        },
+        "heatmap": {"type": "object", "properties": {"top_n": {"type": "integer", "minimum": 1}}},
+        "pca": {"$ref": "#/$defs/dimensions"},
+        "distribution": {
+          "allOf": [
+            {"$ref": "#/$defs/dimensions"},
+            {"type": "object", "properties": {"threshold": {"type": "number", "minimum": 0}}}
+          ]
+        },
+        "expression": {"type": "object", "properties": {"preview_rows": {"type": "integer", "minimum": 1}}}
+      },
+      "additionalProperties": true
+    },
+    "ai": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "provider": {"enum": ["volcengine", "aliyun"]},
+        "model": {"type": "string", "minLength": 1},
+        "prompt_file": {"type": "string", "minLength": 1},
+        "temperature": {"type": "number", "minimum": 0, "maximum": 2},
+        "deg_limit": {"type": "integer", "minimum": 1},
+        "enrichment_limit": {"type": "integer", "minimum": 1}
+      }
+    }
+  },
+  "$defs": {
+    "modules": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "paths": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}},
+    "dimensions": {
+      "type": "object",
+      "properties": {
+        "width": {"type": "integer", "minimum": 100},
+        "height": {"type": "integer", "minimum": 100}
+      }
+    }
+  }
+}
