@@ -1,0 +1,21 @@
+```{python}
+#| label: setup-import-qc
+#| echo: false
+
+from omics.rna.analysis.qc_vis import visualize_multiqc_logs
+from bioreport.utils.visualize_utils import display_fastp_table, display_fastq_screen_table
+from bioreport.config import load_project_metadata
+
+project_info = load_project_metadata()
+input_files = project_info['input_files']
+```
+
+
+## 测序质量 (Quality Control)
+
+本部分汇总所选质控模块的测序质量评估结果。
+
+**质控核心目标：**
+1. 剔除低质量及含接头的 `Reads`；
+2. 确认无明显的外源物种污染；
+3. 验证比对率及覆盖深度符合分析要求。

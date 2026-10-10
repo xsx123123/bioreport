@@ -1,0 +1,37 @@
+## STAR
+
+`STAR` 基于最大可比对前缀（`Maximal Mappable Prefix`, `MMP`）策略执行序列比对。该算法在保证高比对速度的同时，克服了 `RNA-seq` 数据中 `reads` 跨越内含子的比对挑战，实现了对新颖剪切位点（`novel splice sites`）的高灵敏度检测及外显子边界的精确定位[@dobin2013star]。
+
+```{python}
+#| label: STAR
+#| results: asis
+visualize_multiqc_logs(
+    analysis_dir=input_files["qualimap_dir"],
+    target_modules=['STAR']
+)
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**图注说明: STAR Alignment Categories (比对结果分类)**
+
+此图展示了 Reads 比对到参考基因组的详细去向分类：
+
+1.  <span style="color:#437bb1">■</span> **Uniquely mapped (唯一比对)**:
+    * **定义**: 在参考基因组上找到唯一最佳位置的 Reads。
+    * ✅ **参考标准**: RNA-seq 的核心指标。理想情况应 **> 80%**。如果该值 **< 60%**，通常提示参考基因组版本不匹配、样本存在严重降解或严重的 DNA 污染。
+2.  <span style="color:#7cb5ec">■</span> **Mapped to multiple loci (多重比对)**:
+    * **定义**: 比对位置 $>1$ 个但未超上限（默认 10-20）。
+    * ℹ️ **注意**: 来源于旁系同源基因或重复序列。植物样本中由于多倍化现象，该比例可能略高于动物样本（通常 5% - 15% 属正常范围）。若异常高，需检查是否存在 **rRNA 污染**。
+3.  <span style="color:#f7a35c">■</span> **Mapped to too many loci (过度多重)**:
+    * **定义**: 比对位置超过上限。
+    * ⚠️ **注意**: 通常来自转座子等高度重复区。如果该比例极高，说明文库中重复序列富集，可能不仅影响定量准确性，也浪费了测序数据量。
+4.  <span style="color:#e63471">■</span> **Unmapped: too many mismatches (错配过多)**:
+    * **定义**: 碱基不匹配率过高导致比对失败。
+    * ⛔ **警示**: 正常应 **< 1%**。若过高，请检查是否选错了参考物种（Reference Species）或比对参数过于严苛。
+5.  <span style="color:#a90e2d">■</span> **Unmapped: too short (序列过短)**:
+    * **定义**: 经修剪后有效长度不足。
+    * ⛔ **警示**: 正常应 **< 1%**。若过高，说明 fastp 过滤参数可能设置不当，或文库构建时插入片段过短（Small Insert Size）。
+6.  <span style="color:#90558b">■</span> **Unmapped: other (其他)**:
+    * **定义**: 无法归类的未比对序列。
+    * ⚠️ **注意**: 包含嵌合体或不明序列。若比例显著，建议抽取部分序列进行 BLAST 以排查外源污染（如细菌/支原体）。
+:::

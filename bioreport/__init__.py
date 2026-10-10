@@ -1,5 +1,3 @@
-from .core import ReportGenerator
-from .utils import load_json, save_json
-from .loader import RNALoader
+"""BioReport multi-omics report generator."""
 
-__all__ = ['ReportGenerator', 'load_json', 'save_json', 'RNALoader']
+__version__ = "2.0.0"

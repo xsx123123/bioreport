@@ -1,0 +1,23 @@
+```{python}
+#| echo: false
+
+import os
+import pandas as pd
+import plotly.express as px
+
+from bioreport.config import load_config
+from bioreport.utils.render_output import show_figure, show_table
+
+report_config = load_config(os.environ["REPORT_CONFIG"])
+input_key = report_module["params"]["input_key"]
+measurements = pd.read_csv(report_config["input_files"][input_key])
+required_columns = {"sample", "group", "value"}
+missing_columns = required_columns - set(measurements.columns)
+if missing_columns:
+    raise ValueError(f"Measurements CSV is missing columns: {', '.join(sorted(missing_columns))}")
+
+show_table(measurements)
+figure = px.box(measurements, x="group", y="value", points="all", hover_name="sample")
+figure.update_layout(xaxis_title="Group", yaxis_title="Measurement")
+show_figure(figure)
+```

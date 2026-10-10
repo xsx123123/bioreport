@@ -1,0 +1,52 @@
+## fastp
+
+`Fastp` 用于对 `FASTQ` 格式的测序数据进行质量控制和过滤处理。该软件的一大亮点是能同时输出过滤前后的质量统计结果，清晰展示数据处理的影响。在过滤方面，`Fastp` 功能强大，支持去除低质量碱基、筛选序列长度、切除接头（`Adapter`）序列以及修剪 `PolyG/PolyX` 尾部等多种操作[@chen2018fastp]。
+
+### Fastp 过滤前后统计表
+
+```{python}
+#| label: fastp-table
+#| results: asis
+# 设置文件路径
+data_path = input_files["fastp_stats_file"]
+# 一行代码搞定！
+display_fastp_table(data_path)
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**表注说明**:
+
+1. **Sample**: 样本编号。
+2. **% Duplication**: **重复率**。指被识别为 PCR 重复或光学重复的 Reads 百分比，该值过高可能意味着文库复杂度较低.
+3. **% Q30**: **Q30 碱基比例**。指质量值 $\ge$ 30（即测序错误率 $< 0.1\%$）的碱基所占比例，是衡量测序质量的核心指标。
+4. **Q30 Bases**: **高置信度碱基总数**。过滤后质量值达到 Q30 的碱基总数据量 (bp)。
+5. **Read1/2 Len**: **原始读长**。过滤前 Read 1 和 Read 2 的平均序列长度。
+6. **% Surviving**: **过滤留存率**。经过 fastp 质控（去除低质量、N碱基、太短序列等）后保留下来的 Clean Reads 比例。
+7.  **% Adapter**: **接头去除率**。检测到含有接头序列并被切除的 Reads 比例。
+:::
+
+### Fastp 质控汇总图
+
+```{python}
+#| label: fastp-viz
+#| results: asis
+visualize_multiqc_logs(
+    analysis_dir=input_files["fastp_report_dir"],
+    target_modules=['fastp']
+)
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**图注说明**:
+
+1. **Filtered Reads Visualization**: **数据过滤统计图**。直观展示了过滤前后 Reads 的数量变化。深色部分通常代表保留的高质量 Clean Reads，浅色或其它颜色代表因不同原因（如低质量碱基过多、含有 N 碱基、序列过短等）被丢弃的 Dirty Reads。
+   * <span style="color:#7cb5ec">■</span> **Passed Filter**: **质控合格 (Clean Reads)**,最终保留下来的高质量 Reads，将直接用于后续的比对和分析。
+   * <span style="color:#434348">■</span> **Low Quality**: **低质量丢弃** ,因序列中包含过多低质量碱基（质量值低于阈值）而被整体丢弃的 Reads。这通常是测序仪状态不佳导致的。
+   * <span style="color:#90ed7d">■</span> **Too Many N**: **N 碱基过多** ,因无法确定的碱基（N）数量超过设定阈值（默认通常为 5 个）而被丢弃的 Reads。
+   * <span style="color:#f7a35c">■</span> **Low Complexity**: **低复杂度序列**。,指序列复杂度过低（如连续的 `AAAAA` 或简单的重复模式），这类序列通常缺乏生物学特异性。
+   * <span style="color:#8085e9">■</span> **Too Short**: **序列过短**,在切除接头（Adapter）或修剪低质量末端后，剩余长度低于设定阈值（如 15bp）的 Reads。这些片段太短，无法进行有效比对。
+2. **Insert Sizes Visualization**: **插入片段长度分布图**。展示了文库中插入片段（Insert Size）长度的频数分布。对于双端测序（PE），该分布的峰值应符合文库构建时的预期长度（例如 $350\text{bp}$ 或 $500\text{bp}$），分布越窄说明文库片段均一性越好。
+3. **Sequence Quality Visualization**: **碱基质量分布图**。横坐标为 Read 上的碱基位置（Cycle），纵坐标为平均质量值（Phred Score）。通常 Read 测序末端的质量值会呈现下降趋势，但整体应保持在较高水平（如绿色区域，$Q > 30$）。
+4. **GC Content Visualization**: **GC 含量分布图**。展示了 Read 上每个位置的 G 和 C 碱基总比例。理想情况下，除测序原本的前几个碱基可能存在波动（随机引物偏好性）外，其余部分的曲线应趋于平稳并接近物种基因组的平均 GC 含量。
+5. **N content Visualization**: **N 碱基含量分布图**。展示了测序仪无法确定碱基类型（标记为 $N$）的比例。高质量数据的 $N$ 含量通常极低（接近 0 线），若出现明显的峰值，通常提示测序过程存在异常。
+:::

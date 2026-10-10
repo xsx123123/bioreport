@@ -1,0 +1,71 @@
+### 样本关系 & Gene Distribution
+
+本节通过主成分分析（PCA）和基因表达分布图，对样本间的相互关系及整体数据质量进行评估。PCA 展示了样本在低维空间中的聚类情况，反映了组内重复性与组间差异；而表达量分布图则用于检验样本间的数据一致性，确保后续分析的可靠性。
+
+```{python}
+#| label: plot-pca
+#| fig-cap: "Global PCA Analysis (PC1-PC3)"
+
+# 使用前面定义的变量，不再重复定义
+if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
+    # 调用函数
+    fig, config_plot = draw_pca_plotly(
+        tpm_file = tpm_file,
+        meta_file = meta_file,
+        height_num = pca_settings.get('height', 500),
+        width_num = pca_settings.get('width', 1000),
+        scale_num = 7
+    )
+
+    show_figure(fig, config=config_plot)
+else:
+    raise FileNotFoundError(f"PCA requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}")
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**图注说明: Global PCA Analysis (全局主成分分析)**
+
+此图通过降维算法展示了样本在基因表达模式上的整体相似性与差异性。
+
+1. **PC1/PC2/PC3 (主成分)**:
+   * **含义**: 坐标轴代表了数据中差异最大的几个维度。轴标签括号内的百分比（Variance Explained）代表该维度解释总体数据差异的比例，比例越高说明该维度对区分样本越重要。
+2. **Sample Clustering (样本聚类)**:
+   * **含义**: 图中每个点代表一个样本。点与点之间的欧几里得距离反映了样本间基因表达谱的相似程度——距离越近，表达模式越相似。
+   * **组内重复性**: 理想情况下，同一实验组（相同颜色/形状）的样本应在图上聚集在一起，形成紧密的簇，这表明实验重复性良好。
+3. **Group Separation (组间分离)**:
+   * **含义**: 不同颜色或形状通常代表不同的实验分组或处理条件。不同组别的样本群在图上分离得越明显（通常沿 PC1 或 PC2 轴分开），说明组间存在显著的生物学差异，有利于后续筛选差异表达基因。
+:::
+
+```{python}
+#| label: plot-dist
+#| fig-cap: "Gene Distribution"
+
+if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
+    fig, conf = draw_expression_distribution_plotly(
+        tpm_file=tpm_file,
+        meta_file=meta_file,
+        threshold=distribution_settings.get('threshold', 1),
+        width_num=distribution_settings.get('width', 1000),
+        height_num=distribution_settings.get('height', 500)
+    )
+
+    # 2. 显示或保存
+    if fig:
+        show_figure(fig, config=conf)
+else:
+    raise FileNotFoundError(f"Expression distribution requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}")
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**图注说明: Sample TPM Distribution (样本表达量分布图)**
+
+此图采用小提琴图（Violin Plot）展示了各样本中基因表达量的整体分布情况，用于评估样本间的数据分布是否一致以及标准化（Normalization）的效果。
+
+1. **Y-axis: Log2(TPM + 1)**:
+   * **含义**: 纵坐标代表基因表达量的对数转换值。TPM (Transcripts Per Million) 是消除测序深度和基因长度影响后的标准化表达量单位。采用 $Log_2(TPM + 1)$ 转换是为了压缩数据的动态范围，使低表达和高表达基因能在同一尺度下展示。
+2. **Violin Structure (小提琴形态)**:
+   * **外部轮廓 (Density)**: “小提琴”的宽度代表在该表达水平下的基因密度（频率）。由于大多数基因处于中低表达水平，通常底部较宽，顶部较尖。
+   * **内部箱线 (Box Plot)**: 内部的矩形箱体展示了统计学分布。箱子中间的横线代表**中位数 (Median)**，箱体上下边界分别代表上四分位数 (75%) 和下四分位数 (25%)。
+3. **Distribution Consistency (分布一致性)**:
+   * **解读**: 在理想的 RNA-seq 分析中，经过有效的标准化处理后，不同样本的表达量分布形态（即小提琴的胖瘦、中位数的高度）应大致相似。如果个别样本的分布形态与其他样本存在显著差异（如整体偏移），可能提示该样本存在文库构建偏好或测序质量异常。
+:::

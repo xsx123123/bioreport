@@ -1,0 +1,29 @@
+{
+  "report": {
+    "type": "generic-assay",
+    "title": "Assay measurements",
+    "language": "en",
+    "layout": "single",
+    "modules": ["custom.baseline", "custom.followup"],
+    "module_definitions": {
+      "custom.baseline": {
+        "path": "../examples/generic-assay/measurements.qmd",
+        "title": "Baseline measurements",
+        "params": {"input_key": "baseline"},
+        "required_inputs": ["baseline"]
+      },
+      "custom.followup": {
+        "path": "../examples/generic-assay/measurements.qmd",
+        "title": "Follow-up measurements",
+        "params": {"input_key": "followup"},
+        "required_inputs": ["followup"]
+      }
+    },
+    "output_format": ["html", "pdf"]
+  },
+  "input_files": {
+    "data_dir": "../examples/generic-assay",
+    "baseline": "measurements.csv",
+    "followup": "measurements_followup.csv"
+  }
+}
