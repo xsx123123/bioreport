@@ -121,7 +121,7 @@ code { color: #27272a; }
 
   .nav-link { 
     color: #71717a !important; 
-    &:hover, &.active { 
+    &:hover, &.active, &[aria-current="page"] {
       color: #000000 !important; 
       text-shadow: 0 0 10px rgba(255,255,255, 0.8);
     }
@@ -410,4 +410,33 @@ html, body {
   padding: 1rem;
   border: 1px solid #e4e4e7; // 可选：给内容加个淡灰框
   border-top: none; 
+}
+
+// About BioReport: reuse the shared typography, palette and square borders.
+.about-project {
+  line-height: 1.8;
+  h2 { padding-top: .5rem; }
+  h3 { font-size: 1.2rem; }
+  li { margin-bottom: .65rem; }
+  table { width: 100%; }
+  th { background: #f4f4f5; }
+  td, th { padding: .85rem 1rem; vertical-align: top; }
+  hr { margin: 2.5rem 0; color: $border-color; opacity: 1; }
+  .about-manifesto {
+    margin: 1.5rem 0 2.5rem;
+    padding: 1.5rem 2rem;
+    border: 1px solid $border-color;
+    border-left: 4px solid $primary;
+    background: #fafafa;
+    blockquote { margin: 0; padding: 0; border: 0; color: $body-color; }
+    strong { font-family: $headings-font-family; font-size: clamp(1.2rem, 3vw, 1.7rem); letter-spacing: .04em; }
+    p:last-child { margin-bottom: 0; }
+  }
+  > section { margin-bottom: 2.5rem; }
+  a { text-underline-offset: .2em; }
+  table { display: block; overflow-x: auto; }
+  blockquote { border-left-color: $primary; }
+}
+@media (max-width: 600px) {
+  .about-project .about-manifesto { padding: 1rem; }
 }

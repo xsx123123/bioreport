@@ -24,10 +24,75 @@ def test_single_report_uses_shared_styles_by_default(tmp_path):
 
     settings = (tmp_path / '_quarto.yml').read_text(encoding='utf-8')
     assert 'theme/New_Brutalism.scss' in settings
-    assert 'theme/Dark_New_Brutalism.scss' in settings
     assert 'theme/styles.css' in settings
     assert 'theme/itables_saas.css' in settings
     assert 'toc-location: left' in settings
+    assert 'theme/report-pages.html' in settings
+    assert 'theme/load-mermaid.html' in settings
+    assert 'dark:' not in settings
+    assert '- theme/New_Brutalism.scss' in settings
+
+
+def test_website_report_stages_six_independent_pages_with_shared_styles(tmp_path):
+    import yaml
+
+    root = Path(__file__).resolve().parents[1]
+    shutil.copytree(root / "templates", tmp_path / "templates")
+    staged = tmp_path / "templates"
+    shutil.copytree(root / "omics/rna/qmd", staged / "qmd")
+    config = load_config(root / "tests/report.rna.local.json")
+    render_templates(config, str(tmp_path / "output"), str(staged))
+
+    settings = yaml.safe_load((staged / "_quarto.yml").read_text())
+    paths = settings["project"]["render"]
+    assert len(paths) == 6
+    assert settings["format"]["html"]["theme"] == ["theme/New_Brutalism.scss"]
+    assert settings["format"]["html"]["css"] == ["theme/styles.css", "theme/itables_saas.css"]
+    assert settings["website"]["navbar"]["pinned"] is True
+    assert [page["href"] for page in settings["website"]["navbar"]["left"]] == paths
+    documents = [(staged / path).read_text() for path in paths]
+    assert all("report-page" not in doc for doc in documents)
+    assert "get_project_summary_stats(" in documents[1]
+    assert "Sample_Info_table_modern(df_final)" in documents[1]
+    assert "Sample_Info_table_modern(df_final)" not in documents[0]
+    assert [i for i, doc in enumerate(documents) if "bibliography:" in doc] == [2]
+    assert "::: {#refs}" in documents[2]
+    assert "```{mermaid}" in documents[2]
+    assert "body-classes: about-project" in documents[5]
+    assert "::: {.about-project}" not in documents[5]
+
+
+def test_rna_report_has_six_pages_with_samples_outside_overview(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    shutil.copytree(root / "omics/rna/qmd", tmp_path / "qmd")
+    shutil.copytree(root / "templates/reference", tmp_path / "reference")
+    config = load_config(root / "tests/report.rna.local.json")
+
+    document = compose_report(config, tmp_path).read_text(encoding="utf-8")
+
+    titles = re.findall(r'<a href="#report-page-\d+"[^>]*>([^<]+)</a>', document)
+    assert titles == ["项目概述", "样本信息", "分析概述", "质量控制", "分析结果", "关于"]
+    overview = document.split("# 项目概述\n", 1)[1].split("# 样本信息\n", 1)[0]
+    samples = document.split("# 样本信息\n", 1)[1].split("# 分析概述\n", 1)[0]
+    assert "get_project_summary_stats(" in overview
+    assert "Sample_Info_table_modern(df_final)" not in overview
+    assert "Sample_Info_table_modern(df_final)" in samples
+    assert "number-sections: false" in document
+    assert "{{< include" not in document
+    assert "## 总数据量" not in document
+    assert len(re.findall(r"::: \{\.report-page(?: \.about-project)? #report-page-", document)) == 6
+    workflow = document.split("# 分析概述\n", 1)[1].split("# 质量控制\n", 1)[0]
+    assert "::: {#refs}" in workflow
+    assert 'class="navbar report-navbar"' in document
+    assert 'class="nav-link"' in document
+    assert "# 关于本项目\n" in document
+    assert "CygnusX BioOps" in document
+    assert "../logo/logo.png" in document
+    assert "../logo/Huazhong_Agricultural_University_logo.svg" in document
+
+    pdf = compose_report(config, tmp_path, pdf=True).read_text(encoding="utf-8")
+    assert "report-navbar" not in pdf
+    assert "# 样本信息" in pdf
 
 
 def test_json_paths_resolve_from_data_dir(tmp_path):

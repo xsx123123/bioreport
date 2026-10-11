@@ -28,21 +28,10 @@ input_files = load_project_metadata()['input_files']
 
 ```{mermaid}
 %%| label: fig-pipeline-clean
-%%| fig-cap: "RNA-seq Pipeline (Transparent & Dark Mode Ready)"
+%%| fig-cap: "RNA-seq 分析流程"
 %%| fig-width: 12
 
-%% 初始化配置：使用 base 主题，强制让背景透明，线条用中性色 %%
-%%{
-  init: {
-    'theme': 'base',
-    'themeVariables': {
-      'primaryColor': '#E3F2FD',
-      'primaryTextColor': '#2c3e50',
-      'lineColor': '#7f8c8d', 
-      'fontFamily': 'Helvetica'
-    }
-  }
-}%%
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#E3F2FD', 'primaryTextColor': '#2c3e50', 'lineColor': '#7f8c8d', 'fontFamily': 'Helvetica'}}}%%
 
 graph LR
 
@@ -199,3 +188,8 @@ To explore transcriptomic complexity, several specialized analyses were performe
 
 :::
 
+
+## 参考文献
+
+::: {#refs}
+:::

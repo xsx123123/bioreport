@@ -68,5 +68,20 @@ def test_rna_json_renders_one_html_and_pdf(tmp_path):
 
     html = render_and_check(config_path, tmp_path / "rna-output")
 
-    assert "差异表达分析" in html
     assert "RNA-seq" in html
+    soup = BeautifulSoup(html, "html.parser")
+    assert [node.get_text(strip=True) for node in soup.select('.report-navbar a')] == [
+        "项目概述", "样本信息", "分析概述", "质量控制", "分析结果", "关于",
+    ]
+    pages = soup.select('.report-page')
+    assert len(pages) == 6
+    assert pages[2].select_one('.mermaid') is not None
+    assert soup.select_one('#refs').find_parent(class_='report-page') == pages[2]
+    assert len(soup.select('.report-brand img')) == 2
+    assert pages[3].select_one('.plotly-graph-div') is not None
+    assert pages[4].select_one('.plotly-graph-div') is not None
+    assert "差异表达分析" in pages[4].get_text()
+    assert not pages[0].select('.plotly-graph-div')
+    assert "report-routing-ready" in html
+    assert "history.pushState" in html
+    assert not soup.select('.header-section-number')

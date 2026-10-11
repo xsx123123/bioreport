@@ -1,8 +1,8 @@
 project:
   type: website
   render:
-{% for section in sections %}
-    - qmd/{{ 'AI' if section == 'ai' else section }}.qmd
+{% for page in pages %}
+    - {{ page.href }}
 {% endfor %}
   output-dir: {{ output_dir | default('/workspace') }}
 
@@ -11,55 +11,16 @@ website:
   reader-mode: true
   page-navigation: true
   navbar:
-    logo: {{ report.logo | default('/logo/logo.png') }}
+    logo: {{ report.logo | default('logo/logo.png') }}
     logo-href: "{{ report.logo_href | default('https://github.com/xsx123123') }}"
+    pinned: true
     background: primary
     search: true
     left:
-{% if 'index' in sections %}
-      - href: ./qmd/index.qmd
-        text: Project
-{% endif %}
-{% if 'workflow' in sections %}
-      - href: ./qmd/workflow.qmd
-        text: Workflow
-{% endif %}
-{% if 'qc' in sections %}
-      - href: ./qmd/qc.qmd
-        text: QC Report
-{% endif %}
-{% if 'results' in sections %}
-      - href: ./qmd/results.qmd
-        text: Result
-{% endif %}
-{% if 'ai' in sections %}
-      - href: ./qmd/AI.qmd
-        text: AI Assistant
-{% endif %}
-{% if 'about' in sections or 'faq' in sections or 'license' in sections or 'trademark' in sections %}
-      - text: Help
-        menu:
-{% if 'about' in sections %}
-          - text: About
-            icon: chat-left-dots-fill
-            href: ./qmd/about.qmd
-{% endif %}
-{% if 'faq' in sections %}
-          - text: Ask a Question
-            icon: chat-text
-            href: ./qmd/faq.qmd
-{% endif %}
-{% if 'license' in sections %}
-          - text: License
-            icon: fingerprint
-            href: ./qmd/license.qmd
-{% endif %}
-{% if 'trademark' in sections %}
-          - text: Trademarks
-            icon: marker-tip
-            href: ./qmd/trademark.qmd
-{% endif %}
-{% endif %}
+{% for page in pages %}
+      - href: {{ page.href }}
+        text: "{{ page.title }}"
+{% endfor %}
 {% if report.navbar_right %}
     right:
 {% for item in report.navbar_right | default([]) %}
@@ -77,85 +38,57 @@ website:
 {% endif %}
   sidebar:
     title: "{{ report.sidebar_title | default('RNA-seq Report') }}"
-    logo: {{ report.logo | default('/logo/logo.png') }}
+    logo: {{ report.logo | default('logo/logo.png') }}
     logo-href: "{{ report.logo_href | default('https://github.com/xsx123123') }}"
     alignment: left
     style: "floating"
     pinned: true
     contents:
-{% if 'index' in sections %}
-      - section: "Project Info"
-        contents:
-          - ./qmd/index.qmd
-{% endif %}
-{% if 'workflow' in sections or 'qc' in sections or 'results' in sections or 'ai' in sections %}
-      - section: "Analysis & Results"
-        contents:
-{% if 'workflow' in sections %}
-          - ./qmd/workflow.qmd
-{% endif %}
-{% if 'qc' in sections %}
-          - ./qmd/qc.qmd
-{% endif %}
-{% if 'results' in sections %}
-          - ./qmd/results.qmd
-{% endif %}
-{% if 'ai' in sections %}
-          - ./qmd/AI.qmd
-{% endif %}
-{% endif %}
+{% for page in pages %}
+      - href: {{ page.href }}
+        text: "{{ page.title }}"
+{% endfor %}
     tools:
       - icon: twitter
         href: https://twitter.com
       - icon: github
         menu:
           - text: Source Code
-            href:  https://code.com
+            href: https://github.com/xsx123123/bioreport
           - text: Report a Bug
-            href:  https://bugs.com
+            href: https://github.com/xsx123123/bioreport/issues
   page-footer:
       border: true
       left: |
-        <span style="vertical-align: middle;">Proudly supported by</span>
+        <img src="/logo/Huazhong_Agricultural_University_logo.svg" alt="华中农业大学" height="32" style="vertical-align: middle; margin-right: 10px;">
+        <span style="vertical-align: middle;">FROM STARDUST, TO DISCOVERY</span>
         <a href="https://posit.co" target="_blank" style="text-decoration: none; border-bottom: none;">
           <img src="/logo/Posit_logo.svg" alt="Posit" height="18" style="vertical-align: middle; margin: 0 10px;">
         </a>
         &nbsp;
         <a href="https://github.com/xsx123123" target="_blank" class="footer-icon"><i class="bi bi-github"></i></a>
         &nbsp;
-        <a href="/index.xml" target="_blank" class="footer-icon"><i class="bi bi-rss"></i></a>
 
-{% if 'about' in sections or 'faq' in sections or 'license' in sections or 'trademark' in sections %}
+
       center: |
-{% for link in [('about', 'About'), ('faq', 'FAQ'), ('license', 'License'), ('trademark', 'Trademark')] if link[0] in sections %}
-{% if not loop.first %}
-        <span class="footer-sep">·</span>
-{% endif %}
-        <a href="/qmd/{{ link[0] }}.html" class="footer-link">{{ link[1] }}</a>
+{% for page in pages if page.title == '关于' %}
+        <a href="/{{ page.href | replace('.qmd', '.html') }}" class="footer-link">关于 BioReport</a>
 {% endfor %}
-{% endif %}
 
 format:
   html:
     embed-resources: false
     self-contained: false
-{% if report.theme %}
     theme:
-{% if report.theme.light %}
-      light: [{{ report.theme.light }}]
-{% endif %}
-{% if report.theme.dark %}
-      dark: [{{ report.theme.dark }}]
-{% endif %}
-{% endif %}
+      - {{ (report.get('theme') or {}).get('light', 'theme/New_Brutalism.scss') }}
     mainfont: "Public Sans"
     toc: true
-{% if report.css %}
+    toc-depth: 3
+    number-sections: false
     css:
-{% for css_file in report.css %}
+{% for css_file in (report.get('css') or ['theme/styles.css', 'theme/itables_saas.css']) %}
       - {{ css_file }}
 {% endfor %}
-{% endif %}
     grid:
       sidebar-width: 200px
       body-width: 1050px

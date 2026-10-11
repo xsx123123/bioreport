@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import re
 import shutil
+from html import escape
 
 import yaml
 
@@ -176,8 +177,8 @@ def _namespace_chunk_labels(body: str, module_id: str, position: int) -> str:
     return body
 
 
-def compose_report(config: dict, template_dir: Path, pdf: bool = False) -> Path:
-    """Assemble one Quarto document from selected chapter modules."""
+def compose_report(config: dict, template_dir: Path, pdf: bool = False, website: bool = False) -> Path | list[dict]:
+    """Compose selected chapters as one document or separate website pages."""
     report = config.get("report", {})
     metadata = {
         "title": report.get("title", "Report"),
@@ -186,9 +187,12 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False) -> Path:
         "execute": {"echo": False, "warning": False},
     }
     sections = []
+    pages = []
+    website_pages = []
+    module_ids = selected_modules(config)
     setup_added = set()
     registered = get_registry().modules
-    for position, module_id in enumerate(selected_modules(config), start=1):
+    for position, module_id in enumerate(module_ids, start=1):
         canonical = _canonical(module_id)
         if module_id in MODULES:
             filename, heading = MODULES[module_id]
@@ -222,10 +226,10 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False) -> Path:
                 setup_filename = definition.setup_qmd.removeprefix("qmd/")
                 body = (template_dir / "qmd" / setup_filename).read_text(encoding="utf-8") + "\n" + body
                 setup_added.add(definition.parent)
-        elif module_id in MODULES and module_id != "ai":
+        if (canonical in registered) or (module_id in MODULES and module_id != "ai"):
             body = _expand_includes(body, template_dir / "qmd", stack=(template_dir / "qmd" / filename,))
         for key in ("bibliography", "csl"):
-            if key in module_meta:
+            if key in module_meta and not website:
                 value = module_meta[key]
                 if key == "bibliography" and key in metadata:
                     previous = metadata[key] if isinstance(metadata[key], list) else [metadata[key]]
@@ -240,7 +244,56 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False) -> Path:
             body = re.sub(r"(?m)^:::\s*\{\.callout-[^\n]*\}", "::: {.report-note}", body)
             # Typst otherwise treats CJK text directly after a citation as part of its label.
             body = re.sub(r"(\[@[A-Za-z0-9_:-]+\])(?=[\u4e00-\u9fff])", r"\1 ", body)
-        sections.append(f"# {heading}\n\n{body.strip()}\n")
+        chapters = [(canonical, heading, body)]
+        if canonical == "rna.index":
+            overview, separator, samples = body.partition("\n## 样本信息 (Sample Info)")
+            if separator:
+                chapters = [
+                    (canonical, "项目概述", overview),
+                    ("rna.sample-info", "样本信息", samples),
+                ]
+        elif canonical == "rna.workflow":
+            chapters = [(canonical, "分析概述", body)]
+        for chapter_id, title, content in chapters:
+            content_heading = module_meta.get("title", title) if chapter_id == "about" else title
+            if website:
+                # Separate documents execute in separate kernels. The sample
+                # page needs the same data-loading cell as the project overview.
+                if chapter_id == "rna.sample-info":
+                    setup = re.search(r"```\{python\}\n.*?\n```", overview, re.DOTALL)
+                    if setup:
+                        content = setup.group(0) + "\n\n" + content
+                page_name = chapter_id.removeprefix("rna.").replace(".", "-")
+                page_path = template_dir / "qmd" / f"site-{page_name}.qmd"
+                page_meta = {
+                    "lang": report.get("language", "zh"),
+                    "execute": {"echo": False, "warning": False},
+                    **module_meta,
+                    "title": content_heading,
+                }
+                if canonical == "rna.qc" and any(_canonical(module) == "rna.workflow" for module in module_ids):
+                    page_meta.pop("bibliography", None)
+                    page_meta.pop("csl", None)
+                    content = re.sub(
+                        r"\[@([A-Za-z0-9_:-]+)\]",
+                        lambda match: f"[参考文献](site-workflow.qmd#ref-{'FastQ_Screen' if match.group(1) == 'wingett2018fastq' else match.group(1)})",
+                        content,
+                    )
+                page_frontmatter = yaml.safe_dump(page_meta, allow_unicode=True, sort_keys=False)
+                page_path.write_text(f"---\n{page_frontmatter}---\n\n{content.strip()}\n", encoding="utf-8")
+                website_pages.append({"href": f"qmd/{page_path.name}", "title": title})
+            elif pdf:
+                sections.append(f"# {content_heading}\n\n{content.strip()}\n")
+            else:
+                page_id = f"report-page-{len(pages) + 1}"
+                pages.append((page_id, title))
+                sections.append(
+                    f"::: {{.report-page{' .about-project' if chapter_id == 'about' else ''} #{page_id}}}\n\n"
+                    f"# {content_heading}\n\n{content.strip()}\n\n:::\n"
+                )
+
+    if website:
+        return website_pages
 
     if pdf and "bibliography" in metadata:
         bibliography = metadata["bibliography"]
@@ -255,6 +308,19 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False) -> Path:
         metadata["bibliography"] = aliases if isinstance(bibliography, list) else aliases[0]
 
     target = template_dir / "qmd" / ("report_pdf.qmd" if pdf else "report.qmd")
+    navigation = ""
+    if not pdf:
+        metadata["format"] = {"html": {"number-sections": False, "format-links": False}}
+        links = "\n".join(
+            f'<a href="#{page_id}" aria-controls="{page_id}" class="nav-link">{escape(title)}</a>'
+            for page_id, title in pages
+        )
+        navigation = (
+            '```{=html}\n<nav class="navbar report-navbar" aria-label="报告页面">\n'
+            '<div class="report-brand"><img src="../logo/logo.png" alt="BioReport logo">'
+            '<img src="../logo/Huazhong_Agricultural_University_logo.svg" alt="华中农业大学"></div>\n'
+            f'{links}\n</nav>\n```\n\n'
+        )
     frontmatter = yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False)
-    target.write_text(f"---\n{frontmatter}---\n\n" + "\n".join(sections), encoding="utf-8")
+    target.write_text(f"---\n{frontmatter}---\n\n" + navigation + "\n".join(sections), encoding="utf-8")
     return target

@@ -7,14 +7,19 @@ document.addEventListener("DOMContentLoaded", function() {
     // 核心逻辑：添加下载按钮
     const attachDownloadButtons = () => {
       // 查找所有可能的 Mermaid 容器
-      const targets = document.querySelectorAll(".cell-output-display, .mermaid");
+      const targets = document.querySelectorAll(".report-mermaid-container, .cell-output-display, .mermaid");
       
       targets.forEach((target, index) => {
         // 1. 检查是否包含 SVG
         const svg = target.querySelector("svg");
         // 判断是否是 mermaid 图
-        if (!svg || (!svg.id.startsWith("mermaid") && !svg.classList.contains("mermaid"))) return;
+        if (!svg || (!svg.id.startsWith("mermaid") && !svg.classList.contains("mermaid") && !svg.classList.contains("report-mermaid-svg"))) return;
   
+        // The lazy report renderer nests a dedicated container inside a cell.
+        // Attach the control to that container only, rather than both ancestors.
+        const reportContainer = svg.closest('.report-mermaid-container');
+        if (reportContainer && target !== reportContainer) return;
+
         // 2. 避免重复添加
         if (target.querySelector(".mermaid-download-btn")) return;
   

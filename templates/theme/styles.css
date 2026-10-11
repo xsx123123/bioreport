@@ -46,7 +46,9 @@
 
 /* 悬停显示 */
 .cell-output-display:hover .mermaid-download-btn,
-.mermaid:hover .mermaid-download-btn {
+.mermaid:hover .mermaid-download-btn,
+.report-mermaid-container:hover .mermaid-download-btn,
+.report-mermaid-container:focus-within .mermaid-download-btn {
   opacity: 1;
   transform: translateY(0);
 }
@@ -85,3 +87,5 @@
   font-weight: 700;
   letter-spacing: -0.03em;
 }
+
+.report-mermaid-container { position: relative; width: 100%; }

@@ -4,8 +4,14 @@
     "title": "RNA-seq 本地测试报告",
     "language": "zh",
     "layout": "single",
-    "modules": ["index", "rna.workflow", "rna.qc", "rna.results", "about"],
-    "output_format": ["html", "pdf"]
+    "modules": [
+      "index",
+      "rna.workflow",
+      "rna.qc",
+      "rna.results",
+      "about"
+    ],
+    "output_format": "html"
   },
   "project": {
     "client": "本地测试课题组",
@@ -30,12 +36,31 @@
     "enrichment_dir": "res/Enrichments"
   },
   "analysis": {
-    "deg": {"log2fc_threshold": 1.0, "pvalue_threshold": 0.05},
-    "enrichment": {"p_cutoff": 0.1, "top_n": 20},
-    "heatmap": {"top_n": 1000},
-    "pca": {"height": 500, "width": 1000},
-    "distribution": {"threshold": 1, "width": 1000, "height": 500},
-    "expression": {"preview_rows": 100}
+    "deg": {
+      "log2fc_threshold": 1.0,
+      "pvalue_threshold": 0.05
+    },
+    "enrichment": {
+      "p_cutoff": 0.1,
+      "top_n": 20
+    },
+    "heatmap": {
+      "top_n": 1000
+    },
+    "pca": {
+      "height": 500,
+      "width": 1000
+    },
+    "distribution": {
+      "threshold": 1,
+      "width": 1000,
+      "height": 500
+    },
+    "expression": {
+      "preview_rows": 100
+    }
   },
-  "ai": {"enabled": false}
+  "ai": {
+    "enabled": false
+  }
 }

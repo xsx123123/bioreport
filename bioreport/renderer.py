@@ -34,13 +34,14 @@ def render_templates(
     layout = report.get("layout", "single")
     if layout not in ("single", "website"):
         raise ValueError("report.layout must be 'single' or 'website'")
+    pages = compose_report(config, Path(template_dir), website=True) if layout == "website" else []
 
     # 1. 渲染 _quarto.yml
     try:
         template_name = "_quarto-single.yml.j2" if layout == "single" else "_quarto.yml.j2"
         quarto_template = env.get_template(template_name)
         quarto_content = quarto_template.render(
-            report=report, sections=sections, output_dir=output_dir
+            report=report, sections=sections, pages=pages, output_dir=output_dir
         )
         quarto_path = Path(template_dir) / "_quarto.yml"
         quarto_path.write_text(quarto_content, encoding="utf-8")

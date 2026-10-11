@@ -1,0 +1,139 @@
+<style>
+.report-navbar.navbar {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 1050;
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  padding: .65rem;
+  margin: 0;
+}
+body { padding-top: var(--report-navbar-height, 5rem) !important; }
+#quarto-sidebar, #quarto-margin-sidebar { top: var(--report-navbar-height, 5rem) !important; }
+.report-brand { display: flex; align-items: center; gap: .6rem; margin-right: .75rem; }
+.report-brand img { height: 2.6rem; width: 2.6rem; object-fit: contain; }
+.report-mermaid-svg { display: block; width: 100%; height: auto; }
+.report-page [id] { scroll-margin-top: calc(var(--report-navbar-height, 5rem) + 1rem); }
+.report-navbar a {
+  padding: .55rem .8rem;
+  text-decoration: none;
+}
+.report-navbar a:hover, .report-navbar a[aria-current="page"] {
+  background: var(--bs-tertiary-bg, #f4f4f5);
+}
+.report-navbar a[aria-current="page"] { font-weight: 700; }
+.report-navbar a:focus-visible { outline: 2px solid var(--bs-primary, #0d6efd); }
+.report-page[hidden], #TOC li[hidden] { display: none !important; }
+.report-page { scroll-margin-top: 6rem; }
+.report-page { display: none; }
+body:not(.report-routing-ready) #report-page-1,
+.report-page[data-active="true"] { display: block; }
+@media (max-width: 600px) {
+  .report-navbar.navbar { gap: .15rem; padding: .35rem; }
+  .report-navbar a { padding: .5rem; font-size: .9rem; }
+}
+@media print {
+  body { padding-top: 0 !important; }
+  .report-navbar.navbar { display: none; }
+  .report-page, .report-page[hidden] { display: block !important; }
+}
+</style>
+<script>
+(() => {
+  function initializeReportPages() {
+    const pages = Array.from(document.querySelectorAll('.report-page'));
+    const links = Array.from(document.querySelectorAll('.report-navbar a'));
+    if (!pages.length) return;
+    const navbar = document.querySelector('.report-navbar');
+    function sizeNavbar() {
+      if (navbar) document.documentElement.style.setProperty('--report-navbar-height', `${navbar.getBoundingClientRect().height + 16}px`);
+    }
+    sizeNavbar();
+    if (navbar && window.ResizeObserver) new window.ResizeObserver(sizeNavbar).observe(navbar);
+    window.addEventListener('resize', sizeNavbar);
+
+    // Quarto renders Mermaid at window.load, when inactive pages have no size.
+    // Claim these diagrams first and render only after their page becomes visible.
+    const diagrams = Array.from(document.querySelectorAll('pre.mermaid-js'));
+    for (const diagram of diagrams) diagram.classList.remove('mermaid-js');
+    async function renderDiagrams(selected) {
+      for (const diagram of diagrams) {
+        if (diagram.closest('.report-page') !== selected || diagram.dataset.rendering) continue;
+        diagram.dataset.rendering = 'true';
+        try {
+          const result = await window.mermaid.mermaidAPI.render(`report-mermaid-${diagrams.indexOf(diagram)}`, diagram.textContent);
+          const container = document.createElement('div');
+          container.className = 'report-mermaid-container';
+          container.innerHTML = result.svg;
+          const svg = container.querySelector('svg');
+          svg.classList.add('report-mermaid-svg');
+          svg.removeAttribute('height');
+          svg.removeAttribute('width');
+          if (diagram.dataset.label) container.id = `${diagram.dataset.label}-mermaid`;
+          diagram.replaceWith(container);
+          if (result.bindFunctions) result.bindFunctions(container);
+        } catch (error) {
+          delete diagram.dataset.rendering;
+          console.error('Report flowchart rendering failed', error);
+        }
+      }
+    }
+
+    function findTarget(hash) {
+      try { return document.getElementById(decodeURIComponent(hash.slice(1))); }
+      catch (_) { return null; }
+    }
+    function selectPage(hash = location.hash, scroll = false) {
+      const target = findTarget(hash);
+      const selected = target?.closest('.report-page') || pages[0];
+      for (const page of pages) {
+        page.dataset.active = String(page === selected);
+        page.hidden = page !== selected;
+      }
+      document.body.classList.add('report-routing-ready');
+      for (const link of links) {
+        if (link.getAttribute('aria-controls') === selected.id) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
+      }
+      for (const link of document.querySelectorAll('#TOC a[data-scroll-target]')) {
+        const heading = findTarget(link.getAttribute('data-scroll-target'));
+        const item = link.closest('li');
+        if (item) item.hidden = heading?.closest('.report-page') !== selected;
+      }
+      requestAnimationFrame(() => {
+        renderDiagrams(selected);
+        for (const chart of selected.querySelectorAll('.js-plotly-plot')) {
+          if (window.Plotly && chart._fullLayout) window.Plotly.Plots.resize(chart);
+        }
+        window.dispatchEvent(new Event('resize'));
+        if (scroll) (target || selected).scrollIntoView({block: 'start'});
+      });
+    }
+    // Explicitly route navbar clicks: smooth-scroll handlers may update history
+    // without firing hashchange, so hashchange alone does not switch pages.
+    for (const link of links) link.addEventListener('click', event => {
+      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (location.hash !== link.hash) history.pushState(null, '', link.hash);
+      selectPage(link.hash, true);
+    }, true);
+    // Reveal a destination before Quarto handles a cross-page heading link.
+    document.addEventListener('click', event => {
+      const link = event.target.closest('a[href^="#"]');
+      if (link && !link.closest('.report-navbar') && findTarget(link.hash)?.closest('.report-page')) {
+        selectPage(link.hash);
+      }
+    }, true);
+    window.addEventListener('hashchange', () => selectPage(location.hash, true));
+    window.addEventListener('popstate', () => selectPage(location.hash, true));
+    selectPage();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeReportPages);
+  } else initializeReportPages();
+})();
+</script>

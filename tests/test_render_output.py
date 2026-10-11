@@ -20,6 +20,9 @@ def test_html_figures_embed_plotly_only_once(monkeypatch):
     assert "plotly.js" in shown[0].data
     assert "plotly.js" not in shown[1].data
     assert "<script src=" not in shown[0].data
+    assert 'class="plotly-graph-div"' not in shown[0].data
+    assert 'class="plotly-graph-div"' in shown[1].data
+    assert 'class="plotly-graph-div"' in shown[2].data
 
 
 def test_pdf_output_uses_image_and_bounded_table(monkeypatch):

@@ -4,6 +4,7 @@ import os
 
 from IPython.display import HTML, Image, Markdown, display
 from itables import init_notebook_mode, show as show_interactive_table
+from plotly.offline import get_plotlyjs
 
 
 _plotly_loaded = False
@@ -19,8 +20,12 @@ def show_figure(figure, config=None) -> None:
     if is_pdf():
         display(Image(data=figure.to_image(format="png", scale=2)))
     else:
-        display(HTML(figure.to_html(full_html=False, include_plotlyjs=not _plotly_loaded, config=config)))
-        _plotly_loaded = True
+        if not _plotly_loaded:
+            # Quarto promotes the output containing plotly.js to a dependency.
+            # Emit the library separately so no chart is moved before the report.
+            display(HTML(f'<script data-bioreport-dependency="plotly">{get_plotlyjs()}</script>'))
+            _plotly_loaded = True
+        display(HTML(figure.to_html(full_html=False, include_plotlyjs=False, config=config)))
 
 
 def show_table(table, **kwargs) -> None:
