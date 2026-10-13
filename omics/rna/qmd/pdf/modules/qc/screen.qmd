@@ -1,0 +1,23 @@
+## 外源污染检测
+
+```{=typst}
+#report-intro("分别展示 R1 与 R2 的物种比对情况，用于评估潜在污染。")
+```
+
+```{python}
+#| label: fastq-screen-R1
+#| results: asis
+visualize_multiqc_logs(
+    analysis_dir=input_files["fastq_screen_r1_dir"],
+    target_modules=['fastq_screen']
+)
+```
+
+```{python}
+#| label: fastq-screen-R2
+#| results: asis
+visualize_multiqc_logs(
+    analysis_dir=input_files["fastq_screen_r2_dir"],
+    target_modules=['fastq_screen']
+)
+```

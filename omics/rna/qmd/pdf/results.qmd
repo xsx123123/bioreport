@@ -1,0 +1,10 @@
+---
+title: 分析结果
+---
+
+{{< include pdf/modules/results/setup.qmd >}}
+{{< include pdf/modules/results/samples.qmd >}}
+{{< include pdf/modules/results/heatmap.qmd >}}
+{{< include pdf/modules/results/matrix.qmd >}}
+{{< include pdf/modules/results/deg.qmd >}}
+{{< include pdf/modules/results/enrichment.qmd >}}

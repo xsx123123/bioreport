@@ -1,0 +1,31 @@
+// Project-specific cover. Values are quoted as Typst strings by the composer.
+#{
+set page(header: none, footer: none)
+align(center)[
+  #v(15mm)
+  #grid(columns: (auto, auto), gutter: 8mm,
+    image("../logo/logo.png", height: 18mm),
+    image("../logo/Huazhong_Agricultural_University_logo.svg", height: 18mm))
+  #v(10mm)
+  #text(size: 12pt, fill: rgb("#50647a"))[CygnusX BioOps]
+  #v(12mm)
+  #text(size: 26pt, weight: "bold", "RNA-seq 转录组分析报告")
+  #v(6mm)
+{% if subtitle %}
+  #text(size: 12pt, {{ title }})
+{% endif %}
+  #v(18mm)
+{% for field in fields %}
+  #text({{ field }})
+  #v(4mm)
+{% endfor %}
+  #v(16mm)
+  Powered by JZHANG | BioReport
+  #v(3mm)
+  #text(size: 9pt, fill: rgb("#68788a"))[FROM STARDUST, TO DISCOVERY]
+]
+pagebreak()
+}
+
+#outline(title: "目录", depth: 2)
+#pagebreak()

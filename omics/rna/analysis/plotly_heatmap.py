@@ -5,6 +5,7 @@ from scipy.stats import zscore
 import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import pdist
 import os
+from bioreport.utils.print_theme import group_palette
 
 def draw_interactive_heatmap(
     input_file, 
@@ -79,22 +80,26 @@ def draw_interactive_heatmap(
     df_z = pd.DataFrame(z_mat, index=df.index, columns=df.columns).fillna(0)
 
     # --- 4. 聚类 ---
+    clustering = {'rows': False, 'columns': False, 'error': None}
     if do_cluster and not df_z.empty:
         try:
             # 行聚类 (Correlation)
             d_rows = pdist(df_z.values, metric='correlation')
             row_idx = sch.leaves_list(sch.linkage(d_rows, method='ward'))
             df_z = df_z.iloc[row_idx, :]
+            clustering['rows'] = True
             
             # 列聚类 (Euclidean)
             d_cols = pdist(df_z.values.T, metric='euclidean')
             col_idx = sch.leaves_list(sch.linkage(d_cols, method='ward'))
             df_z = df_z.iloc[:, col_idx]
+            clustering['columns'] = True
         except Exception as e:
+            clustering['error'] = str(e)
             print(f"[WARN] Clustering skipped due to error: {e}")
 
     # --- 5. 绘图配置 ---
-    title_suffix = "TPM" if "tpm" in input_file.lower() else ("FPKM" if "fpkm" in input_file.lower() else "Exp")
+    title_suffix = "TPM" if "tpm" in str(input_file).lower() else ("FPKM" if "fpkm" in str(input_file).lower() else "Exp")
     
     fig = px.imshow(
         df_z,
@@ -109,7 +114,10 @@ def draw_interactive_heatmap(
         xaxis={'side': 'bottom'},
         yaxis={'visible': True if len(df_z) < 100 else False},
         width=1000,  # 给 Quarto 显示设置一个默认宽度
-        height=800
+        height=800,
+        meta={'sample_groups': {str(k): str(v) for k,v in meta[('group' if 'group' in meta else meta.columns[0])].items()},
+              'group_colors': group_palette(meta_raw[('group' if 'group' in meta else meta.columns[0])]),
+              'heatmap_genes': len(df_z), 'clustering':clustering}
     )
     
     # 高清下载配置

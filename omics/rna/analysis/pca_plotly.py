@@ -3,6 +3,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from bioreport.utils.print_theme import group_palette
 from sklearn.decomposition import PCA
 import plotly.colors as pc
 
@@ -43,6 +44,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
         # 对齐样本
         df.columns = df.columns.astype(str)
         meta.index = meta.index.astype(str)
+        display_order = list(meta.index)
         common_samples = [s for s in df.columns if s in meta.index]
         
         if not common_samples:
@@ -93,6 +95,8 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
     plot_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2', 'PC3'], index=X.index)
     plot_df['Group'] = meta[group_col]
     plot_df['Sample'] = plot_df.index
+    # Display points in metadata order; do not reorder the PCA input or refit it.
+    plot_df = plot_df.loc[[s for s in display_order if s in plot_df.index]]
 
     # --- 4. 绘图 (Plotly Graph Objects) ---
     # 创建 1行2列 的子图
@@ -103,7 +107,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
     )
 
     # 获取所有分组并分配颜色
-    unique_groups = sorted(plot_df['Group'].unique())
+    unique_groups = sorted(plot_df['Group'].unique(),key=str)
     
     # --- 颜色分配逻辑 ---
     if color_map:
@@ -111,8 +115,8 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
         group_color_map = {g: color_map.get(g, '#333333') for g in unique_groups} # 找不到默认黑色
     else:
         # 使用 Plotly 默认色板
-        colors = px.colors.qualitative.Plotly * 10 
-        group_color_map = {g: colors[i] for i, g in enumerate(unique_groups)}
+        group_color_map = group_palette(meta_raw[group_col])
+        group_color_map = {g: group_color_map[str(g)] for g in unique_groups}
 
     # 循环添加每个分组的 Trace
     for group in unique_groups:

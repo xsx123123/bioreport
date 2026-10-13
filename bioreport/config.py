@@ -49,7 +49,7 @@ def validate_config(data: Dict[str, Any], path: Path) -> None:
 
 def _find_default_config() -> Optional[Path]:
     """Return the first existing default config path, or None."""
-    for p in DEFAULT_CONFIG_PATHS:
+    for p in [os.environ.get("REPORT_CONFIG"), *DEFAULT_CONFIG_PATHS]:
         if not p:
             continue
         path = Path(p)

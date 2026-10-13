@@ -7,6 +7,7 @@ import shutil
 from html import escape
 
 import yaml
+from jinja2 import Template
 
 from .registry import get_registry
 
@@ -192,15 +193,72 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
     module_ids = selected_modules(config)
     setup_added = set()
     registered = get_registry().modules
+    has_rna = any(_canonical(module).startswith("rna.") for module in module_ids)
+    if pdf:
+        from .utils.print_theme import font_families
+        fonts = tuple(report.get('pdf', {}).get('fonts') or font_families())
+        style_dir = template_dir / "pdf"
+        style_dir.mkdir(exist_ok=True)
+        project = config.get("project", {})
+        short_name = project.get('short_name') or project.get('project_id') or report.get('title', 'BioReport')
+        # Context and shared print helpers also serve custom, non-RNA modules.
+        context = '#let report-fonts = (' + ''.join(json.dumps(f, ensure_ascii=False)+',' for f in fonts) + ')\n'
+        context += '#let report-project = ' + json.dumps(str(short_name), ensure_ascii=False) + '\n'
+        (style_dir / 'print-context.typ').write_text(context, encoding='utf-8')
+        metadata['format'] = {'typst': {
+            'papersize': 'a4', 'fontsize': '10.5pt', 'mainfont': fonts[0],
+            'margin': {'x': '20mm', 'y': '22mm'},
+            'include-in-header': ['../pdf/print-context.typ', '../pdf/print-style.typ'],
+            'include-before-body': '../pdf/print-body.typ',
+        }}
+    if pdf and has_rna:
+        metadata["format"]["typst"].update({
+            "papersize": "a4", "toc": False, "toc-depth": 2,
+            "number-sections": True,
+            "section-numbering": "1.1.1",
+            "margin": {"x": "20mm", "y": "22mm"},
+            "include-in-header": ['../pdf/print-context.typ', '../pdf/print-style.typ', '../pdf/rna-style.typ'],
+            "include-before-body": ['../pdf/print-body.typ', '../pdf/rna-cover.typ'],
+        })
+        style_dir = template_dir / "pdf"
+        style_dir.mkdir(exist_ok=True)
+        project = config.get("project", {})
+        lines = [report.get("title", "RNA-seq 分析报告"),
+                 project.get("client", ""), project.get("species", ""),
+                 project.get("genome_version", project.get("genome", "")),
+                 project.get("pipeline_version", project.get("software", ""))]
+        quoted = [json.dumps(str(value), ensure_ascii=False) for value in lines]
+        labels = ["委托客户", "目标物种", "参考基因组", "分析流程"]
+        fields = [json.dumps(f"{label}：{value}", ensure_ascii=False)
+                  for label, value in zip(labels, lines[1:]) if value]
+        for label, value in [
+            ('项目编号', project.get('project_id', project.get('id'))),
+            ('报告日期', project.get('report_date', project.get('date'))),
+            ('报告版本', report.get('version', project.get('report_version'))),
+            ('运行标识', project.get('run_id')),
+        ]:
+            if value:
+                fields.append(json.dumps(f'{label}：{value}', ensure_ascii=False))
+        cover = Template((style_dir / "rna-cover.typ.j2").read_text(encoding="utf-8")).render(
+            title=json.dumps(str(lines[0]).replace('PDF', '').strip(), ensure_ascii=False), fields=fields,
+            subtitle=str(lines[0]).replace('PDF', '').strip() != 'RNA-seq 转录组分析报告',
+        )
+        metadata.pop("title", None)
+        metadata.pop("date", None)
+        (style_dir / "rna-cover.typ").write_text(cover, encoding="utf-8")
     for position, module_id in enumerate(module_ids, start=1):
         canonical = _canonical(module_id)
         if module_id in MODULES:
             filename, heading = MODULES[module_id]
+            if pdf and has_rna and module_id == "about":
+                filename = "pdf/about.qmd"
             module_meta, body = _read_module(template_dir / "qmd" / filename)
             definition = None
         elif canonical in registered:
             definition = registered[canonical]
             filename, heading = definition.qmd.removeprefix("qmd/"), definition.title
+            if pdf:
+                filename = "pdf/" + filename
             module_meta, body = _read_module(template_dir / "qmd" / filename)
         else:
             source = _custom_source(config, module_id)
@@ -221,11 +279,19 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             definition = registered[canonical]
             parent = registered[definition.parent]
             parent_filename = parent.qmd.removeprefix("qmd/")
+            if pdf:
+                parent_filename = "pdf/" + parent_filename
             module_meta, _ = _read_module(template_dir / "qmd" / parent_filename)
             if definition.parent not in setup_added:
                 setup_filename = definition.setup_qmd.removeprefix("qmd/")
+                if pdf:
+                    setup_filename = "pdf/" + setup_filename
                 body = (template_dir / "qmd" / setup_filename).read_text(encoding="utf-8") + "\n" + body
                 setup_added.add(definition.parent)
+            if pdf:
+                # The selected child is already a chapter: avoid repeating its
+                # title as a second-level heading immediately below the setup.
+                body = re.sub(r'(?m)^## [^\n]+\n\n', '', body, count=1)
         if (canonical in registered) or (module_id in MODULES and module_id != "ai"):
             body = _expand_includes(body, template_dir / "qmd", stack=(template_dir / "qmd" / filename,))
         for key in ("bibliography", "csl"):
@@ -240,6 +306,15 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                 else:
                     metadata[key] = value
         if pdf:
+            if canonical == "rna.workflow":
+                # Quarto's browser-based Mermaid PNG conversion can return no
+                # SVG. Use the bundled vector diagram for the PDF workflow.
+                body = re.sub(
+                    r"```\{mermaid\}\n.*?\n```",
+                    '![RNA-seq 分析流程](assets/rna-workflow.svg){#fig-pipeline-clean width="100%"}',
+                    body,
+                    flags=re.DOTALL,
+                )
             # Quarto's Typst callouts import a remote fontawesome package.
             body = re.sub(r"(?m)^:::\s*\{\.callout-[^\n]*\}", "::: {.report-note}", body)
             # Typst otherwise treats CJK text directly after a citation as part of its label.
@@ -253,7 +328,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                     ("rna.sample-info", "样本信息", samples),
                 ]
         elif canonical == "rna.workflow":
-            chapters = [(canonical, "分析概述", body)]
+            chapters = [(canonical, "分析方法与软件版本" if pdf else "分析概述", body)]
         for chapter_id, title, content in chapters:
             content_heading = module_meta.get("title", title) if chapter_id == "about" else title
             if website:
@@ -283,7 +358,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                 page_path.write_text(f"---\n{page_frontmatter}---\n\n{content.strip()}\n", encoding="utf-8")
                 website_pages.append({"href": f"qmd/{page_path.name}", "title": title})
             elif pdf:
-                sections.append(f"# {content_heading}\n\n{content.strip()}\n")
+                sections.append(('```{=typst}\n#pagebreak(weak: true)\n```\n\n' if has_rna else "") + f"# {content_heading}\n\n{content.strip()}\n")
             else:
                 page_id = f"report-page-{len(pages) + 1}"
                 pages.append((page_id, title))

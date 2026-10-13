@@ -1,0 +1,41 @@
+---
+title: 项目概况与结果摘要
+---
+
+```{python}
+#| label: pdf-project-summary
+import pandas as pd
+from IPython.display import display, Markdown
+from bioreport.config import load_config
+from bioreport.utils.pdf_results import summary_metrics, comparison_summaries, settings, ordered_samples
+from bioreport.utils.render_output import show_print_table, typst_note
+project_config = load_config()
+input_files = project_config['input_files']
+pdf_settings = settings(project_config)
+project = project_config.get('project', {})
+labels = {'client':'委托客户', 'species':'物种', 'genome_version':'参考基因组', 'genome':'参考基因组', 'pipeline_version':'分析流程', 'project_id':'项目编号', 'report_date':'报告日期', 'run_id':'运行标识'}
+metadata = pd.DataFrame([{'项目':label, '内容':project[key]} for key,label in labels.items() if project.get(key)])
+if not metadata.empty: show_print_table(metadata, limit=None)
+show_print_table(summary_metrics(project_config), limit=None)
+summary = comparison_summaries(project_config)
+if not summary.empty:
+    display(Markdown('## 各比较组差异基因摘要'))
+    show_print_table(summary, limit=None)
+    thresholds = project_config.get('analysis', {}).get('deg', {})
+    typst_note(f"统计口径：原始 P < {thresholds.get('pvalue_threshold',.05)}；上调 Log2FC > {thresholds.get('log2fc_threshold',1.)}，下调 Log2FC < -{thresholds.get('log2fc_threshold',1.)}。方向由 contrasts 中 Treat 相对于 Control 定义，各比较组分别统计，不合并计数。")
+```
+
+本报告展示配置中选定模块的实际输入结果，不依据这些汇总指标自动判定质控通过或推断生物学机制。
+
+## 样本信息
+
+```{python}
+#| label: pdf-sample-info
+samples = pd.read_csv(input_files['sample_file'])
+group_col = next((c for c in samples if c.lower() == 'group'), None)
+if group_col:
+    samples = samples.assign(**{group_col:samples[group_col].astype(str)}).sort_values(group_col, kind='stable')
+limit = pdf_settings.get('sample_rows',30)
+show_print_table(samples.iloc[:, :6], limit=limit)
+typst_note(f"样本预览 {min(limit,len(samples))} / {len(samples)} 行，最多 6 列；按分组与组内输入顺序排列。sample 与 sample_name 保留原始对应关系。完整样本信息：{input_files['sample_file']}")
+```

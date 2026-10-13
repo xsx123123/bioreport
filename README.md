@@ -101,6 +101,26 @@ docker run --rm \
   bioreport:latest -c /app/configs/report.example.json -o /workspace --dry-run
 ```
 
+### RNA-seq PDF 专用模板
+
+PDF 使用独立的正文与打印排版，HTML 继续使用现有交互式模块。PDF 包含封面、目录、项目和样本信息、分析流程与方法、质控结果、表达和差异分析、富集结果以及报告说明；章节仍由 `report.modules` 控制。
+
+```bash
+bioreport run -c tests/report.rna.pdf.json -o output/rna-pdf-report
+```
+
+输出为 `output/rna-pdf-report/report.pdf`。模板分工：
+
+- `omics/rna/qmd/pdf/`：PDF 专用章节、图表顺序和精简说明。
+- `templates/pdf/print-style.typ`：可复用的 A4 排版、字号、页眉页码、图块和跨页表格；`rna-style.typ` 提供 RNA 专用覆盖。
+- `templates/pdf/rna-cover.typ.j2`：封面 Logo、标题和项目元数据布局。
+- `bioreport/modules.py`：根据项目配置填充封面和组合章节。
+- `omics/rna/analysis/`：HTML 与 PDF 共用的数据处理和绘图函数。
+
+PDF 表格提供结果预览，表达矩阵默认展示前 8 个基因和最多 6 个样本列，差异基因和富集结果默认展示前 10 行；完整结果路径随表格提供。PDF 使用 A4 页面、独立封面和目录、页眉页码与静态 SVG 图表。建议安装 Noto CJK 字体以获得一致的中文排版。
+
+可通过 `report.pdf` 配置表格预览行数、富集 Top N 与 `qc_detail: key / all`。共享样式约定、验证命令和兼容边界见 [科研 PDF 样式规范](docs/pdf-style.md)。
+
 ## 🔄 报告生成流程
 
 BioReport 根据 JSON / YAML 配置解析输入路径、选择报告模块并检查必需文件。选择 AI 模块且启用 AI 时，系统先整合分析结果并生成解读，再通过 Quarto 执行报告代码、生成图表与表格，按配置输出 HTML 和 PDF。
@@ -132,7 +152,7 @@ flowchart TD
 
 - **单文件模式**（`report.layout: single`）：支持 HTML、PDF 或同时输出两种格式；默认 RNA-seq HTML 提供六个可切换的章节视图，内容与顺序由模块配置控制。
 - **网站模式**（`report.layout: website`）：输出多页 HTML 与配套资源，不与 PDF 同时使用。
-- **PDF 输出**：从组合后的报告内容通过 Quarto / Typst 渲染，交互图表转换为静态图片。
+- **PDF 输出**：组合专用 PDF 章节，通过 Quarto / Typst 渲染；RNA 图表根据绘图数据导出静态 SVG，分析方法按所选模块展示。HTML 保留交互图表与 Mermaid 流程图。
 - **干运行**（`--dry-run`）：用于检查配置与模板组合，不执行 Quarto，不生成最终 HTML / PDF。
 
 以上流程图展示生成过程的逻辑关系。
@@ -264,7 +284,7 @@ flowchart TD
 | `heatmap.top_n` | 热图展示基因数 |
 | `pca.height` / `pca.width` | PCA 图尺寸 |
 | `distribution.threshold` / `distribution.width` / `distribution.height` | 表达分布图参数 |
-| `expression.preview_rows` | 表达矩阵 HTML 预览行数；PDF 表格最多显示 30 行 |
+| `expression.preview_rows` | 表达矩阵 HTML 预览行数；RNA PDF 默认预览 8 行 |
 
 ### `ai` — AI 解读设置
 
@@ -298,9 +318,9 @@ flowchart TD
 ## 模块与输出边界
 
 - 当前生成入口使用根目录的 `bioreport/`、`omics/rna/` 和 `templates/`。归档内容位于 `archive/`，不参与当前生成流程。
-- 旧 HTML 是一组文件，因为 `report.layout: website` 将各个 QMD 渲染为独立网页，而且 `_quarto.yml.j2` 设置了 `embed-resources: false`。`report.layout: single` 会先按 `report.modules` 组合章节，再用 `embed-resources: true` 输出 HTML；RNA-seq 在单个 `report.html` 内提供六个可切换页面。PDF 使用同一组合内容的 Typst 版本。
+- 旧 HTML 是一组文件，因为 `report.layout: website` 将各个 QMD 渲染为独立网页，而且 `_quarto.yml.j2` 设置了 `embed-resources: false`。`report.layout: single` 会先按 `report.modules` 组合章节，再用 `embed-resources: true` 输出 HTML；RNA-seq 在单个 `report.html` 内提供六个可切换页面。RNA PDF 使用独立章节模板与 Typst 打印样式。
 - 内置 `qc.*` 和 `results.*` 模块使用 RNA-seq 数据列契约。其他分析流程可以通过 `module_definitions` 引用自己的 QMD；同一份 QMD 可传入不同 `params` 重复使用。新数据类型仍需提供对应的读取与解读模块。
-- HTML 中的 Plotly 和 ITables 资源由展示函数以内联或离线方式提供；普通文献超链接仍可能指向外部网站。PDF 中交互图表由 Kaleido 转为静态图片。
+- HTML 中的 Plotly 和 ITables 资源由展示函数以内联或离线方式提供；普通文献超链接仍可能指向外部网站。RNA PDF 图表使用 Matplotlib 导出 SVG。
 
 ## 验证与测试
 

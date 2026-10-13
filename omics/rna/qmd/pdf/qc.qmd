@@ -1,0 +1,9 @@
+---
+title: 质量控制
+---
+
+{{< include pdf/modules/qc/setup.qmd >}}
+{{< include pdf/modules/qc/fastp.qmd >}}
+{{< include pdf/modules/qc/screen.qmd >}}
+{{< include pdf/modules/qc/qualimap.qmd >}}
+{{< include pdf/modules/qc/star.qmd >}}

@@ -1,0 +1,29 @@
+---
+title: 交付文件与报告说明
+---
+
+**BioReport** 是 CygnusX BioOps 的配置驱动组学报告生成工具。
+
+本报告由输入数据和配置自动生成，PDF 提供静态图表与结果摘要；完整结果以原始分析文件为准。
+
+```{python}
+#| label: pdf-delivery
+#| output: asis
+from bioreport.config import load_config
+from bioreport import __version__
+from bioreport.utils.render_output import show_print_table, typst_note
+import pandas as pd
+cfg = load_config()
+files = [{"输入类型": key, "完整结果路径": value} for key,value in cfg["input_files"].items() if key != "data_dir"]
+if files:
+    show_print_table(pd.DataFrame(files), limit=None)
+else:
+    typst_note('当前配置未提供分析交付文件，不填充示例路径。')
+typst_note(f"报告生成器：BioReport v{__version__}。配置来源：{cfg.get('_config_path','NA')}。配置备份随正常 CLI 输出保存；上述路径均由当前配置解析。")
+```
+
+- 软件作者：JZHANG
+- 项目仓库：[BioReport](https://github.com/xsx123123/bioreport)
+- 华中农业大学：[学校官网](https://www.hzau.edu.cn/)
+
+质控评价、统计显著性和功能富集需要结合实验设计与原始结果解读。启用 AI 时，AI 解读仅作为辅助分析内容。

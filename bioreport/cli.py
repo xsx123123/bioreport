@@ -257,24 +257,36 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
         )
         last_cell = None
         error_summary = None
+        cells_completed = False
         for raw_line in iter(process.stdout.readline, ""):
             line = re.sub(r"\x1b\[[0-9;]*m", "", raw_line).strip()
             if not line:
                 continue
-            logger.debug("[Quarto] {}", line)
             if line.startswith("Cell "):
                 last_cell = line
                 logger.info("[Quarto] {}", line)
+                match = re.match(r"^Cell (\d+)/(\d+):.*Done$", line)
+                if match and match.group(1) == match.group(2):
+                    cells_completed = True
+                    logger.info("[Quarto] 代码执行完成，正在转换图表并渲染 {}...", output_format.upper())
             elif line.startswith("Output created:"):
                 logger.info("[Quarto] {}", line)
-            if re.match(r"^[A-Za-z_][\w.]*(?:Error|Exception):\s+.+", line):
+            elif re.match(r"^(?:ERROR|FATAL):\s+.+", line, re.IGNORECASE):
+                logger.error("[Quarto] {}", line)
+            else:
+                logger.debug("[Quarto] {}", line)
+            if re.match(r"^(?:ERROR|FATAL):\s+.+", line, re.IGNORECASE) or re.match(
+                r"^[A-Za-z_][\w.]*(?:Error|Exception):\s+.+", line
+            ):
                 error_summary = line
 
         process.stdout.close()
         return_code = process.wait()
 
         if return_code != 0:
-            detail = f" ({last_cell})" if last_cell else ""
+            detail = " (代码执行后的图表转换或文档渲染阶段)" if cells_completed else (
+                f" ({last_cell})" if last_cell else ""
+            )
             cause = f": {error_summary}" if error_summary else ""
             raise RuntimeError(
                 f"Quarto {output_format} 渲染失败{detail}{cause}；完整输出见 {Path(output_dir) / 'pipeline.log'}"

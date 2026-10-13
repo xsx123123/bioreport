@@ -1,0 +1,20 @@
+## 表达矩阵预览
+
+```{=typst}
+#report-intro("表达矩阵以 TPM 为单位，样本列按分组及组内输入顺序排列。表格只提供预览，完整数据保留在原始交付文件中。")
+```
+
+```{python}
+#| label: pdf-matrix
+#| output: asis
+matrix = pd.read_csv(tpm_file, sep="\t", index_col=0)
+metadata = pd.read_csv(meta_file) if meta_file else None
+if metadata is not None:
+    from bioreport.utils.pdf_results import ordered_samples
+    columns = ordered_samples(metadata, matrix.columns)
+else: columns = list(matrix.columns)
+shown = matrix[columns[:pdf_settings.get('matrix_columns',6)]].reset_index()
+shown = shown.rename(columns={shown.columns[0]:'Gene ID'})
+preview(shown, tpm_file, limit=pdf_settings.get('matrix_rows',8))
+typst_note(f'正文展示 {min(len(columns),pdf_settings.get("matrix_columns",6))} / {len(matrix.columns)} 个样本列。')
+```

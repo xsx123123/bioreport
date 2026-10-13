@@ -1,0 +1,34 @@
+## fastp 测序质控
+
+```{=typst}
+#report-intro("汇总过滤后 Q30、GC 含量、重复率和保留比例，并展示过滤 reads 分类与碱基质量曲线。")
+```
+
+```{python}
+#| label: fastp-table
+#| results: asis
+from bioreport.utils.render_output import show_print_table, typst_note
+from bioreport.config import load_config
+qc_config = load_config()
+data_path = input_files['fastp_stats_file']
+qc_frame = pd.read_csv(data_path, sep='\t')
+columns = {'Sample':'Sample', 'fastp-pct_duplication':'Dup (%)', 'fastp-after_filtering_q30_rate':'Q30 (%)', 'fastp-after_filtering_gc_content':'GC (%)', 'fastp-pct_surviving':'Retained (%)', 'fastp-pct_adapter':'Adapter (%)'}
+qc_frame = qc_frame[[c for c in columns if c in qc_frame]].rename(columns=columns)
+sample_path = input_files.get('sample_file')
+if sample_path:
+    from bioreport.utils.pdf_results import ordered_samples
+    sample_metadata = pd.read_csv(sample_path)
+    ordered = ordered_samples(sample_metadata)
+    name_map = dict(zip(sample_metadata['sample'].astype(str),sample_metadata['sample_name'].astype(str))) if 'sample' in sample_metadata and 'sample_name' in sample_metadata else {}
+    qc_frame['Sample'] = qc_frame['Sample'].astype(str).map(lambda value:name_map.get(value,value))
+    qc_frame = qc_frame.assign(_order=qc_frame['Sample'].map({s:i for i,s in enumerate(ordered)})).sort_values('_order',kind='stable').drop(columns='_order')
+qc_limit = qc_config.get('report',{}).get('pdf',{}).get('qc_rows',30)
+show_print_table(qc_frame, limit=qc_limit)
+typst_note(f"fastp 统计预览 {min(qc_limit,len(qc_frame))} / {len(qc_frame)} 行；单位为百分比，缺失值显示 NA。完整结果：{data_path}")
+```
+
+```{python}
+#| label: fastp-viz
+#| results: asis
+visualize_multiqc_logs(analysis_dir=input_files['fastp_report_dir'], target_modules=['fastp'])
+```

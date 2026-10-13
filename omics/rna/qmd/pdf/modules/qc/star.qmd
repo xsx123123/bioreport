@@ -1,0 +1,47 @@
+## STAR 比对统计
+
+```{=typst}
+#report-intro("展示各样本的序列比对结果，结合唯一比对率评估数据可用性。")
+```
+
+```{python}
+#| label: STAR
+#| results: asis
+from bioreport.utils.render_output import show_print_table, typst_note
+from bioreport.config import load_config
+star_config = load_config()
+star_pdf = star_config.get('report',{}).get('pdf',{})
+mapping_path = input_files.get('mapping_file')
+if not mapping_path:
+    visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['STAR'])
+else:
+    mapping = pd.read_csv(mapping_path, sep='\t')
+    star_columns = [c for c in mapping if c.lower().startswith('star-')]
+    if not star_columns:
+        raise ValueError(f'No STAR statistics found in {mapping_path}')
+    mapping = mapping[['Sample', *star_columns]].dropna(subset=star_columns, how='all')
+    if star_pdf.get('qc_detail','key')=='key':
+        mapping = mapping[~mapping.Sample.astype(str).str.contains('_STARpass1',regex=False)]
+    sample_path = input_files.get('sample_file')
+    if sample_path:
+        from bioreport.utils.pdf_results import ordered_samples
+        metadata = pd.read_csv(sample_path)
+        order = ordered_samples(metadata)
+        if 'sample' in metadata and 'sample_name' in metadata:
+            aliases = dict(zip(metadata['sample'].astype(str),metadata['sample_name'].astype(str)))
+            def normalize(value):
+                for source in sorted(aliases,key=len,reverse=True):
+                    if str(value).startswith(source): return aliases[source]+str(value)[len(source):]
+                return str(value)
+            mapping['Sample'] = mapping['Sample'].map(normalize)
+        mapping = mapping.assign(_order=mapping.Sample.map(lambda s:next((i for i,name in enumerate(order) if s.startswith(name)),len(order)))).sort_values('_order',kind='stable').drop(columns='_order')
+    mapping = mapping.rename(columns={
+        'star-total_reads': 'Total reads', 'star-mapped': 'Mapped reads',
+        'star-mapped_percent': 'Mapped (%)', 'star-uniquely_mapped': 'Unique reads',
+        'star-uniquely_mapped_percent': 'Unique (%)', 'star-multimapped': 'Multi reads'})
+    limit = star_pdf.get('qc_rows',30)
+    show_print_table(mapping, limit=limit)
+    typst_note(f"STAR 统计预览：前 {min(limit,len(mapping))} / {len(mapping)} 条记录；{'默认仅展示最终比对，排除 STARpass1' if star_pdf.get('qc_detail','key')=='key' else '保留输入中的比对阶段标签'}。样本名使用元数据的 sample_name，原始映射见样本文件。Reads 数值沿用输入文件单位；百分比列单位为 %。完整结果：{mapping_path}")
+    if star_pdf.get('qc_detail','key')=='all':
+        visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['STAR'])
+```

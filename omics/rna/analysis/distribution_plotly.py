@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import plotly.express as px
+from bioreport.utils.print_theme import group_palette
 
 def draw_expression_distribution_plotly(tpm_file, meta_file, 
                                         threshold=1.0, 
@@ -39,6 +40,8 @@ def draw_expression_distribution_plotly(tpm_file, meta_file,
         meta = meta.set_index(best_id_col)
         df.columns = df.columns.astype(str)
         meta.index = meta.index.astype(str)
+        original_metadata = meta.copy()
+        original_sample_order = list(meta.index)
         
         common_samples = [s for s in df.columns if s in meta.index]
         if not common_samples:
@@ -82,6 +85,8 @@ def draw_expression_distribution_plotly(tpm_file, meta_file,
     # 合并分组 (强制转字符串以防报错)
     sample_to_group = meta[group_col].to_dict()
     df_long['Group'] = df_long['Sample'].map(sample_to_group).astype(str)
+    ordered_meta = meta.loc[[s for s in original_sample_order if s in meta.index]]
+    sample_order = list(ordered_meta.assign(**{group_col:ordered_meta[group_col].astype(str)}).sort_values(group_col,kind='stable').index)
 
     # --- 3. 绘图 (关键修改部分) ---
     
@@ -92,9 +97,10 @@ def draw_expression_distribution_plotly(tpm_file, meta_file,
         color="Group",       # 这里决定颜色
         box=True,            # 显示箱线图
         points=False,        # 不显示散点
+        category_orders={'Sample': sample_order, 'Group': sorted(df_long['Group'].unique())},
         
         # 优先使用自定义配色字典，否则使用 Bold 序列
-        color_discrete_map=color_map if color_map else None,
+        color_discrete_map=color_map or group_palette(original_metadata[group_col]),
         color_discrete_sequence=px.colors.qualitative.Bold if not color_map else None,
         
         # 这里的模板改用 plotly_white，比 simple_white 对颜色更友好
@@ -120,6 +126,7 @@ def draw_expression_distribution_plotly(tpm_file, meta_file,
         
         margin=dict(t=80, b=100, l=80, r=50),
         
+        meta={'sample_order': sample_order, 'retained_genes':len(df_filtered)},
         violinmode='group',
         violingap=0,
         

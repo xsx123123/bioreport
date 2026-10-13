@@ -1,0 +1,13 @@
+## 高变异基因表达模式
+
+```{python}
+#| label: pdf-heatmap
+#| output: asis
+fig, conf = draw_interactive_heatmap(tpm_file, meta_file, top_n=heatmap_settings.get('top_n',1000), do_cluster=True)
+count = fig.layout.meta['heatmap_genes']
+cluster = fig.layout.meta['clustering']
+cluster_note = f"行距离 correlation（{'已聚类' if cluster['rows'] else '未聚类'}），列距离 Euclidean（{'已聚类' if cluster['columns'] else '未聚类'}），使用原有 Ward linkage。"
+if cluster['error']: cluster_note += f"聚类提示：{cluster['error']}。"
+show_figure(fig, caption=f"高变异基因热图：{count} 个基因。筛选平均 TPM > 1 和非零方差基因，对 Log2(TPM+1) 的方差排序选取；按基因行进行 Z-score。分组注释条位于图上方；色标范围 -2 到 2，超出范围按端点颜色显示。{cluster_note}基因数 > 40 时静态图隐藏行名。")
+typst_note(f"热图展示 {count} 个基因；样本顺序沿用实际聚类结果。完整表达矩阵：{tpm_file}")
+```

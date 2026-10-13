@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="850" viewBox="0 0 1120 850" role="img" aria-labelledby="title desc">
+<title id="title">RNA-seq analysis workflow</title>
+<desc id="desc">Static PDF version of workflow.qmd, preserving all analysis nodes and directed connections.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,4 L0,8 Z" fill="#7f8c8d"/></marker></defs>
+<rect width="1120" height="850" fill="white"/>
+<rect x="20" y="45" width="240" height="430" rx="12" fill="none" stroke="#7f8c8d" stroke-dasharray="5 5"/>
+<text x="140.0" y="72" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#53636a">Step 1: Data Cleaning</text>
+<rect x="300" y="365" width="240" height="270" rx="12" fill="none" stroke="#7f8c8d" stroke-dasharray="5 5"/>
+<text x="420.0" y="392" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#53636a">Step 2: Alignment</text>
+<rect x="580" y="365" width="240" height="350" rx="12" fill="none" stroke="#7f8c8d" stroke-dasharray="5 5"/>
+<text x="700.0" y="392" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#53636a">Step 3: Quantification</text>
+<rect x="860" y="365" width="240" height="350" rx="12" fill="none" stroke="#7f8c8d" stroke-dasharray="5 5"/>
+<text x="980.0" y="392" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#53636a">Step 4: Advanced Analysis</text>
+<path data-source="Raw" data-target="MD5" d="M140,135 V165" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="MD5" data-target="QC1" d="M140,215 V245" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="QC1" data-target="Trim" d="M140,295 V325" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="Trim" data-target="Clean" d="M140,375 V405" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="Clean" data-target="STAR" d="M242,430 H318" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="STAR" data-target="BAM" d="M420,455 V485" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="BAM" data-target="QMap" d="M420,535 V565" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="STAR" data-target="RSEM" d="M522,430 H598" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<path data-source="RSEM" data-target="Matrix" d="M700,455 V485" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="Matrix" data-target="DEG" d="M700,535 V565" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="DEG" data-target="Enrich" d="M700,615 V645" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="STAR" data-target="GATK" d="M420,405 V335 H835 V430 H878" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<path data-source="STAR" data-target="rMATS" d="M420,405 V323 H841 V510 H878" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<path data-source="STAR" data-target="Arriba" d="M420,405 V311 H847 V590 H878" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<path data-source="STAR" data-target="StrTie" d="M420,405 V299 H853 V670 H878" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<path data-source="QMap" data-target="Report" d="M420,615 V735 H480 V775" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="Enrich" data-target="Report" d="M700,695 V759 H600 V775" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="GATK" data-target="Report" d="M1082,430 H1108 V735 H640 V775" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="rMATS" data-target="Report" d="M1082,510 H1111 V747 H640 V775" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="Arriba" data-target="Report" d="M1082,590 H1114 V759 H640 V775" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path data-source="StrTie" data-target="Report" d="M1082,670 H1117 V771 H640 V775" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g id="node-Raw"><rect x="38" y="85" width="204" height="50" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/><text x="140" y="116" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#0d47a1">Raw Data</text></g>
+<g id="node-MD5"><rect x="38" y="165" width="204" height="50" rx="8" fill="#ffffff" stroke="#7f8c8d" stroke-width="2"/><text x="140" y="196" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#333333">MD5</text></g>
+<g id="node-QC1"><rect x="38" y="245" width="204" height="50" rx="8" fill="#ffffff" stroke="#7f8c8d" stroke-width="2"/><text x="140" y="276" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#333333">FastQC &amp; Screen</text></g>
+<g id="node-Trim"><rect x="38" y="325" width="204" height="50" rx="8" fill="#ffffff" stroke="#7f8c8d" stroke-width="2"/><text x="140" y="356" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#333333">Fastp Trimming</text></g>
+<g id="node-Clean"><rect x="38" y="405" width="204" height="50" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/><text x="140" y="436" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#0d47a1">Clean Data</text></g>
+<g id="node-STAR"><rect x="318" y="405" width="204" height="50" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/><text x="420" y="436" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#1b5e20">STAR Mapping</text></g>
+<g id="node-BAM"><rect x="318" y="485" width="204" height="50" rx="8" fill="#ffffff" stroke="#7f8c8d" stroke-width="2"/><text x="420" y="516" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#333333">BAM Processing</text></g>
+<g id="node-QMap"><rect x="318" y="565" width="204" height="50" rx="8" fill="#ffffff" stroke="#7f8c8d" stroke-width="2"/><text x="420" y="596" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#333333">Qualimap &amp; Stats</text></g>
+<g id="node-RSEM"><rect x="598" y="405" width="204" height="50" rx="8" fill="#fff3e0" stroke="#ef6c00" stroke-width="2"/><text x="700" y="436" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#e65100">RSEM Quant</text></g>
+<g id="node-Matrix"><rect x="598" y="485" width="204" height="50" rx="8" fill="#fff3e0" stroke="#ef6c00" stroke-width="2"/><text x="700" y="516" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#e65100">Count Matrix</text></g>
+<g id="node-DEG"><rect x="598" y="565" width="204" height="50" rx="8" fill="#fff3e0" stroke="#ef6c00" stroke-width="2"/><text x="700" y="596" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#e65100">DESeq2 Analysis</text></g>
+<g id="node-Enrich"><rect x="598" y="645" width="204" height="50" rx="8" fill="#fff3e0" stroke="#ef6c00" stroke-width="2"/><text x="700" y="676" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#e65100">GO/KEGG &amp; Heatmap</text></g>
+<g id="node-GATK"><rect x="878" y="405" width="204" height="50" rx="8" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/><text x="980" y="436" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#4a148c">Variant Calling</text></g>
+<g id="node-rMATS"><rect x="878" y="485" width="204" height="50" rx="8" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/><text x="980" y="516" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#4a148c">Alt Splicing</text></g>
+<g id="node-Arriba"><rect x="878" y="565" width="204" height="50" rx="8" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/><text x="980" y="596" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#4a148c">Gene Fusion</text></g>
+<g id="node-StrTie"><rect x="878" y="645" width="204" height="50" rx="8" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/><text x="980" y="676" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#4a148c">Novel Transcript</text></g>
+<g id="node-Report"><rect x="458" y="775" width="204" height="50" rx="8" fill="#37474f" stroke="#cfd8dc" stroke-width="2"/><text x="560" y="806" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#ffffff">Final Report</text></g>
+</svg>

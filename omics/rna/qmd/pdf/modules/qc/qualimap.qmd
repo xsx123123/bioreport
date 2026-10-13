@@ -1,0 +1,14 @@
+## QualiMap 比对质控
+
+```{=typst}
+#report-intro("展示比对后数据的覆盖度、GC 分布及插入片段等质量指标。")
+```
+
+```{python}
+#| label: QualiMap
+#| results: asis
+visualize_multiqc_logs(
+    analysis_dir=input_files["qualimap_dir"],
+    target_modules=['QualiMap']
+)
+```

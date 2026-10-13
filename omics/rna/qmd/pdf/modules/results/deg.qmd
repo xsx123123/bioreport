@@ -1,0 +1,28 @@
+## 差异表达分析
+
+```{=typst}
+#report-intro("火山图展示各比较组的 Log2 fold change 和原始 P 值。以输入 contrasts 中的 Treat 相对于 Control 为比较方向；原始分析结果未被修改。")
+```
+
+```{python}
+#| label: pdf-deg
+#| output: asis
+from bioreport.utils.pdf_results import raw_probability_columns
+if not comparisons:
+    typst_note('比较组表没有有效记录；不生成差异表达图表。')
+for comp in comparisons:
+    path = get_file_path(config, f"{comp}_DEG.csv", local_base_dir=deg_base_dir)
+    if not path or not os.path.isfile(path):
+        raise FileNotFoundError(f"Missing DEG result: {comp}")
+    frame = pd.read_csv(path)
+    fc = deg_settings.get('log2fc_threshold', 1.0)
+    p = deg_settings.get('pvalue_threshold', .05)
+    up, down = deg_counts(frame, fc, p)
+    fig = plot_volcano_pvalue(frame, title='', col_logfc='log2FoldChange', col_pval='pvalue',
+        col_padj='padj', col_symbol='Symbol', fc_cutoff=fc, pval_cutoff=p)
+    show_figure(fig, caption=f"{comp} 差异表达火山图。方向为 Treat 相对 Control；右侧上调、左侧下调；原始 P < {p} 且 |Log2FC| > {fc}。上调 {up}、下调 {down}。仅绘图时 P 加 1e-300 以稳定极小值与零值；阈值判定和原始结果保持不变。")
+    typst_note(f"{comp}：上调 {up}，下调 {down}；其余记录未同时满足上述阈值。")
+    frame = gene_columns(raw_probability_columns(path, frame))
+    preview(frame, path, sort_by='pvalue', limit=pdf_settings.get('deg_rows',10),
+        columns=['Gene ID','Symbol','log2FoldChange','pvalue','padj'])
+```

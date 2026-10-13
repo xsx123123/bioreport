@@ -1,7 +1,40 @@
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import textwrap  # 📦 引入这个库用于文本折叠
+import textwrap
+from pathlib import Path
+import unicodedata
+import numpy as np
+
+
+def parse_gene_ratios(values):
+    def parse(value):
+        if pd.isna(value): return np.nan
+        try:
+            text = str(value)
+            if '/' in text:
+                numerator, denominator = text.split('/')
+                result = float(numerator)/float(denominator)
+            else: result = float(text)
+            return result if np.isfinite(result) else np.nan
+        except (ValueError, ZeroDivisionError):
+            return np.nan
+    return values.map(parse)
+
+
+def wrap_label(text, width=28):
+    """Wrap English words and count wide CJK characters as two columns."""
+    text = str(text)
+    if not any(unicodedata.east_asian_width(c) in ['W','F'] for c in text):
+        return '<br>'.join(textwrap.wrap(text, width=width, break_long_words=True))
+    lines, current, length = [], '', 0
+    for char in text:
+        size = 2 if unicodedata.east_asian_width(char) in ['W','F'] else 1
+        if current and length + size > width:
+            lines.append(current); current, length = '', 0
+        current += char; length += size
+    if current: lines.append(current)
+    return '<br>'.join(lines)
 
 def draw_fancy_dotplot(enrich_file, 
                        top_n=20, 
@@ -22,7 +55,7 @@ def draw_fancy_dotplot(enrich_file,
     
     # --- 1. 数据读取与预处理 ---
     try:
-        if isinstance(enrich_file, str):
+        if isinstance(enrich_file, (str, Path)):
             df = pd.read_csv(enrich_file, sep=None, engine='python')
         elif isinstance(enrich_file, pd.DataFrame):
             df = enrich_file.copy()
@@ -38,8 +71,9 @@ def draw_fancy_dotplot(enrich_file,
 
         # GeneRatio 计算
         plot_x_col = x_col
-        if x_col in df.columns and df[x_col].dtype == 'object' and '/' in str(df[x_col].iloc[0]):
-            df['parsed_ratio'] = df[x_col].apply(lambda x: float(x.split('/')[0])/float(x.split('/')[1]) if '/' in str(x) else 0)
+        if df.empty: return None, None
+        if x_col == 'GeneRatio' and x_col in df.columns:
+            df['parsed_ratio'] = parse_gene_ratios(df[x_col])
             plot_x_col = 'parsed_ratio'
         elif x_col not in df.columns:
              candidates = ['FoldEnrichment', size_col]
@@ -58,6 +92,9 @@ def draw_fancy_dotplot(enrich_file,
         if top_n and top_n < len(df):
             df = df.head(top_n)
         df = df.iloc[::-1]
+        df[size_col] = pd.to_numeric(df[size_col],errors='coerce')
+        df = df.dropna(subset=[plot_x_col,size_col,color_col])
+        if df.empty: return None, None
 
     except Exception as e:
         print(f"❌ [ERROR] {e}")
@@ -65,11 +102,10 @@ def draw_fancy_dotplot(enrich_file,
 
     # --- 🛠️ 核心修改：文本折行处理 ---
     # 定义折行函数
-    def custom_wrap(text, width):
-        return "<br>".join(textwrap.wrap(str(text), width=width))
-    
     # 创建一个新的列用于绘图（带<br>的），保留原列 y_col 用于悬停显示
-    df['wrapped_y'] = df[y_col].apply(lambda x: custom_wrap(x, wrap_width))
+    df['wrapped_y'] = df[y_col].apply(lambda x: wrap_label(x, wrap_width))
+    max_lines = max(t.count('<br>') + 1 for t in df['wrapped_y'])
+    height_num = max(height_num, 150 + len(df) * (max_lines * 17 + 9))
 
     # --- 2. 🎨 绘图 ---
 
@@ -97,7 +133,7 @@ def draw_fancy_dotplot(enrich_file,
         title=dict(x=0.5, xanchor='center', font=dict(size=18)),
 
         xaxis=dict(
-            title=f"<b>{plot_x_col}</b>",
+            title="<b>Gene ratio</b>" if plot_x_col in ["parsed_ratio", "GeneRatio"] else f"<b>{plot_x_col}</b>",
             showgrid=True,
             gridcolor='#E5E7EB',
             gridwidth=1,
@@ -116,10 +152,11 @@ def draw_fancy_dotplot(enrich_file,
         ),
         
         # 边距：左边留白交给 automargin，右边留给 Legend
-        margin=dict(t=80, b=50, l=20, r=20),
+        margin=dict(t=60, b=65, l=290, r=110),
+        meta={"enrichment": True, "print_height": (150 + len(df) * (max_lines * 17 + 9)) / 100},
         
         coloraxis_colorbar=dict(
-            title="<b>Adj. P-value</b>",
+            title="<b>Adjusted P value</b>",
             tickformat=".1e",
             len=0.6,
             thickness=15,
@@ -145,6 +182,11 @@ def draw_fancy_dotplot(enrich_file,
     # 必须把原始 Description 放到 customdata 里
     fig.update_traces(customdata=df[[y_col]])
 
+    # Explicit Count legend in both interactive and print output.
+    for count in sorted(set(int(v) for v in df[size_col].quantile([0, .5, 1]))):
+        fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers',
+            marker=dict(size=max(5, 25*(count/df[size_col].max())**.5), color='#8795a5'),
+            name=f'Count: {count}', showlegend=True))
     # --- 4. 导出 ---
     config = {
         'toImageButtonOptions': {

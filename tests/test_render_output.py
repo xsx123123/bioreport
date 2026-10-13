@@ -25,20 +25,18 @@ def test_html_figures_embed_plotly_only_once(monkeypatch):
     assert 'class="plotly-graph-div"' in shown[2].data
 
 
-def test_pdf_output_uses_image_and_bounded_table(monkeypatch):
+def test_pdf_output_uses_image_and_bounded_table(monkeypatch, tmp_path):
     shown = []
     monkeypatch.setenv("BIOREPORT_OUTPUT_FORMAT", "pdf")
     monkeypatch.setattr(render_output, "display", shown.append)
 
-    class Figure:
-        def to_image(self, **kwargs):
-            assert kwargs == {"format": "png", "scale": 2}
-            return b"image bytes"
-
-    render_output.show_figure(Figure())
+    monkeypatch.setenv("BIOREPORT_ASSET_DIR", str(tmp_path))
+    render_output.show_figure(go.Figure(go.Scatter(x=[1, 2], y=[2, 3])), caption="测试图")
     render_output.show_table(pd.DataFrame({"gene": [f"G{i}" for i in range(40)]}))
 
-    assert shown[0].data == b"image bytes"
+    assert "#report-figure" in shown[0].data
+    assert "测试图" in shown[0].data
+    assert list(tmp_path.glob("*.svg"))
     assert "G29" in shown[1].data
     assert "G30" not in shown[1].data
 

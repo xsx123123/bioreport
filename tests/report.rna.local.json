@@ -11,7 +11,7 @@
       "rna.results",
       "about"
     ],
-    "output_format": "html"
+    "output_format": "pdf"
   },
   "project": {
     "client": "本地测试课题组",

@@ -36,7 +36,55 @@
         "theme": {"type": "object", "properties": {"light": {"type": "string"}, "dark": {"type": "string"}}},
         "css": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "navbar_right": {"type": "array", "items": {"type": "object"}},
-        "announcement": {"type": ["object", "null"]}
+        "announcement": {"type": ["object", "null"]},
+        "pdf": {
+          "type": "object",
+          "properties": {
+            "sample_rows": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "qc_rows": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "matrix_rows": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "matrix_columns": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "deg_rows": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "enrichment_rows": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "enrichment_top_n": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "qc_detail": {
+              "enum": [
+                "key",
+                "all"
+              ]
+            },
+            "fonts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        }
       }
     },
     "project": {"type": "object"},

@@ -41,6 +41,8 @@ def test_website_report_stages_six_independent_pages_with_shared_styles(tmp_path
     staged = tmp_path / "templates"
     shutil.copytree(root / "omics/rna/qmd", staged / "qmd")
     config = load_config(root / "tests/report.rna.local.json")
+    config["report"]["layout"] = "website"
+    config["report"]["output_format"] = "html"
     render_templates(config, str(tmp_path / "output"), str(staged))
 
     settings = yaml.safe_load((staged / "_quarto.yml").read_text())
@@ -66,6 +68,7 @@ def test_rna_report_has_six_pages_with_samples_outside_overview(tmp_path):
     root = Path(__file__).resolve().parents[1]
     shutil.copytree(root / "omics/rna/qmd", tmp_path / "qmd")
     shutil.copytree(root / "templates/reference", tmp_path / "reference")
+    shutil.copytree(root / "templates/pdf", tmp_path / "pdf")
     config = load_config(root / "tests/report.rna.local.json")
 
     document = compose_report(config, tmp_path).read_text(encoding="utf-8")
@@ -93,6 +96,10 @@ def test_rna_report_has_six_pages_with_samples_outside_overview(tmp_path):
     pdf = compose_report(config, tmp_path, pdf=True).read_text(encoding="utf-8")
     assert "report-navbar" not in pdf
     assert "# 样本信息" in pdf
+    assert "```{mermaid}" in document
+    assert "```{mermaid}" not in pdf
+    assert "实际提供的软件版本" in pdf
+    assert (tmp_path / "qmd/assets/rna-workflow.svg").is_file()
 
 
 def test_json_paths_resolve_from_data_dir(tmp_path):
