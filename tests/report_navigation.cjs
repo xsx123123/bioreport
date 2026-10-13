@@ -39,7 +39,7 @@ const context={document:{
  documentElement:{style:{setProperty(){}}},
  querySelector(){return {getBoundingClientRect(){return {height:64};}};},
  readyState:"complete", body:{classList:{add(){}}},
-  querySelectorAll(q) { return q==='.report-page'?pages:q==='.report-navbar a'?links:q==='pre.mermaid-js'?[diagram]:toc; },
+  querySelectorAll(q) { return q==='.report-page'?pages:q==='.report-navbar a.nav-link'?links:q==='pre.mermaid-js'?[diagram]:toc; },
   createElement(){return {querySelector(){return {classList:{add(){}},removeAttribute(){}};}};},
   getElementById(id) { return nodes.get(id); },
   addEventListener(k,fn) { documentEvents[k]=fn; }

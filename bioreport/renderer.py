@@ -45,7 +45,7 @@ def render_templates(
         )
         quarto_path = Path(template_dir) / "_quarto.yml"
         quarto_path.write_text(quarto_content, encoding="utf-8")
-        logger.info(f"✅ 已生成 {quarto_path}")
+        logger.info(f"已生成 {quarto_path}")
     except Exception as e:
         logger.error(f"渲染 _quarto.yml 失败: {e}")
         raise

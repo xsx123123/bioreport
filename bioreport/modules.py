@@ -317,8 +317,11 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         )
         navigation = (
             '```{=html}\n<nav class="navbar report-navbar" aria-label="报告页面">\n'
-            '<div class="report-brand"><img src="../logo/logo.png" alt="BioReport logo">'
-            '<img src="../logo/Huazhong_Agricultural_University_logo.svg" alt="华中农业大学"></div>\n'
+            '<div class="report-brand">'
+            '<a href="https://github.com/xsx123123/bioreport" target="_blank" rel="noopener noreferrer" aria-label="BioReport GitHub 仓库">'
+            '<img src="../logo/logo.png" alt="BioReport logo"></a>'
+            '<a href="https://www.hzau.edu.cn/" target="_blank" rel="noopener noreferrer" aria-label="华中农业大学官网">'
+            '<img src="../logo/Huazhong_Agricultural_University_logo.svg" alt="华中农业大学"></a></div>\n'
             f'{links}\n</nav>\n```\n\n'
         )
     frontmatter = yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False)

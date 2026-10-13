@@ -17,15 +17,15 @@ body { padding-top: var(--report-navbar-height, 5rem) !important; }
 .report-brand img { height: 2.6rem; width: 2.6rem; object-fit: contain; }
 .report-mermaid-svg { display: block; width: 100%; height: auto; }
 .report-page [id] { scroll-margin-top: calc(var(--report-navbar-height, 5rem) + 1rem); }
-.report-navbar a {
+.report-navbar a.nav-link {
   padding: .55rem .8rem;
   text-decoration: none;
 }
-.report-navbar a:hover, .report-navbar a[aria-current="page"] {
+.report-navbar a.nav-link:hover, .report-navbar a.nav-link[aria-current="page"] {
   background: var(--bs-tertiary-bg, #f4f4f5);
 }
-.report-navbar a[aria-current="page"] { font-weight: 700; }
-.report-navbar a:focus-visible { outline: 2px solid var(--bs-primary, #0d6efd); }
+.report-navbar a.nav-link[aria-current="page"] { font-weight: 700; }
+.report-navbar a.nav-link:focus-visible { outline: 2px solid var(--bs-primary, #0d6efd); }
 .report-page[hidden], #TOC li[hidden] { display: none !important; }
 .report-page { scroll-margin-top: 6rem; }
 .report-page { display: none; }
@@ -33,7 +33,7 @@ body:not(.report-routing-ready) #report-page-1,
 .report-page[data-active="true"] { display: block; }
 @media (max-width: 600px) {
   .report-navbar.navbar { gap: .15rem; padding: .35rem; }
-  .report-navbar a { padding: .5rem; font-size: .9rem; }
+  .report-navbar a.nav-link { padding: .5rem; font-size: .9rem; }
 }
 @media print {
   body { padding-top: 0 !important; }
@@ -45,7 +45,7 @@ body:not(.report-routing-ready) #report-page-1,
 (() => {
   function initializeReportPages() {
     const pages = Array.from(document.querySelectorAll('.report-page'));
-    const links = Array.from(document.querySelectorAll('.report-navbar a'));
+    const links = Array.from(document.querySelectorAll('.report-navbar a.nav-link'));
     if (!pages.length) return;
     const navbar = document.querySelector('.report-navbar');
     function sizeNavbar() {

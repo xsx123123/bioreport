@@ -10,8 +10,6 @@ from pathlib import Path
 from typing import Any, Dict
 
 from loguru import logger
-from rich.panel import Panel
-from rich.console import Console
 
 
 def run_generate(*args, **kwargs):
@@ -43,8 +41,6 @@ def run_ai_pipeline(config: Dict[str, Any], config_path: str, output_dir: str, t
         return
 
     logger.info("启动 AI 分析流程...")
-
-    console = Console()
 
     # Step 1: Generate consolidated data
     deg_limit = ai_config.get("deg_limit")
@@ -80,4 +76,4 @@ def run_ai_pipeline(config: Dict[str, Any], config_path: str, output_dir: str, t
         raise RuntimeError("AI report command completed without producing its Markdown report")
     shutil.copyfile(generated_report, consolidated_md)
 
-    console.print(Panel("✨ AI 分析流程完成！", border_style="purple"))
+    logger.info("AI 分析流程完成。")

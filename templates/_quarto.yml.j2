@@ -12,7 +12,7 @@ website:
   page-navigation: true
   navbar:
     logo: {{ report.logo | default('logo/logo.png') }}
-    logo-href: "{{ report.logo_href | default('https://github.com/xsx123123') }}"
+    logo-href: "{{ report.logo_href | default('https://github.com/xsx123123/bioreport') }}"
     pinned: true
     background: primary
     search: true
@@ -39,7 +39,7 @@ website:
   sidebar:
     title: "{{ report.sidebar_title | default('RNA-seq Report') }}"
     logo: {{ report.logo | default('logo/logo.png') }}
-    logo-href: "{{ report.logo_href | default('https://github.com/xsx123123') }}"
+    logo-href: "{{ report.logo_href | default('https://github.com/xsx123123/bioreport') }}"
     alignment: left
     style: "floating"
     pinned: true
@@ -60,7 +60,7 @@ website:
   page-footer:
       border: true
       left: |
-        <img src="/logo/Huazhong_Agricultural_University_logo.svg" alt="华中农业大学" height="32" style="vertical-align: middle; margin-right: 10px;">
+        <a href="https://www.hzau.edu.cn/" target="_blank" rel="noopener noreferrer"><img src="/logo/Huazhong_Agricultural_University_logo.svg" alt="华中农业大学" height="32" style="vertical-align: middle; margin-right: 10px;"></a>
         <span style="vertical-align: middle;">FROM STARDUST, TO DISCOVERY</span>
         <a href="https://posit.co" target="_blank" style="text-decoration: none; border-bottom: none;">
           <img src="/logo/Posit_logo.svg" alt="Posit" height="18" style="vertical-align: middle; margin: 0 10px;">

@@ -6,11 +6,7 @@ import csv
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Callable
 from loguru import logger
-from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.panel import Panel
 
-from rich.logging import RichHandler
 
 from bioreport.config import load_config, resolve_path
 from bioreport.utils.report_utils import get_comparisons_from_csv, get_file_path
@@ -35,31 +31,12 @@ DEFAULT_REPORT_DIR = DATA_DIR / "ai_reports"
 # Logging & Utilities
 # -----------------------------------------------------------------------------
 
+
 def setup_logging(verbose: bool = False):
-    """Configure loguru logging with Rich integration."""
-    logger.remove()  # Remove default handler
+    """Configure the shared CLI log format for standalone callers."""
+    from bioreport.cli import setup_logging as configure
 
-    # Console Handler (Rich)
-    # Using RichHandler for beautiful console logs
-    console_level = "DEBUG" if verbose else "INFO"
-    logger.add(
-        RichHandler(
-            rich_tracebacks=True, 
-            markup=True, 
-            show_time=False, 
-            show_path=False
-        ),
-        format="{message}",
-        level=console_level
-    )
-
-    # File Handler (Detailed)
-    logger.add(
-        "rna_seq_tool.log",
-        level="DEBUG",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
-        rotation="10 MB"
-    )
+    configure()
 
 
 def safe_resolve_path(path_str: str, config: Dict[str, Any] = None) -> Optional[Path]:
@@ -216,34 +193,24 @@ def run_generate(
     """
     Consolidate RNA-seq data into a text file.
     """
-    console = Console()
-    setup_logging(verbose)
 
     logger.info("Starting RNA-seq data consolidation")
-    console.print(Panel("[bold blue]Task: Generate Consolidated Data[/bold blue]", expand=False))
 
     # 1. Load Project Summary (YAML or legacy JSON)
     target_summary_path = project_summary_path if project_summary_path else PROJECT_SUMMARY_PATH
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-        transient=True
-    ) as progress:
-        task = progress.add_task(f"Loading project summary from {target_summary_path}...", total=None)
+    logger.info("Loading project summary from {}", target_summary_path)
+    try:
+        project_summary = load_config(target_summary_path)
+    except Exception as e:
+        logger.error(f"Error parsing project summary: {e}")
+        return
         
-        try:
-            project_summary = load_config(target_summary_path)
-        except Exception as e:
-            console.print(f"[red]Error parsing project summary: {e}[/red]")
-            return
-            
-        progress.update(task, completed=True)
 
     # 2. Extract Data
     project_meta = project_summary.get('project', project_summary.get('project_meta', {}))
     stats = project_summary.get('stats', {})
+
     input_files = project_summary.get('input_files', {})
     config = project_summary
 
@@ -355,13 +322,10 @@ def run_generate(
         full_text = "\n".join(final_content)
         output_path.write_text(full_text, encoding='utf-8')
         
-        logger.success(f"Consolidated data written to {output_path}")
-        console.print(f"[green]✓[/green] Consolidated data written to [bold]{output_path}[/bold]")
-        console.print(f"[blue]📊[/blue] Output format: Markdown")
+        logger.info(f"Consolidated data written to {output_path}")
         
     except Exception as e:
         logger.error(f"Failed to write output: {e}")
-        console.print(f"[red]Failed to write output: {e}[/red]")
 
 
 # -----------------------------------------------------------------------------
@@ -379,14 +343,11 @@ def run_report(
     """
     Generate AI interpretation report from the consolidated text file.
     """
-    console = Console()
-    setup_logging(verbose)
 
     logger.info("Starting AI Report Generation")
-    console.print(Panel("[bold purple]Task: AI Interpretation Report[/bold purple]", expand=False))
 
     if not input_path.exists():
-        console.print(f"[red]Error: Input file not found at {input_path}[/red]")
+        logger.error(f"Error: Input file not found at {input_path}")
         return
 
     # 1. Read Input
@@ -394,7 +355,7 @@ def run_report(
         input_text = input_path.read_text(encoding='utf-8')
         logger.info(f"Read input file: {input_path} ({len(input_text)} chars)")
     except Exception as e:
-        console.print(f"[red]Error reading input file: {e}[/red]")
+        logger.error(f"Error reading input file: {e}")
         return
 
     # 2. Initialize AI Interpreter (lazy import so `generate` works without AI deps)
@@ -402,11 +363,11 @@ def run_report(
         from bioreport.ai import AIInterpreter
         interpreter = AIInterpreter(model=model, provider=provider) if model else AIInterpreter(provider=provider)
     except Exception as e:
-        console.print(f"[red]Error initializing AI Interpreter: {e}[/red]")
+        logger.error(f"Error initializing AI Interpreter: {e}")
         return
 
     # 3. Call AI
-    console.print("[dim]Sending data to AI model... (This may take a minute)[/dim]")
+    logger.info("Sending data to AI model... (This may take a minute)")
     
     try:
         system_prompt = "You are a helpful expert bioinformatics assistant. You are analyzing RNA-seq data."
@@ -429,14 +390,12 @@ def run_report(
         
         report_file.write_text(final_report_content, encoding='utf-8')
         
-        logger.success(f"AI Report generated: {report_file}")
-        console.print(f"[green]✓[/green] AI Report generated at: [bold]{report_file}[/bold]")
+        logger.info(f"AI Report generated: {report_file}")
         
         # Show cost if available
         if hasattr(interpreter, '_calculate_cost'):
              cost = interpreter._calculate_cost(response)
-             console.print(f"[blue]💰[/blue] Estimated Cost: ¥{cost}")
+             logger.info(f"Estimated Cost: ¥{cost}")
 
     except Exception as e:
         logger.error(f"AI Report generation failed: {e}")
-        console.print(f"[red]✗ AI Report generation failed: {e}[/red]")

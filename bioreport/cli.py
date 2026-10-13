@@ -13,14 +13,12 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
-import time
 from importlib import resources
 from pathlib import Path
 
 from loguru import logger
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.text import Text
 
@@ -114,22 +112,20 @@ def setup_logging(output_dir: str | None = None) -> str | None:
 
 
 def signal_handler(sig, frame):
-    console.print()
-    logger.warning("⚠️  接收到中断信号 (Ctrl+C)，正在安全退出...")
+    logger.warning("接收到中断信号 (Ctrl+C)，正在安全退出...")
     sys.exit(0)
 
 
-def print_banner(report_type: str = "report"):
-    title = Text(f"{report_type} Report Generator", justify="center", style="bold cyan")
-    subtitle = Text("v2.0.0 | Powered by Quarto", justify="center", style="dim white")
-    console.print(
-        Panel(
-            Text.assemble(title, "\n", subtitle),
-            border_style="cyan",
-            expand=False,
-            padding=(1, 5),
-        )
-    )
+def print_banner():
+    artwork = r""" ____  ___ ___  ____  _____ ____   ___  ____ _____
+| __ )|_ _/ _ \|  _ \| ____|  _ \ / _ \|  _ \_   _|
+|  _ \ | | | | | |_) |  _| | |_) | | | | |_) || |
+| |_) || | |_| |  _ <| |___|  __/| |_| |  _ < | |
+|____/|___\___/|_| \_\_____|_|    \___/|_| \_\|_|"""
+    console.print(Text(artwork, style="bold cyan"))
+    console.print(Text("Powered by JZHANG | CygnusX BioOps", style="dim"))
+    console.print(Text("https://github.com/xsx123123/bioreport", style="dim"))
+    console.print()
 
 
 def load_config_with_fallback(config_path: str | None) -> dict:
@@ -177,31 +173,19 @@ def check_input_files(config: dict) -> None:
     )
     all_passed = True
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-        transient=True,
-    ) as progress:
-        task = progress.add_task(
-            description="Scanning files...", total=len(files_to_check)
-        )
+    for key, path_str in files_to_check.items():
+        path = Path(path_str)
+        exists = path.exists() or Path(os.getcwd()).joinpath(path).exists()
 
-        for key, path_str in files_to_check.items():
-            path = Path(path_str)
-            exists = path.exists() or Path(os.getcwd()).joinpath(path).exists()
+        if exists:
+            status = "[bold green]Found[/]"
+        else:
+            status = "[bold red]Missing[/]"
+            if key in required:
+                all_passed = False
+            logger.warning(f"缺失文件: {key} -> {path_str}")
 
-            if exists:
-                status = "[bold green]✔ Found[/]"
-            else:
-                status = "[bold red]✖ Missing[/]"
-                if key in required:
-                    all_passed = False
-                logger.warning(f"缺失文件: {key} -> {path_str}")
-
-            table.add_row(key, str(path_str), status)
-            progress.advance(task)
-            time.sleep(0.05)
+        table.add_row(key, str(path_str), status)
 
     console.print(table)
 
@@ -219,7 +203,7 @@ def check_quarto_env():
 
     res = subprocess.run(["quarto", "--version"], capture_output=True, text=True)
     version = res.stdout.strip()
-    console.print(f"🛠️  Quarto Environment: [bold green]{version}[/]")
+    logger.info("Quarto Environment: {}", version)
 
 
 def output_formats(config: dict) -> list[str]:
@@ -280,9 +264,9 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
             logger.debug("[Quarto] {}", line)
             if line.startswith("Cell "):
                 last_cell = line
-                console.print(f"[dim]{line}[/dim]")
+                logger.info("[Quarto] {}", line)
             elif line.startswith("Output created:"):
-                console.print(line)
+                logger.info("[Quarto] {}", line)
             if re.match(r"^[A-Za-z_][\w.]*(?:Error|Exception):\s+.+", line):
                 error_summary = line
 
@@ -323,6 +307,8 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     args = parse_args()
+    if args.command == "run":
+        print_banner()
     setup_logging()
 
     if args.command == "init":
@@ -338,7 +324,6 @@ def main():
 
     log_file = setup_logging(args.output)
     logger.info(f"日志文件已创建: {log_file}")
-    print_banner(config["report"].get("type", "report"))
     selected_modules(config)
     formats = output_formats(config)
     if config["report"].get("layout") == "website" and "pdf" in formats:
@@ -362,7 +347,7 @@ def main():
             shutil.copytree(rna_qmd, template_dir / "qmd", dirs_exist_ok=True)
         render_templates(config, str(Path(args.output).resolve()), str(template_dir))
         if args.dry_run:
-            console.print(Panel("配置与模块已验证，跳过 Quarto 渲染。", border_style="blue"))
+            logger.info("配置与模块已验证，跳过 Quarto 渲染。")
             return
 
         check_input_files(config)
