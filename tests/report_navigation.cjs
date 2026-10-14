@@ -25,6 +25,7 @@ function node(attrs, page) {
 }
 const pages = data.pages.map(p => {
   const n=node({id:p.id});
+  if(p.id==='report-page-6') n.classList={contains(name){return name==='about-project';}};
   n.querySelectorAll=()=>Array.from({length:p.charts},()=>({_fullLayout:{}}));
   nodes.set(p.id,n); return n;
 });
@@ -35,10 +36,37 @@ diagram.classList = {remove(name){assert.strictEqual(name, 'mermaid-js');diagram
 diagram.replaceWith = () => {diagramReplaced = true;};
 const links=data.links.map(a=>node(a));
 const toc=data.toc.map(a=>{const n=node(a);n.li={hidden:false};return n;});
+const navbarClassList={
+  open:false,
+  toggle(_,force){this.open=force===undefined?!this.open:Boolean(force);return this.open;},
+  contains(){return this.open;},
+  remove(){this.open=false;},
+  add(){},
+};
+const toggleNode={
+  attrs:{'aria-expanded':'false'},
+  setAttribute(k,v){this.attrs[k]=v;},
+  addEventListener(k,fn){this[k]=fn;},
+};
+const homeLink=node({href:'#report-page-1','aria-controls':'report-page-1'});
+const bodyClassList={
+  active:false,
+  add(name){if(name==='report-routing-ready')return;this.active=name==='report-about-active'||this.active;},
+  toggle(name,force){if(name==='report-about-active')this.active=Boolean(force);return this.active;},
+};
+const navbarStub={
+  getBoundingClientRect(){return {height:64};},
+  classList:navbarClassList,
+  querySelector(sel){
+    if(sel==='.report-nav-toggle')return toggleNode;
+    if(sel.indexOf('report-brand-link')!==-1)return homeLink;
+    return null;
+  },
+};
 const context={document:{
  documentElement:{style:{setProperty(){}}},
- querySelector(){return {getBoundingClientRect(){return {height:64};}};},
- readyState:"complete", body:{classList:{add(){}}},
+ querySelector(){return navbarStub;},
+ readyState:"complete", body:{classList:bodyClassList},
   querySelectorAll(q) { return q==='.report-page'?pages:q==='.report-navbar a.nav-link'?links:q==='pre.mermaid-js'?[diagram]:toc; },
   createElement(){return {querySelector(){return {classList:{add(){}},removeAttribute(){}};}};},
   getElementById(id) { return nodes.get(id); },
@@ -64,7 +92,17 @@ function check(index){
 }
 check(0);
 assert.strictEqual(diagramRenders, 0);
-for(let i=0;i<6;i++){context.location.hash='#'+pages[i].id;links[i].click({button:0,preventDefault(){},stopPropagation(){}});check(i);}
+assert.strictEqual(toggleNode.attrs['aria-expanded'],'false');
+toggleNode.click();
+assert.strictEqual(toggleNode.attrs['aria-expanded'],'true');
+assert.strictEqual(navbarClassList.contains('report-nav-open'),true);
+for(let i=0;i<6;i++){context.location.hash='#'+pages[i].id;links[i].click({button:0,preventDefault(){},stopPropagation(){}});check(i);assert.strictEqual(toggleNode.attrs['aria-expanded'],'false');}
+assert.strictEqual(bodyClassList.active,true);
+context.location.hash='#report-page-4';events.hashchange();check(3);
+assert.strictEqual(bodyClassList.active,false);
+homeLink.click({button:0,preventDefault(){},stopPropagation(){}});
+check(0);
+assert.strictEqual(toggleNode.attrs['aria-expanded'],'false');
 const heading=Object.entries(data.headings).find(([id,p])=>p===pages[3].id);
 context.location.hash='#'+encodeURIComponent(heading[0]);events.hashchange();check(3);
 context.location.hash='#%invalid';events.hashchange();check(0);

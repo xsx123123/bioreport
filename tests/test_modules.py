@@ -23,14 +23,14 @@ def test_single_report_uses_shared_styles_by_default(tmp_path):
     render_templates({'report': {'layout': 'single', 'modules': ['about']}}, str(tmp_path / 'output'), str(tmp_path))
 
     settings = (tmp_path / '_quarto.yml').read_text(encoding='utf-8')
-    assert 'theme/New_Brutalism.scss' in settings
+    assert 'theme/bioreport.scss' in settings
     assert 'theme/styles.css' in settings
     assert 'theme/itables_saas.css' in settings
     assert 'toc-location: left' in settings
     assert 'theme/report-pages.html' in settings
     assert 'theme/load-mermaid.html' in settings
     assert 'dark:' not in settings
-    assert '- theme/New_Brutalism.scss' in settings
+    assert '- theme/bioreport.scss' in settings
 
 
 def test_website_report_stages_six_independent_pages_with_shared_styles(tmp_path):
@@ -48,7 +48,7 @@ def test_website_report_stages_six_independent_pages_with_shared_styles(tmp_path
     settings = yaml.safe_load((staged / "_quarto.yml").read_text())
     paths = settings["project"]["render"]
     assert len(paths) == 6
-    assert settings["format"]["html"]["theme"] == ["theme/New_Brutalism.scss"]
+    assert settings["format"]["html"]["theme"] == ["theme/bioreport.scss"]
     assert settings["format"]["html"]["css"] == ["theme/styles.css", "theme/itables_saas.css"]
     assert settings["website"]["navbar"]["pinned"] is True
     assert [page["href"] for page in settings["website"]["navbar"]["left"]] == paths
@@ -73,7 +73,7 @@ def test_rna_report_has_six_pages_with_samples_outside_overview(tmp_path):
 
     document = compose_report(config, tmp_path).read_text(encoding="utf-8")
 
-    titles = re.findall(r'<a href="#report-page-\d+"[^>]*>([^<]+)</a>', document)
+    titles = re.findall(r'<a href="#report-page-\d+"[^>]*class="nav-link"[^>]*>([^<]+)</a>', document)
     assert titles == ["项目概述", "样本信息", "分析概述", "质量控制", "分析结果", "关于"]
     overview = document.split("# 项目概述\n", 1)[1].split("# 样本信息\n", 1)[0]
     samples = document.split("# 样本信息\n", 1)[1].split("# 分析概述\n", 1)[0]
@@ -88,7 +88,7 @@ def test_rna_report_has_six_pages_with_samples_outside_overview(tmp_path):
     assert "::: {#refs}" in workflow
     assert 'class="navbar report-navbar"' in document
     assert 'class="nav-link"' in document
-    assert "# 关于本项目\n" in document
+    assert "# 关于 BioReport\n" in document
     assert "CygnusX BioOps" in document
     assert "../logo/logo.png" in document
     assert "../logo/Huazhong_Agricultural_University_logo.svg" in document

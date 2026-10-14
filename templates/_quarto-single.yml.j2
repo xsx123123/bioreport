@@ -22,7 +22,7 @@ format:
     include-after-body:
       - theme/load-mermaid.html
     theme:
-      - {{ (report.get('theme') or {}).get('light', 'theme/New_Brutalism.scss') }}
+      - {{ (report.get('theme') or {}).get('light', 'theme/bioreport.scss') }}
     css:
 {% for css_file in (report.get('css') or ['theme/styles.css', 'theme/itables_saas.css']) %}
       - {{ css_file }}

@@ -386,18 +386,29 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
     navigation = ""
     if not pdf:
         metadata["format"] = {"html": {"number-sections": False, "format-links": False}}
-        links = "\n".join(
+        page_links = [
             f'<a href="#{page_id}" aria-controls="{page_id}" class="nav-link">{escape(title)}</a>'
             for page_id, title in pages
-        )
+        ]
+        menu_links = "\n".join(page_links[:-1])
+        trailing_link = page_links[-1] if page_links else ""
         navigation = (
             '```{=html}\n<nav class="navbar report-navbar" aria-label="报告页面">\n'
             '<div class="report-brand">'
             '<a href="https://github.com/xsx123123/bioreport" target="_blank" rel="noopener noreferrer" aria-label="BioReport GitHub 仓库">'
             '<img src="../logo/logo.png" alt="BioReport logo"></a>'
+            '<a href="#report-page-1" aria-controls="report-page-1" class="report-brand-link"><span class="report-brand-name">BioReport</span><span class="report-brand-context">RNA-seq report</span></a></div>\n'
+            '<button class="report-nav-toggle" type="button" aria-label="切换导航" aria-expanded="false" aria-controls="report-menu">'
+            '<span class="report-nav-toggle-bar"></span>'
+            '<span class="report-nav-toggle-bar"></span>'
+            '<span class="report-nav-toggle-bar"></span>'
+            '</button>\n'
+            f'<div class="report-menu" id="report-menu">\n{menu_links}\n</div>\n'
+            '<div class="report-menu-right">\n'
+            f'{trailing_link}\n'
             '<a href="https://www.hzau.edu.cn/" target="_blank" rel="noopener noreferrer" aria-label="华中农业大学官网">'
             '<img src="../logo/Huazhong_Agricultural_University_logo.svg" alt="华中农业大学"></a></div>\n'
-            f'{links}\n</nav>\n```\n\n'
+            '</nav>\n```\n\n'
         )
     frontmatter = yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False)
     target.write_text(f"---\n{frontmatter}---\n\n" + navigation + "\n".join(sections), encoding="utf-8")

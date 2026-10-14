@@ -24,8 +24,8 @@ def build_default_report_config(client, species, genome, pipeline_version):
                 "about"
             ],
             "theme": {
-                "light": "./theme/New_Brutalism.scss",
-                "dark": "./theme/Dark_New_Brutalism.scss"
+                "light": "./theme/bioreport.scss",
+                "dark": "./theme/bioreport.scss"
             },
             "css": [
                 "./theme/styles.css",

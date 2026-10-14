@@ -82,10 +82,134 @@
 /* Report metric cards: values are inline content, never document headings. */
 .report-metric {
   margin: .65rem 0 .35rem;
-  font-size: clamp(1.65rem, 3vw, 2.35rem);
-  line-height: 1.1;
+  font-size: 2rem;
+  line-height: 1.15;
   font-weight: 700;
   letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Pandoc wraps the card value in a <p>; keep it at the metric size.
+   (The generic .callout-body p rule below would otherwise shrink it.) */
+.report-overview-grid .callout-body .report-metric,
+.report-overview-grid .callout-body .report-metric p {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #18181b;
+  line-height: 1.15;
+}
+
+.report-metric-unit {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #666;
+}
+
+/* Project overview metric card grid: exactly 3 columns.
+   minmax(0, 1fr) keeps tracks at 1/3 width regardless of content min-width.
+   Cards stretch to their row via the default grid alignment; an explicit
+   row height or card height would size against max-content and inflate
+   every card in the grid. */
+.report-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 900px) {
+  .report-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .report-overview-grid { grid-template-columns: 1fr; }
+}
+
+.report-overview-grid .callout {
+  padding: .75rem 1rem;
+  border-top: 1px solid #e5e5e5;
+  border-right: 1px solid #e5e5e5;
+  border-bottom: 1px solid #e5e5e5;
+  border-radius: 8px;
+}
+
+.report-overview-grid .callout-body > p {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* Card label (first paragraph: "样本信息 (Samples)" etc.) slightly larger. */
+.report-overview-grid .callout-body > p:first-child {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #3f3f46;
+}
+
+/* Dark-mode mirrors for the card rules above (styles.css is shared by both themes). */
+[data-mode="dark"] .report-overview-grid .callout-body .report-metric,
+[data-mode="dark"] .report-overview-grid .callout-body .report-metric p {
+  color: #fafafa;
+}
+[data-mode="dark"] .report-overview-grid .callout-body > p { color: #a1a1aa; }
+[data-mode="dark"] .report-overview-grid .callout-body > p:first-child { color: #d4d4d8; }
+[data-mode="dark"] .report-page::after {
+  border-top-color: #27272a;
+  color: #71717a;
+}
+
+/* Global report footer: keep it in document flow so it never covers content. */
+.report-page::after {
+  content: "Powered by BioReport · Author: JZHANG";
+  position: static;
+  display: block;
+  max-width: 46em;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0.6rem 1rem 0.8rem;
+  border-top: 1px solid #e4e4e7;
+  background: var(--bs-body-bg, #ffffff);
+  font-size: 0.8rem;
+  color: #999;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+body { padding-bottom: 0; }
+
+/* Weakened hint callout (e.g. table column legend): small gray text, thin border. */
+.report-note-hint.callout {
+  border-left-width: 1px;
+  border-left-color: #ccc;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+/* Figures: never overflow their column; scale down on narrow screens.
+   Plotly divs keep their JS-managed inline height, so height:auto applies
+   to raster/vector images only (otherwise the graph div would collapse). */
+.quarto-figure img {
+  max-width: 100% !important;
+  height: auto;
+}
+
+.plotly-graph-div, .js-plotly-plot {
+  max-width: 100% !important;
+}
+
+/* Aspect-ratio box around plotly charts (emitted by show_figure). The graph
+   div is taken out of flow so plotly's own size bookkeeping can never inflate
+   the box beyond the designed width/height ratio. */
+.report-plot { position: relative; width: 100%; }
+.report-plot .plotly-graph-div {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+figcaption, .figure-caption {
+  font-size: 0.85rem;
+  color: #666;
 }
 
 .report-mermaid-container { position: relative; width: 100%; }

@@ -6,34 +6,136 @@
   z-index: 1050;
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
-  padding: .65rem;
+  flex-wrap: nowrap;
+  gap: 1.5rem;
+  height: 64px;
+  padding: 0 max(1rem, calc((100% - 1280px) / 2));
   margin: 0;
+  font-size: .95rem;
+  background: rgba(255, 255, 255, .92) !important;
+  backdrop-filter: blur(12px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(160%) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, .08) !important;
 }
 body { padding-top: var(--report-navbar-height, 5rem) !important; }
 #quarto-sidebar, #quarto-margin-sidebar { top: var(--report-navbar-height, 5rem) !important; }
-.report-brand { display: flex; align-items: center; gap: .6rem; margin-right: .75rem; }
-.report-brand img { height: 2.6rem; width: 2.6rem; object-fit: contain; }
+.report-brand { display: flex; align-items: center; gap: .65rem; flex: 0 0 auto; min-width: 11rem; }
+.report-brand > a:first-child { display: flex; align-items: center; }
+.report-brand img { height: 40px; width: 40px; object-fit: contain; }
+.report-brand-link {
+  display: flex;
+  flex-direction: column;
+  gap: .08rem;
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: #18181b;
+  text-decoration: none;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+.report-brand-name { line-height: 1.05; }
+.report-brand-context { color: #64748b; font-size: .66rem; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+.report-brand-link:hover { color: #174ea6; }
 .report-mermaid-svg { display: block; width: 100%; height: auto; }
 .report-page [id] { scroll-margin-top: calc(var(--report-navbar-height, 5rem) + 1rem); }
+.report-menu {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: .2rem;
+}
+.report-menu-right { display: flex; align-items: center; gap: .7rem; flex: 0 0 auto; }
+.report-menu-right img { height: 28px; width: 28px; object-fit: contain; }
 .report-navbar a.nav-link {
-  padding: .55rem .8rem;
+  padding: .45rem .7rem;
+  font-size: .9375rem;
+  color: #315b98 !important;
   text-decoration: none;
+  white-space: nowrap;
+  position: relative;
+  border-radius: .25rem;
+  text-shadow: none !important;
 }
-.report-navbar a.nav-link:hover, .report-navbar a.nav-link[aria-current="page"] {
-  background: var(--bs-tertiary-bg, #f4f4f5);
+.report-navbar a.nav-link:hover {
+  color: #174ea6 !important;
+  background: transparent;
+  text-shadow: none !important;
 }
-.report-navbar a.nav-link[aria-current="page"] { font-weight: 700; }
-.report-navbar a.nav-link:focus-visible { outline: 2px solid var(--bs-primary, #0d6efd); }
+.report-navbar a.nav-link[aria-current="page"] {
+  color: #1d5fbf !important;
+  font-weight: 600;
+  background: transparent;
+  text-shadow: none !important;
+}
+.report-navbar a.nav-link[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: .7rem;
+  right: .7rem;
+  bottom: .15rem;
+  height: 2px;
+  border-radius: 1px;
+  background: #1d5fbf;
+}
+.report-navbar a.nav-link:focus-visible { outline: 2px solid #1d5fbf; outline-offset: 3px; }
+.report-nav-toggle {
+  display: none;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, .12);
+  border-radius: .5rem;
+  background: transparent;
+  color: #3f3f46;
+  cursor: pointer;
+}
+.report-nav-toggle:hover { color: #09090b; border-color: rgba(0, 0, 0, .24); }
+.report-nav-toggle:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.report-nav-toggle-bar { display: block; width: 18px; height: 2px; border-radius: 1px; background: currentColor; }
 .report-page[hidden], #TOC li[hidden] { display: none !important; }
 .report-page { scroll-margin-top: 6rem; }
 .report-page { display: none; }
 body:not(.report-routing-ready) #report-page-1,
 .report-page[data-active="true"] { display: block; }
-@media (max-width: 600px) {
-  .report-navbar.navbar { gap: .15rem; padding: .35rem; }
-  .report-navbar a.nav-link { padding: .5rem; font-size: .9rem; }
+body.report-about-active #TOC,
+body.report-about-active #quarto-margin-sidebar { display: none !important; }
+body.report-about-active #quarto-document-content {
+  grid-column: body-start / body-end !important;
+}
+@media (max-width: 768px) {
+  .report-navbar.navbar { height: 60px; gap: .75rem; }
+  .report-brand img { height: 34px; width: 34px; }
+  .report-brand { min-width: 0; }
+  .report-brand-context { display: none; }
+  .report-brand-link { font-size: 1rem; }
+  .report-nav-toggle { display: flex; }
+  .report-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .125rem;
+    padding: .5rem 1rem .75rem;
+    background: rgba(255, 255, 255, .98);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0, 0, 0, .08);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, .06);
+    display: none;
+  }
+  .report-navbar.report-nav-open .report-menu { display: flex; }
+  .report-navbar a.nav-link { padding: .6rem .75rem; font-size: .95rem; }
+  .report-navbar a.nav-link[aria-current="page"]::after { left: .75rem; right: auto; width: 16px; bottom: .35rem; }
 }
 @media print {
   body { padding-top: 0 !important; }
@@ -48,12 +150,25 @@ body:not(.report-routing-ready) #report-page-1,
     const links = Array.from(document.querySelectorAll('.report-navbar a.nav-link'));
     if (!pages.length) return;
     const navbar = document.querySelector('.report-navbar');
+    const toggle = navbar && navbar.querySelector ? navbar.querySelector('.report-nav-toggle') : null;
+    const homeLink = navbar && navbar.querySelector ? navbar.querySelector('.report-brand a.report-brand-link') : null;
+    function setMenuOpen(open) {
+      if (!navbar || !navbar.classList) return;
+      navbar.classList.toggle('report-nav-open', open);
+      if (toggle) toggle.setAttribute('aria-expanded', String(open));
+    }
     function sizeNavbar() {
       if (navbar) document.documentElement.style.setProperty('--report-navbar-height', `${navbar.getBoundingClientRect().height + 16}px`);
     }
     sizeNavbar();
     if (navbar && window.ResizeObserver) new window.ResizeObserver(sizeNavbar).observe(navbar);
-    window.addEventListener('resize', sizeNavbar);
+    window.addEventListener('resize', () => {
+      sizeNavbar();
+      if (window.innerWidth > 768) setMenuOpen(false);
+    });
+    if (toggle) toggle.addEventListener('click', () => {
+      setMenuOpen(!(navbar.classList && navbar.classList.contains('report-nav-open')));
+    });
 
     // Quarto renders Mermaid at window.load, when inactive pages have no size.
     // Claim these diagrams first and render only after their page becomes visible.
@@ -94,6 +209,9 @@ body:not(.report-routing-ready) #report-page-1,
         page.hidden = page !== selected;
       }
       document.body.classList.add('report-routing-ready');
+      const aboutActive = Boolean(selected.classList && selected.classList.contains && selected.classList.contains('about-project'));
+      if (document.body.classList.toggle) document.body.classList.toggle('report-about-active', aboutActive);
+      else if (aboutActive && document.body.classList.add) document.body.classList.add('report-about-active');
       for (const link of links) {
         if (link.getAttribute('aria-controls') === selected.id) link.setAttribute('aria-current', 'page');
         else link.removeAttribute('aria-current');
@@ -114,13 +232,16 @@ body:not(.report-routing-ready) #report-page-1,
     }
     // Explicitly route navbar clicks: smooth-scroll handlers may update history
     // without firing hashchange, so hashchange alone does not switch pages.
-    for (const link of links) link.addEventListener('click', event => {
+    function routeNavClick(event, link) {
       if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
       event.stopPropagation();
       if (location.hash !== link.hash) history.pushState(null, '', link.hash);
       selectPage(link.hash, true);
-    }, true);
+      setMenuOpen(false);
+    }
+    for (const link of links) link.addEventListener('click', event => routeNavClick(event, link), true);
+    if (homeLink) homeLink.addEventListener('click', event => routeNavClick(event, homeLink), true);
     // Reveal a destination before Quarto handles a cross-page heading link.
     document.addEventListener('click', event => {
       const link = event.target.closest('a[href^="#"]');
