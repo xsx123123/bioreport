@@ -1,6 +1,7 @@
 """Format-aware display helpers shared by report modules."""
 
 import os
+import re
 import json
 from pathlib import Path
 
@@ -51,7 +52,41 @@ def show_figure(figure, config=None, caption=None) -> None:
             # Emit the library separately so no chart is moved before the report.
             display(HTML(f'<script data-bioreport-dependency="plotly">{get_plotlyjs()}</script>'))
             _plotly_loaded = True
-        display(HTML(figure.to_html(full_html=False, include_plotlyjs=False, config=config)))
+        display(HTML(_responsive_figure_html(figure, config)))
+
+
+def _responsive_figure_html(figure, config):
+    """Render a plotly figure inside an aspect-ratio box.
+
+    Plotly pins the graph div and its drawing size to the layout's pixel
+    height while the width follows the (narrower) report column, which
+    stretches every chart. The wrapper keeps the figure's designed
+    width/height ratio; the design size comes from the layout or, when only
+    the height is set there, from the download options the chart functions
+    already carry. The pixel sizes are then removed from the serialized
+    layout so plotly.js fills the box instead of forcing its own height.
+    """
+    export_options = (config or {}).get("toImageButtonOptions") or {}
+    width = figure.layout.width or export_options.get("width")
+    height = figure.layout.height or export_options.get("height")
+    saved_width, saved_height = figure.layout.width, figure.layout.height
+    figure.layout.width = None
+    figure.layout.height = None
+    try:
+        html = figure.to_html(full_html=False, include_plotlyjs=False, config=config)
+    finally:
+        figure.layout.width = saved_width
+        figure.layout.height = saved_height
+    if not (width and height):
+        return html
+    html = re.sub(
+        r'(<div id="[^"]*" class="plotly-graph-div" style=")height:[^;]+; width:[^;]+;',
+        r"\1position:absolute; top:0; left:0; height:100%; width:100%;",
+        html,
+        count=1,
+    )
+    return (f'<div class="report-plot" style="position:relative; width:100%; '
+            f'aspect-ratio: {width} / {height};">{html}</div>')
 
 
 def show_table(table, **kwargs) -> None:
