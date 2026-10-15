@@ -407,3 +407,34 @@ RUN_REPORT_INTEGRATION=1 python -m pytest -q tests/test_integration_render.py
 **版本**: v2.0.0
 **作者**: Zhang Jian
 **最后更新**: 2026-10-13
+
+## 🤝 开源协作与致谢
+
+<p align="center">
+  <b>愿景 · FROM STARDUST, TO DISCOVERY</b><br>
+  <i>让每一次计算留下证据，让每一份报告承载发现。</i>
+</p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+
+> 本项目源于真实生命科学科研场景中的分析与交付需求，秉持开放协作与可复现研究理念，欢迎通过 [GitHub](https://github.com/xsx123123/bioreport) 提交问题反馈与模块贡献。
+
+  </td>
+    <td width="50%" valign="top">
+
+> 感谢 **华中农业大学** 相关科研团队在研究场景、分析需求与工具测试方面提供的宝贵支持。
+
+  </td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td><sub>开发与维护</sub> <b>BioReport / CygnusX BioOps 研发团队</b></td>
+    <td align="right"><a href="https://github.com/xsx123123/bioreport"><b>GitHub 仓库 ↗</b></a></td>
+  </tr>
+</table>
+
+<p align="center"><sub>Powered by BioReport · Author: JZHANG</sub></p>
