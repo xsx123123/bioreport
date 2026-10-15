@@ -104,8 +104,9 @@ def draw_fancy_dotplot(enrich_file,
     # 定义折行函数
     # 创建一个新的列用于绘图（带<br>的），保留原列 y_col 用于悬停显示
     df['wrapped_y'] = df[y_col].apply(lambda x: wrap_label(x, wrap_width))
-    max_lines = max(t.count('<br>') + 1 for t in df['wrapped_y'])
-    height_num = max(height_num, 150 + len(df) * (max_lines * 17 + 9))
+    # 按每一行的实际折行数累计高度预算，避免单行条目被最高条目撑出大量空白
+    row_budget = sum(t.count('<br>') + 1 for t in df['wrapped_y']) * 15 + len(df) * 10
+    computed_height = 140 + row_budget
 
     # --- 2. 🎨 绘图 ---
 
@@ -127,10 +128,10 @@ def draw_fancy_dotplot(enrich_file,
     # --- 3. 精细化修饰 ---
     fig.update_layout(
         template="simple_white",
-        width=width_num, height=height_num,
+        height=max(height_num, computed_height),
         font=dict(family="Arial", size=14, color="#333333"),
-        
-        title=dict(x=0.5, xanchor='center', font=dict(size=18)),
+
+        title=dict(x=0.5, xanchor='center', font=dict(size=18), pad=dict(t=8)),
 
         xaxis=dict(
             title="<b>Gene ratio</b>" if plot_x_col in ["parsed_ratio", "GeneRatio"] else f"<b>{plot_x_col}</b>",
@@ -148,20 +149,29 @@ def draw_fancy_dotplot(enrich_file,
             showline=True, linecolor='black',
             automargin=True, # 自动调整边距
             # ✨ 增加刻度文字间距，防止折行后太密
-            tickfont=dict(size=12) 
+            tickfont=dict(size=12)
         ),
-        
-        # 边距：左边留白交给 automargin，右边留给 Legend
-        margin=dict(t=60, b=65, l=290, r=110),
-        meta={"enrichment": True, "print_height": (150 + len(df) * (max_lines * 17 + 9)) / 100},
-        
+
+        # 边距：左边留白交给 automargin，右边留给 colorbar 与 Count 图例
+        margin=dict(t=70, b=65, l=290, r=120),
+        meta={"enrichment": True, "print_height": computed_height / 100},
+
+        # colorbar 下移，给标题留出顶部空间
         coloraxis_colorbar=dict(
             title="<b>Adjusted P value</b>",
             tickformat=".1e",
-            len=0.6,
+            len=0.45,
             thickness=15,
-            yanchor="top", y=1,
+            yanchor="top", y=0.92,
             xanchor="left", x=1.02
+        ),
+
+        # Count 图例固定到 colorbar 下方，避免与标题重叠
+        legend=dict(
+            x=1.02, xanchor="left",
+            y=0.38, yanchor="top",
+            bgcolor="rgba(0,0,0,0)",
+            borderwidth=0
         )
     )
     
@@ -191,9 +201,10 @@ def draw_fancy_dotplot(enrich_file,
     config = {
         'toImageButtonOptions': {
             'format': 'png', 'filename': 'Fancy_Enrichment',
-            'height': height_num, 'width': width_num, 'scale': scale_num
+            'height': fig.layout.height, 'width': width_num, 'scale': scale_num
         },
-        'displaylogo': False
+        'displaylogo': False,
+        'responsive': True
     }
 
     return fig, config

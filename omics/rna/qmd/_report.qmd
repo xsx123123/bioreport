@@ -12,8 +12,8 @@ format:
     toc-title: "导航目录"
     number-sections: true       # 章节自动编号
     theme: 
-      light: [./theme/New_Brutalism.scss] # 保留你的主题
-      dark: [./theme/Dark_New_Brutalism.scss]
+      light: [./theme/bioreport.scss]
+      dark: [./theme/bioreport.scss]
     css: 
       - ./theme/styles.css
       - ./theme/itables_saas.css

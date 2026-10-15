@@ -19,6 +19,7 @@ def test_single_report_uses_shared_styles_by_default(tmp_path):
     shutil.copyfile(root / 'templates/_quarto-single.yml.j2', tmp_path / '_quarto-single.yml.j2')
     (tmp_path / 'qmd').mkdir()
     shutil.copyfile(root / 'omics/rna/qmd/about.qmd', tmp_path / 'qmd/about.qmd')
+    shutil.copytree(root / 'omics/rna/qmd/assets', tmp_path / 'qmd/assets')
 
     render_templates({'report': {'layout': 'single', 'modules': ['about']}}, str(tmp_path / 'output'), str(tmp_path))
 

@@ -20,6 +20,21 @@ MODULES = {
     "trademark": ("trademark.qmd", "商标"),
 }
 
+# Bootstrap icons (without the bi- prefix) shown before each navbar entry.
+PAGE_ICONS = {
+    "rna.index": "house",
+    "rna.sample-info": "people",
+    "rna.workflow": "signpost-split",
+    "rna.qc": "clipboard2-check",
+    "rna.results": "bar-chart",
+    "about": "info-circle",
+    "ai": "stars",
+    "faq": "question-circle",
+    "license": "file-earmark-text",
+    "trademark": "award",
+}
+DEFAULT_PAGE_ICON = "file-text"
+
 def _canonical(module_id: str) -> str:
     return get_registry().canonical(module_id)
 
@@ -356,7 +371,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                     )
                 page_frontmatter = yaml.safe_dump(page_meta, allow_unicode=True, sort_keys=False)
                 page_path.write_text(f"---\n{page_frontmatter}---\n\n{content.strip()}\n", encoding="utf-8")
-                website_pages.append({"href": f"qmd/{page_path.name}", "title": title})
+                website_pages.append({"href": f"qmd/{page_path.name}", "title": title, "icon": PAGE_ICONS.get(chapter_id, DEFAULT_PAGE_ICON)})
             elif pdf:
                 sections.append(('```{=typst}\n#pagebreak(weak: true)\n```\n\n' if has_rna else "") + f"# {content_heading}\n\n{content.strip()}\n")
             else:

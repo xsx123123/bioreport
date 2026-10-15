@@ -54,7 +54,11 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: 2rem;
   margin-bottom: 1rem;
   letter-spacing: -0.03em;
+  font-weight: 600;
 }
+h1 { font-size: 1.9rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
 
 // 代码块布局
 pre {
@@ -421,18 +425,70 @@ html, body {
   table { width: 100%; }
   th { background: #f4f4f5; }
   td, th { padding: .85rem 1rem; vertical-align: top; }
-  hr { margin: 2.5rem 0; color: $border-color; opacity: 1; }
+  // 节间距由 margin 控制（about.qmd 已移除 hr 分隔线）
+  > section, h2 { margin-top: 3rem; }
   .about-manifesto {
     margin: 1.5rem 0 2.5rem;
-    padding: 1.5rem 2rem;
+    padding: 1.5rem;
     border: 1px solid $border-color;
-    border-left: 4px solid $primary;
-    background: #fafafa;
-    blockquote { margin: 0; padding: 0; border: 0; color: $body-color; }
-    strong { font-family: $headings-font-family; font-size: clamp(1.2rem, 3vw, 1.7rem); letter-spacing: .04em; }
-    p:last-child { margin-bottom: 0; }
+    border-radius: 8px;
+    background: #f8f9fa;
+    .manifesto-kicker {
+      font-size: .8rem;
+      letter-spacing: .15em;
+      font-weight: 600;
+      color: $secondary;
+      margin-bottom: .75rem;
+    }
+    .manifesto-body {
+      position: relative;
+      padding-left: 1.25rem;
+      &::before {
+        position: absolute;
+        top: -.85rem;
+        left: -.2rem;
+        color: $primary;
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 3.5rem;
+        font-weight: 700;
+        line-height: 1;
+        content: '\201C';
+        opacity: .8;
+      }
+      &::after {
+        position: absolute;
+        top: .5rem;
+        bottom: .45rem;
+        left: 0;
+        width: 3px;
+        background: $primary;
+        content: '';
+      }
+      > p {
+        margin: 0;
+        color: $secondary;
+        font-size: .95rem;
+        line-height: 1.9;
+      }
+    }
+    .manifesto-quote {
+      font-style: italic;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.35rem;
+      color: $primary;
+      margin: 0 0 .6rem;
+      > p { margin: 0; }
+    }
+    .manifesto-attribution {
+      margin-top: 1rem;
+      padding-left: 1.25rem;
+      color: $secondary;
+      font-size: .85rem;
+      font-weight: 600;
+      text-align: right;
+      > p { margin: 0; }
+    }
   }
-  > section { margin-bottom: 2.5rem; }
   a { text-underline-offset: .2em; }
   table { display: block; overflow-x: auto; }
   blockquote { border-left-color: $primary; }
@@ -440,3 +496,13 @@ html, body {
 @media (max-width: 600px) {
   .about-project .about-manifesto { padding: 1rem; }
 }
+
+// --- 8. 全局框架修复 (Phase 1) ---
+// 多页网站版 Quarto 导航兜底：内容区约束 1200px 居中
+.navbar > .container-fluid { max-width: 1200px; margin: 0 auto; }
+
+// 正文 prose 限宽（只限文字，图表/表格容器不限）
+main.content p, main.content li, .report-page p, .report-page li { max-width: 46em; }
+
+// 表格 caption 统一小字灰色
+.table-caption, figcaption, caption { font-size: 0.9rem; color: #666; }

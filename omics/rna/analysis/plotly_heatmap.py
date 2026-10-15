@@ -113,7 +113,6 @@ def draw_interactive_heatmap(
         title=f"Clustered Heatmap ({title_suffix})",
         xaxis={'side': 'bottom'},
         yaxis={'visible': True if len(df_z) < 100 else False},
-        width=1000,  # 给 Quarto 显示设置一个默认宽度
         height=800,
         meta={'sample_groups': {str(k): str(v) for k,v in meta[('group' if 'group' in meta else meta.columns[0])].items()},
               'group_colors': group_palette(meta_raw[('group' if 'group' in meta else meta.columns[0])]),
@@ -130,7 +129,8 @@ def draw_interactive_heatmap(
             'scale': 4  # 4倍超高清
         },
         'displaylogo': False,
-        'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d'],
+        'responsive': True
     }
     
     # 将 config 绑定到 fig 对象上 (虽然 fig.show 才会用到，但为了方便 Quarto 调用)

@@ -348,8 +348,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix="bioreport-") as temporary:
         template_dir = Path(temporary) / "templates"
         shutil.copytree(source_template, template_dir)
-        # RNA-specific QMD lives in omics/rna; stage it beside shared templates
-        # so the renderer has one stable Quarto project root.
+        # omics/rna/qmd holds the RNA pages plus the shared built-in pages
+        # (about/faq/license/trademark/AI) used by every report type; stage it
+        # beside shared templates so the renderer has one stable project root.
         rna_qmd_candidates = [
             Path(__file__).resolve().parents[1] / "omics" / "rna" / "qmd",
             Path(__file__).resolve().parents[1] / ".." / "omics" / "rna" / "qmd",

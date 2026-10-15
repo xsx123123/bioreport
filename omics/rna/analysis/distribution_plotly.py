@@ -111,7 +111,6 @@ def draw_expression_distribution_plotly(tpm_file, meta_file,
 
     # --- 4. 样式美化 ---
     fig.update_layout(
-        width=width_num, 
         height=height_num,
         font=dict(family="Arial", size=14, color="black"),
         
@@ -150,7 +149,8 @@ def draw_expression_distribution_plotly(tpm_file, meta_file,
             'format': 'png', 'filename': 'TPM_Dist',
             'height': height_num, 'width': width_num, 'scale': scale_num 
         },
-        'displaylogo': False
+        'displaylogo': False,
+        'responsive': True
     }
 
     return fig, my_config

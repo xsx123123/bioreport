@@ -157,6 +157,55 @@ flowchart TD
 
 以上流程图展示生成过程的逻辑关系。
 
+## 🏗️ 技术架构
+
+BioReport 采用配置驱动的模块化报告架构，将报告组织、领域内容、数据展示与文档渲染分别管理。系统读取已有分析结果，根据 JSON / YAML 配置选择报告章节、绑定输入文件与展示参数，再组合 Quarto 文档，生成交互式 HTML 或适合打印归档的 PDF，并支持按需加入 AI 辅助解读。
+
+下图表达组件依赖与产物流向（非逐行执行时序）：实线为主构建链路或数据输入，虚线为可选 AI 分支及解读内容回填，不代表异步服务。启用 AI 时，解读 Markdown 在 Quarto 渲染前生成；Docker 属于生成阶段的运行环境。
+
+```mermaid
+flowchart TB
+  Config["JSON / YAML 配置<br/>（JSON Schema 校验）"] --> Control["CLI · 配置校验与流程编排"]
+  RNA["RNA-seq 模块 · omics/rna"] --> Compose["模块注册、选择与内容组合"]
+  Custom["自定义 QMD 模块"] --> Compose
+  Theme["Jinja2 模板与共享主题"] --> Stage["临时 Quarto 项目<br/>QMD / 配置 / 资源"]
+  Control --> Compose --> Stage --> Execute["Quarto / Jupyter · 执行所选模块"]
+  Execute --> Analysis["读取结果 · 统计汇总与绘图函数"]
+  Data["已有分析结果与项目元数据"] --> Analysis
+  Control --> Records["运行记录 pipeline.log<br/>成功后配置备份"]
+  Analysis --> HTMLView["HTML · Plotly / ITables"] --> HTML["单文件 HTML / 多页 HTML"]
+  Analysis --> PDFView["PDF 专用章节 · 静态图表与 Typst"] --> PDF["PDF 报告"]
+  Data -.-> AI["可选 AI 分支 · 结果整合与模型解读"]
+  Control -.-> AI
+  AI -.-> Markdown["解读 Markdown · 渲染前就绪"]
+  Markdown -.-> Execute
+
+  classDef plain fill:#ffffff,stroke:#94a3b8,color:#334155;
+  classDef blue fill:#eff6ff,stroke:#3b82f6,color:#173258;
+  classDef green fill:#f0fdf4,stroke:#22a06b,color:#14532d;
+  classDef optional fill:#faf5ff,stroke:#a78bfa,color:#553285;
+
+  class Config,Data,RNA,Custom,Theme,HTMLView,PDFView plain;
+  class Control,Compose,Stage,Execute,Analysis blue;
+  class HTML,PDF,Records green;
+  class AI,Markdown optional;
+```
+
+BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶段读取分析结果并生成图表，分别适配交互式 HTML 与打印 PDF。AI 解读作为可选分支，在渲染前生成辅助解释内容。
+
+技术栈按职责划分如下（设计原则：**配置决定结构，模块承载内容；分析函数复用，交付形式适配**）：
+
+| 职责 | 技术组成 | 说明 |
+| :--- | :--- | :--- |
+| 配置与运行编排 | Python · JSON / YAML · JSON Schema | 配置加载、字段校验、路径解析、模块选择、输入检查及生成流程编排 |
+| 模块与内容组合 | Registry · QMD · 模块组合器 · Jinja2 | 注册领域模块及输入要求，按配置组合章节、传入模块参数，生成 Quarto 配置与部分模板内容 |
+| 数据处理与交互展示 | pandas / NumPy · Plotly · ITables | 读取已有质控、表达、差异及富集等分析结果，进行整理、统计汇总、绘图与可检索表格展示 |
+| 多格式渲染与交付 | Quarto · Jupyter · 静态图形 · Typst | HTML 提供交互式浏览；PDF 使用 PDF 专用章节、适合分页的静态图表与 Typst 排版；两种输出共享分析函数 |
+| 可选 AI 辅助解读 | 大语言模型接入 · Markdown | 选择 AI 模块且启用后，整合指定差异与富集结果并生成 Markdown 解读，渲染前就绪；模型生成内容需研究人员审阅 |
+| 运行环境 | 本地 Python / Quarto · Docker | 本地或容器内完成模板渲染、代码执行与文档构建；报告阅读使用浏览器或 PDF 阅读器 |
+
+> 架构图源文件唯一维护于 [`omics/rna/qmd/assets/architecture.mmd`](omics/rna/qmd/assets/architecture.mmd)：报告「关于」页通过 include 机制内嵌同一份 Mermaid 源码，PDF 中的静态 SVG（`omics/rna/qmd/assets/architecture.svg`）由该文件离线导出，README 中的副本与其保持同步。当前内置 RNA-seq 模块；新增组学类型需要提供对应的数据读取、图表和解释模块。
+
 ## 📂 目录结构说明
 
 ```text
@@ -182,7 +231,7 @@ flowchart TD
 │       └── prompt.txt
 ├── omics/rna/                   # RNA-seq 模块、QMD 与分析脚本
 │   ├── modules.py               # RNA 模块声明与输入契约
-│   ├── qmd/
+│   ├── qmd/                     # RNA 页面 + 全类型共用内置页面（见下方说明）
 │   └── analysis/
 ├── templates/                   # 通用 Quarto 壳、主题与资源
 │   ├── _quarto.yml.j2           # Quarto 网站配置 Jinja2 模板
@@ -199,6 +248,10 @@ flowchart TD
 ├── deploy/Dockerfile             # 唯一 Docker 交付定义
 └── README.md                    # 项目说明文档
 ```
+
+### 共用内置页面（所有报告类型通用）
+
+`omics/rna/qmd/` 中的 `about.qmd`、`faq.qmd`、`license.qmd`、`trademark.qmd`、`AI.qmd` 是**所有报告模版共用**的内置页面：它们由 `bioreport/modules.py` 的 `MODULES` 注册为组学无关的内置模块，且 `bioreport/cli.py` 在渲染任何 assay 类型（RNA-seq 或通用 assay）时都会把 `omics/rna/qmd/` 整体 stage 到模版 `qmd/` 目录。因此修改这些文件会影响全部报告类型，只有 `rna.*` 注册模块及 `pdf/` 子目录下的内容才是 RNA-seq 专属。
 
 ## 📝 配置文件 (`configs/report.example.json`) 关键字段
 

@@ -6,6 +6,12 @@ title: 交付文件与报告说明
 
 本报告由输入数据和配置自动生成，PDF 提供静态图表与结果摘要；完整结果以原始分析文件为准。
 
+### 报告生成架构
+
+BioReport 采用配置驱动的模块化报告架构：系统读取已有分析结果，根据 JSON / YAML 配置选择报告章节、绑定输入文件与展示参数，组合 Quarto 文档后生成交互式 HTML 或适合打印归档的 PDF；AI 解读为可选分支，在渲染前生成辅助解释内容。
+
+![BioReport 报告生成架构：配置驱动模块组合，Quarto 执行所选模块并读取分析结果，分别适配交互式 HTML 与打印 PDF；虚线为可选 AI 分支。](assets/architecture.svg){#fig-bioreport-arch width="100%"}
+
 ```{python}
 #| label: pdf-delivery
 #| output: asis

@@ -20,6 +20,7 @@ website:
 {% for page in pages %}
       - href: {{ page.href }}
         text: "{{ page.title }}"
+        icon: {{ page.icon }}
 {% endfor %}
 {% if report.navbar_right %}
     right:

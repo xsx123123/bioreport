@@ -154,7 +154,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
     # --- 5. 样式美化 ---
     fig.update_layout(
         template="simple_white", # 仿 R 的白色背景风格
-        width=width_num, height=height_num,
+        height=height_num,
         legend=dict(title_text="Group", y=0.5), # 图例居中
         margin=dict(t=50, b=50, l=50, r=50)
     )
@@ -176,7 +176,8 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
             'scale': scale_num 
         },
         'displaylogo': False,
-        'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+        'modeBarButtonsToRemove': ['lasso2d', 'select2d'],
+        'responsive': True
     }
 
     return fig, my_config

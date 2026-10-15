@@ -1,0 +1,25 @@
+flowchart TB
+  Config["JSON / YAML 配置<br/>（JSON Schema 校验）"] --> Control["CLI · 配置校验与流程编排"]
+  RNA["RNA-seq 模块 · omics/rna"] --> Compose["模块注册、选择与内容组合"]
+  Custom["自定义 QMD 模块"] --> Compose
+  Theme["Jinja2 模板与共享主题"] --> Stage["临时 Quarto 项目<br/>QMD / 配置 / 资源"]
+  Control --> Compose --> Stage --> Execute["Quarto / Jupyter · 执行所选模块"]
+  Execute --> Analysis["读取结果 · 统计汇总与绘图函数"]
+  Data["已有分析结果与项目元数据"] --> Analysis
+  Control --> Records["运行记录 pipeline.log<br/>成功后配置备份"]
+  Analysis --> HTMLView["HTML · Plotly / ITables"] --> HTML["单文件 HTML / 多页 HTML"]
+  Analysis --> PDFView["PDF 专用章节 · 静态图表与 Typst"] --> PDF["PDF 报告"]
+  Data -.-> AI["可选 AI 分支 · 结果整合与模型解读"]
+  Control -.-> AI
+  AI -.-> Markdown["解读 Markdown · 渲染前就绪"]
+  Markdown -.-> Execute
+
+  classDef plain fill:#ffffff,stroke:#94a3b8,color:#334155;
+  classDef blue fill:#eff6ff,stroke:#3b82f6,color:#173258;
+  classDef green fill:#f0fdf4,stroke:#22a06b,color:#14532d;
+  classDef optional fill:#faf5ff,stroke:#a78bfa,color:#553285;
+
+  class Config,Data,RNA,Custom,Theme,HTMLView,PDFView plain;
+  class Control,Compose,Stage,Execute,Analysis blue;
+  class HTML,PDF,Records green;
+  class AI,Markdown optional;

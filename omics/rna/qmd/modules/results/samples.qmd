@@ -5,6 +5,7 @@
 ```{python}
 #| label: plot-pca
 #| fig-cap: "Global PCA Analysis (PC1-PC3)"
+#| out-width: 100%
 
 # 使用前面定义的变量，不再重复定义
 if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
@@ -39,6 +40,7 @@ else:
 ```{python}
 #| label: plot-dist
 #| fig-cap: "Gene Distribution"
+#| out-width: 100%
 
 if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
     fig, conf = draw_expression_distribution_plotly(

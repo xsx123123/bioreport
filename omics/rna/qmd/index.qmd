@@ -102,9 +102,7 @@ current_date = datetime.date.today().strftime("%Y-%m-%d")
 
 **项目测序数据产出与核心质控指标总览如下:**
 
-::: {.grid style="row-gap: 15px;"}
-
-::: {.g-col-3}
+::: {.report-overview-grid}
 
 ::: {.callout-note appearance="minimal"}
 
@@ -112,7 +110,7 @@ current_date = datetime.date.today().strftime("%Y-%m-%d")
 
 ::: {.report-metric}
 
-**`{python} total_samples_count`** Samples
+<span class="report-metric-num">**`{python} total_samples_count`**</span> <span class="report-metric-unit">Samples</span>
 
 :::
 
@@ -120,17 +118,13 @@ current_date = datetime.date.today().strftime("%Y-%m-%d")
 
 :::
 
-:::
-
-::: {.g-col-3}
-
 ::: {.callout-tip appearance="minimal"}
 
 **总数据量 (Data)**
 
 ::: {.report-metric}
 
-**`{python} f"{total_data_gb:.1f}"` Gb**
+<span class="report-metric-num">**`{python} f"{total_data_gb:.1f}"`**</span> <span class="report-metric-unit">Gb</span>
 
 :::
 
@@ -138,17 +132,13 @@ current_date = datetime.date.today().strftime("%Y-%m-%d")
 
 :::
 
-:::
-
-::: {.g-col-3}
-
 ::: {.callout-note appearance="minimal"}
 
 **测序质量 (Q30)**
 
 ::: {.report-metric}
 
-**`{python} f"{avg_q30:.1f}"` %**
+<span class="report-metric-num">**`{python} f"{avg_q30:.1f}"`**</span> <span class="report-metric-unit">%</span>
 
 :::
 
@@ -156,17 +146,13 @@ current_date = datetime.date.today().strftime("%Y-%m-%d")
 
 :::
 
-:::
-
-::: {.g-col-3}
-
 ::: {.callout-important appearance="minimal"}
 
 **基因检出 (Genes)**
 
 ::: {.report-metric}
 
-**`{python} genes_detected`**
+<span class="report-metric-num">**`{python} genes_detected`**</span>
 
 :::
 
@@ -174,17 +160,13 @@ TPM > 1 的基因数量
 
 :::
 
-:::
-
-::: {.g-col-4}
-
 ::: {.callout-note appearance="minimal"}
 
 **比对率 (Mapping)**
 
 ::: {.report-metric}
 
-**`{python} f"{mapping_rate:.1f}"` %**
+<span class="report-metric-num">**`{python} f"{mapping_rate:.1f}"`**</span> <span class="report-metric-unit">%</span>
 
 :::
 
@@ -192,17 +174,13 @@ TPM > 1 的基因数量
 
 :::
 
-:::
-
-::: {.g-col-4}
-
 ::: {.callout-note appearance="minimal"}
 
 **唯一比对 (Unique)**
 
 ::: {.report-metric}
 
-**`{python} f"{unique_mapping_rate:.1f}"` %**
+<span class="report-metric-num">**`{python} f"{unique_mapping_rate:.1f}"`**</span> <span class="report-metric-unit">%</span>
 
 :::
 
@@ -210,23 +188,17 @@ TPM > 1 的基因数量
 
 :::
 
-:::
-
-::: {.g-col-4}
-
 ::: {.callout-warning appearance="minimal"}
 
 **重复率 (Dup)**
 
 ::: {.report-metric}
 
-**`{python} f"{avg_dup:.1f}"` %**
+<span class="report-metric-num">**`{python} f"{avg_dup:.1f}"`**</span> <span class="report-metric-unit">%</span>
 
 :::
 
 序列重复水平
-
-:::
 
 :::
 
@@ -245,13 +217,15 @@ TPM > 1 的基因数量
 
 ## 样本信息 (Sample Info)
 
+本节列出全部 6 个样本的测序数据量与核心质控指标。其中 Q30 为碱基测序质量值 ≥30 的比例（本次平均 95.9%，数据质量优秀）；比对率（Mapping Rate）反映 clean reads 成功比对到参考基因组 GRCm39 的比例。各样本指标整体均衡，无明显离群样本，详细质量评估请见「质量控制」章节。
+
 ```{python}
 #| label: tbl-samples
 #| tbl-cap: "样本测序数据统计表"
 Sample_Info_table_modern(df_final)
 ```
 
-::: {.callout-note appearance="minimal" icon=false collapse="true"}
+::: {.callout-note .report-note-hint appearance="minimal" icon=false collapse="true"}
 
 ### 📝 表格列名说明 (点击展开)
 

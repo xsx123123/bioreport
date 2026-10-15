@@ -201,6 +201,12 @@ body.report-about-active #quarto-document-content {
       try { return document.getElementById(decodeURIComponent(hash.slice(1))); }
       catch (_) { return null; }
     }
+    const defaultTitle = document.title;
+    function syncDocumentTitle(selected) {
+      const activeLink = links.find(link => link.getAttribute('aria-controls') === selected.id);
+      const label = activeLink && typeof activeLink.textContent === 'string' ? activeLink.textContent.trim() : '';
+      document.title = label || defaultTitle;
+    }
     function selectPage(hash = location.hash, scroll = false) {
       const target = findTarget(hash);
       const selected = target?.closest('.report-page') || pages[0];
@@ -216,6 +222,7 @@ body.report-about-active #quarto-document-content {
         if (link.getAttribute('aria-controls') === selected.id) link.setAttribute('aria-current', 'page');
         else link.removeAttribute('aria-current');
       }
+      syncDocumentTitle(selected);
       for (const link of document.querySelectorAll('#TOC a[data-scroll-target]')) {
         const heading = findTarget(link.getAttribute('data-scroll-target'));
         const item = link.closest('li');

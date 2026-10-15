@@ -130,7 +130,7 @@ pre { border: 1px solid $border-color; border-radius: .35rem; }
 code { color: #29496f; }
 
 .about-project {
-  max-width: 78ch;
+  max-width: 76rem;
   margin-inline: auto;
   line-height: 1.8;
 }
@@ -229,6 +229,357 @@ code { color: #29496f; }
 
 .about-project .about-manifesto .manifesto-attribution > p { margin: 0; }
 
+/* ---- About page components ---- */
+
+/* Mission cards (生态愿景 & 核心使命) */
+.about-project .mission-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.1rem;
+  margin: 1.5rem 0 .4rem;
+}
+.about-project .mission-card {
+  padding: 1.35rem 1.5rem 1.45rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fafc, #ffffff);
+  box-shadow: 0 1px 3px rgba(30, 58, 138, .05);
+}
+.about-project .mission-badge {
+  display: inline-block;
+  margin-bottom: .9rem;
+  padding: .26rem .7rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .13em;
+}
+.about-project .mission-en {
+  margin-bottom: .7rem;
+  color: #1e3a8a;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.12rem;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  line-height: 1.45;
+}
+.about-project .mission-cn {
+  color: $secondary;
+  font-size: .9rem;
+  line-height: 1.85;
+}
+
+/* Callout strip */
+.about-project .callout-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 42rem;
+  margin: 1.2rem auto .2rem;
+  padding: .7rem 1.3rem;
+  border: 1px solid #dbe4f0;
+  border-left: 3px solid #2563eb;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #eff6ff, #f8fafc);
+  color: #1e3a8a;
+  font-size: .92rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-align: center;
+}
+.about-project .callout-strip > p { margin: 0; }
+
+/* Feature grid (核心特性) */
+.about-project .feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin: 1.2rem 0 .4rem;
+}
+.about-project .feature-card {
+  padding: 1.2rem 1.35rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fbfcfe;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.about-project .feature-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(30, 58, 138, .09);
+}
+.about-project .feature-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .5rem;
+  margin-bottom: .55rem;
+}
+.about-project .feature-title { color: #16243d; font-size: 1rem; font-weight: 700; }
+.about-project .feature-tag {
+  padding: .1rem .55rem;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.about-project .feature-desc { color: $secondary; font-size: .88rem; line-height: 1.8; }
+
+/* Architecture figure (报告生成架构) */
+.about-project .arch-figure {
+  margin: 1.2rem 0 .4rem;
+  padding: 1.1rem 1.3rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fbfcfe;
+  overflow-x: auto;
+  text-align: center;
+}
+.about-project .arch-figure .mermaid { display: inline-block; text-align: left; }
+.about-project .arch-figure svg { width: 100% !important; height: auto; }
+.about-project .arch-caption {
+  max-width: 46rem;
+  margin: .5rem auto 0;
+  color: $secondary;
+  font-size: .82rem;
+  line-height: 1.75;
+  text-align: center;
+}
+
+/* Tech stack by responsibility (技术栈 · 按职责) */
+.about-project .tech-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: .9rem;
+  margin: 1.2rem 0 .4rem;
+}
+.about-project .tech-role {
+  padding: 1.05rem 1.2rem 1.1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fbfcfe;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.about-project .tech-role:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(30, 58, 138, .08);
+}
+.about-project .tech-role-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .4rem;
+  margin-bottom: .45rem;
+}
+.about-project .tech-role-name { color: #16243d; font-size: .95rem; font-weight: 700; }
+.about-project .tech-role-tools { color: #2563eb; font-size: .72rem; font-weight: 600; letter-spacing: .02em; }
+.about-project .tech-role-desc { color: $secondary; font-size: .84rem; line-height: 1.75; }
+
+/* Ecosystem table links */
+.about-project table a {
+  color: #1e3a8a;
+  font-weight: 600;
+  text-decoration: none;
+}
+.about-project table a:hover {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Bilingual pill badges (生态核心原则) */
+.about-project .pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .7rem;
+  margin: 1.4rem 0 .6rem;
+}
+.about-project .pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .42rem;
+  padding: .42rem .95rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #eff6ff, #f8fafc);
+  box-shadow: 0 1px 4px rgba(30, 58, 138, .07);
+}
+.about-project .pill-badge > p { display: contents; margin: 0; }
+.about-project .pill-dot {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
+}
+.about-project .pill-en { display: inline-block; line-height: 1.25; color: #1e3a8a; font-size: .78rem; font-weight: 700; letter-spacing: .01em; }
+.about-project .pill-sep { display: inline-block; flex: none; width: 1px; height: .85em; margin-inline: .15rem; background: #bfdbfe; }
+.about-project .pill-cn { display: inline-block; line-height: 1.25; color: #2563eb; font-size: .76rem; font-weight: 600; }
+
+/* Roadmap stepper cards (演进方向) */
+.about-project .roadmap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1.2rem 0 .4rem;
+}
+.about-project .roadmap-card {
+  position: relative;
+  overflow: hidden;
+  padding: 1.25rem 1.3rem 1.3rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+.about-project .roadmap-num {
+  margin-bottom: .7rem;
+  background: linear-gradient(135deg, #2563eb, #1e3a8a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.about-project .roadmap-title { margin-bottom: .5rem; color: #16243d; font-size: .98rem; font-weight: 700; }
+.about-project .roadmap-desc { color: $secondary; font-size: .86rem; line-height: 1.8; }
+
+/* Footer attribution card (开源协作与致谢) */
+.about-project .about-footer-card {
+  margin-top: 1.6rem;
+  padding: 2rem 2.2rem 1.7rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f5f8ff 0%, #ffffff 45%);
+  box-shadow: 0 2px 10px rgba(30, 58, 138, .06);
+}
+.about-project .about-footer-card > p { margin: 0; }
+.about-project .footer-vision {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .4rem;
+  margin-bottom: 1.6rem;
+  text-align: center;
+}
+.about-project .footer-vision > p {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .4rem;
+  margin: 0;
+}
+.about-project .footer-vision-kicker {
+  color: #2563eb;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .18em;
+}
+.about-project .footer-vision-text {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.15rem;
+  font-style: italic;
+  font-weight: 600;
+}
+.about-project .footer-vision::after {
+  content: "";
+  width: 3rem;
+  height: 2px;
+  margin-top: .5rem;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #93c5fd, transparent);
+}
+.about-project .footer-notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.about-project .footer-note {
+  position: relative;
+  padding: .85rem 1.05rem .85rem 1.2rem;
+  border: 1px solid #e6ecf5;
+  border-radius: 10px;
+  background: #fbfcfe;
+  color: $secondary;
+  font-size: .86rem;
+  line-height: 1.8;
+}
+.about-project .footer-note::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #2563eb, #93c5fd);
+}
+.about-project .footer-note a {
+  color: #1e3a8a;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid #bfdbfe;
+}
+.about-project .footer-note a:hover { color: #2563eb; }
+.about-project .footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .6rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid #eef2f7;
+}
+.about-project .footer-meta > p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .6rem;
+  margin: 0;
+}
+.about-project .footer-label {
+  padding: .14rem .6rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+.about-project .footer-value { color: #29496f; font-size: .88rem; font-weight: 600; }
+.about-project .footer-gh {
+  margin-left: auto;
+  padding: .28rem .85rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  box-shadow: 0 1px 3px rgba(30, 58, 138, .2);
+  color: #fff;
+  font-size: .76rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: box-shadow .18s ease, transform .18s ease;
+}
+.about-project .footer-gh:hover {
+  box-shadow: 0 3px 10px rgba(37, 99, 235, .35);
+  transform: translateY(-1px);
+}
+
 @media (max-width: 991.98px) {
   #quarto-content { padding-top: .75rem; }
   #TOC { border-left: 0; border-bottom: 1px solid $border-color; padding: 0 0 .75rem; margin-bottom: 1rem; }
@@ -243,6 +594,13 @@ code { color: #29496f; }
   .about-project .about-manifesto .manifesto-attribution { padding-left: 1.2rem; }
   .about-project .about-manifesto .manifesto-body > p { font-size: .88rem; line-height: 1.82; }
   .about-project .about-manifesto .manifesto-quote { font-size: 1.35rem; }
+  .about-project .arch-figure { padding: .8rem .6rem; }
+  /* Keep the diagram at its designed width so text stays readable;
+     only the figure container scrolls sideways. Match the viewBox
+     width of omics/rna/qmd/assets/architecture.svg. */
+  .about-project .arch-figure .report-mermaid-container,
+  .about-project .arch-figure .mermaid { display: inline-block; min-width: 1200px; }
+  .about-project .about-footer-card { padding: 1.4rem 1.2rem 1.3rem; }
 }
 
 @media print {

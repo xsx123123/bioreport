@@ -77,7 +77,9 @@ def test_rna_json_renders_one_html_and_pdf(tmp_path):
     assert len(pages) == 6
     assert pages[2].select_one('.mermaid') is not None
     assert soup.select_one('#refs').find_parent(class_='report-page') == pages[2]
-    assert len(soup.select('.report-brand img')) == 2
+    assert len(soup.select('.report-brand img')) == 1
+    assert len(soup.select('.report-menu-right img')) == 1
+    assert soup.select_one('.report-nav-toggle') is not None
     assert pages[3].select_one('.plotly-graph-div') is not None
     assert pages[4].select_one('.plotly-graph-div') is not None
     assert "差异表达分析" in pages[4].get_text()

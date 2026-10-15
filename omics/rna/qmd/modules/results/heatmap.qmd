@@ -5,6 +5,7 @@
 ```{python}
 #| label: plot-heatmap
 #| fig-cap: "TPM 基因表达热图 (高变异基因)"
+#| out-width: 100%
 
 if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
     # 调用函数

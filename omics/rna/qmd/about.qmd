@@ -1,168 +1,200 @@
 ---
-title: "关于本项目"
+title: "关于 BioReport"
+date: ""
 body-classes: about-project
+title-block-style: none
 ---
+
+```{=html}
+<style>
+.quarto-title-block { display: none !important; }
+</style>
+```
 
 ::: {.about-manifesto}
-> **FROM STARDUST, TO DISCOVERY**
->
-> *We are made of star-stuff.*
->
-> 从星尘出发，向科学发现不断探索。
+::: {.quote-orbit .quote-orbit--one aria-hidden="true"}
+:::
+::: {.quote-orbit .quote-orbit--two aria-hidden="true"}
+:::
+::: {.quote-star .quote-star--one aria-hidden="true"}
+:::
+::: {.quote-star .quote-star--two aria-hidden="true"}
+:::
+::: {.quote-star .quote-star--three aria-hidden="true"}
 :::
 
-## 项目介绍（About BioReport）
+::: {.manifesto-kicker}
+FROM STARDUST, TO DISCOVERY
+:::
 
-**BioReport** 是基于 Python 与 Quarto 构建的模块化、可配置生物信息学分析报告生成系统，也是 **CygnusX BioOps（天鹅座智能科研平台）** 科研软件生态中的报告生成与成果交付组件。
+::: {.manifesto-body}
+::: {.manifesto-quote}
+We are made of star-stuff.
+:::
 
-项目致力于将复杂的组学分析结果转化为**结构化、可交互、可解释、便于核验的科研报告**，帮助科研人员更高效地理解数据、展示结果并沉淀研究成果。
+我们只是借用了宇宙中的这些碳、氢、氧原子几十年，用它们去短暂地体验了一次这个世界。组成我们大脑和身体的每一个原子，都来自几十亿年前远古恒星内部的核聚变爆炸。当生命结束时，我们并没有化为虚无，我们只是回到了那个浩瀚的宇宙中，换了一种方式继续存在。
+:::
 
-BioReport 采用配置驱动与模块化设计，支持标准分析结果整合、质量控制展示、统计可视化及可选的 AI 辅助解读。目前重点支持 RNA-seq 分析报告，并为其他组学类型及自定义分析模块提供扩展能力。
+::: {.manifesto-attribution}
+—— 卡尔·萨根（Carl Sagan）
+:::
+:::
 
-BioReport 不只是一个报告排版工具，更希望成为连接**科学计算、结果解释与科研成果交付**的标准化桥梁。
+## 项目定位与使命
 
----
+**BioReport** 是基于 Python 与 Quarto 构建的模块化、可配置生物信息学分析报告生成引擎，也是 **CygnusX BioOps（天鹅座智能科研平台）** 科研软件生态中的核心成果交付组件。
 
-## 背景与挑战（Background）
+在数据密集型生命科学研究中，散落于不同工具的统计表格、图表与日志往往带来高昂的整理与核验成本。BioReport 致力于打通从“计算分析产物”到“规范化科研成果交付”的最后一公里，将复杂的组学数据转化为结构化、可交互、可解释、易核验的现代化科研报告。
 
-随着生命科学进入数据密集型研究时代，海量组学数据正不断拓展科学发现的边界。然而，从计算分析到科研成果交付，仍存在诸多挑战：
+::: {.mission-grid}
+::: {.mission-card}
+<div class="mission-badge">ECOSYSTEM VISION · 生态愿景</div>
+<div class="mission-en">From Research Questions to Reproducible Scientific Evidence.</div>
+<div class="mission-cn">从科研问题出发，组织受控计算实验，形成可验证、可追溯、可复现的科研证据。</div>
+:::
+::: {.mission-card}
+<div class="mission-badge">CORE MISSION · 核心使命</div>
+<div class="mission-en">From Analysis Results to Verifiable Research Reports.</div>
+<div class="mission-cn">让每一份科研分析结果都能够被清晰表达、有效审阅，并成为科学知识持续积累的一部分。</div>
+:::
+:::
 
-- **分析结果分散：** 不同工具产生的统计表格、图像和日志缺乏统一组织，增加结果整理与审阅成本。
-- **报告生成重复：** 科研人员需要反复编写脚本、调整图表和制作报告，难以实现高效复用。
-- **结果解释存在门槛：** 复杂的差异表达、功能富集及多维统计结果需要结合生物学背景进行专业解释。
-- **科研证据关联不足：** 数据来源、分析参数、流程版本及结果文件之间缺少清晰关联，增加结果核验与复现难度。
-- **科研成果交付不统一：** 缺乏标准化、可扩展的报告规范，不利于跨项目协作和长期知识积累。
+## 核心能力与技术架构
 
-我们认为，科学分析的价值不仅在于产生计算结果，更在于使结果能够被**理解、审阅、验证与复用**。
+BioReport 采用**组学无关的核心渲染引擎**与**领域分析模块**相解耦的架构设计，将报告生成从依赖人工排版的重复劳动，转变为可配置、可维护、可复用的软件工程流程。
 
-## 我们的解决方案（Our Solution）
+::: {.callout-strip}
+一次定义，按需组合；结果与表达分离，报告可持续复用
+:::
 
-BioReport 以模块化报告生成引擎为核心，建立从组学分析产物到规范化科研报告的自动化交付路径。
+### 核心特性
 
-### 核心能力
+::: {.feature-grid}
+::: {.feature-card}
+<div class="feature-head"><span class="feature-title">配置驱动</span><span class="feature-tag">Configuration-driven</span></div>
+<div class="feature-desc">通过统一的声明式 JSON/YAML 配置管理报告结构、模块组合、参数及输出格式。</div>
+:::
+::: {.feature-card}
+<div class="feature-head"><span class="feature-title">模块化组装</span><span class="feature-tag">Modular Reporting</span></div>
+<div class="feature-desc">支持按需自由组合项目概览、样本信息、质量控制、差异分析及功能富集等分析模块，目前已深度支持 RNA-seq 并具备多组学扩展能力。</div>
+:::
+::: {.feature-card}
+<div class="feature-head"><span class="feature-title">交互式可视化</span><span class="feature-tag">Interactive Visualization</span></div>
+<div class="feature-desc">支持统计图表交互式探索与高维数据表检索，兼顾网页端动态交互与 HTML/PDF 标准化静态归档。</div>
+:::
+::: {.feature-card}
+<div class="feature-head"><span class="feature-title">AI 辅助解读</span><span class="feature-tag">AI-assisted Interpretation</span></div>
+<div class="feature-desc">支持按配置引入大语言模型辅助解析差异表达与富集通路，在严格遵循人工科学审核的前提下提升结果解读效率。</div>
+:::
+:::
 
-- **配置驱动（Configuration-driven）：** 通过统一的 JSON/YAML 配置管理报告结构、模块、参数及输出格式。
-- **模块化报告（Modular Reporting）：** 根据研究需要自由组合项目概览、样本信息、质量控制、分析结果和功能解读等内容。
-- **交互式可视化（Interactive Visualization）：** 基于 Quarto、Plotly 等技术展示统计图表与分析结果，支持交互式探索。
-- **AI 辅助解读（AI-assisted Interpretation）：** 根据配置选择性引入大语言模型，辅助解释差异表达与功能富集结果。模型生成内容不替代人工科学审核。
-- **标准化交付（Standardized Delivery）：** 支持 HTML/PDF 报告输出，为科研记录、项目协作与成果交流提供统一载体。
-- **可复用与可扩展（Reusable & Extensible）：** 通过共享模板和自定义模块减少重复开发，支持不同项目的报告需求。
+### 报告生成架构
 
-BioReport 将报告生成从依赖人工排版的重复劳动，转变为**可配置、可维护、可复用的软件工程流程**。
+BioReport 采用配置驱动的模块化报告架构，将报告组织、领域内容、数据展示与文档渲染分别管理。系统读取已有分析结果，根据 JSON / YAML 配置选择报告章节、绑定输入文件与展示参数，再组合 Quarto 文档，生成交互式 HTML 或适合打印归档的 PDF，并支持按需加入 AI 辅助解读。
 
----
+::: {.arch-figure}
+```{mermaid}
+{{< include assets/architecture.mmd >}}
+```
+:::
 
-## 技术架构（Technical Architecture）
+::: {.arch-caption}
+BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶段读取分析结果并生成图表，分别适配交互式 HTML 与打印 PDF。AI 解读作为可选分支，在渲染前生成辅助解释内容。Docker 提供生成阶段的容器化运行环境。
+:::
 
-BioReport 基于 Python 与 Quarto 构建，采用组学无关的核心引擎与领域分析模块相分离的设计。
+运行环境：本地 Python + Quarto，或 Docker 容器；报告阅读使用浏览器或 PDF 阅读器。
 
-**核心技术组成：**
+### 技术栈（按职责）
 
-- **Python：** 配置解析、模块组合、数据处理及报告任务编排。
-- **Quarto + Jinja2：** 模板组织、内容渲染与多格式报告生成。
-- **Plotly / ITables：** 交互式图表及数据表格展示。
-- **JSON / YAML：** 声明式报告配置及模块参数管理。
-- **Docker：** 提供标准化运行环境与容器化部署方式。
+::: {.tech-roles}
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">配置与运行编排</span><span class="tech-role-tools">Python · JSON / YAML · JSON Schema</span></div>
+<div class="tech-role-desc">负责配置加载、字段校验、路径解析、模块选择、输入文件检查及报告生成流程编排。</div>
+:::
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">模块与内容组合</span><span class="tech-role-tools">Registry · QMD · 模块组合器 · Jinja2</span></div>
+<div class="tech-role-desc">注册领域模块及其输入要求，按配置组合章节、传入模块参数，并生成 Quarto 配置与部分模板内容。</div>
+:::
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">数据处理与交互展示</span><span class="tech-role-tools">pandas / NumPy · Plotly · ITables</span></div>
+<div class="tech-role-desc">读取已有质控、表达、差异及富集等分析结果，进行整理、统计汇总、绘图与可检索表格展示。</div>
+:::
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">多格式渲染与交付</span><span class="tech-role-tools">Quarto · Jupyter · 静态图形 · Typst</span></div>
+<div class="tech-role-desc">HTML 提供交互式浏览；PDF 使用 PDF 专用章节、适合分页的静态图表与 Typst 排版。两种输出共享分析函数，并使用各自的内容模板。</div>
+:::
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">可选 AI 辅助解读</span><span class="tech-role-tools">大语言模型接入 · Markdown</span></div>
+<div class="tech-role-desc">选择 AI 模块且启用后，整合指定差异与富集结果并生成 Markdown 解读，渲染前就绪；模型生成内容需研究人员审阅。</div>
+:::
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">运行环境</span><span class="tech-role-tools">本地 Python / Quarto · Docker</span></div>
+<div class="tech-role-desc">在本地或容器内完成模板渲染、代码执行与文档构建；容器封装减少环境差异，但不保证跨平台逐字节复现。</div>
+:::
+:::
 
-通过配置解析、内容模块组合和统一渲染机制，BioReport 实现分析结果与报告表现形式的解耦。
+::: {.callout-strip}
+配置决定结构，模块承载内容；分析函数复用，交付形式适配。
+:::
 
-其设计原则是：
+## CygnusX 科研生态
 
-**一次定义，按需组合；结果与表达分离，报告可持续复用。**
-
----
-
-## CygnusX 科研生态（Research Ecosystem）
-
-BioReport 是 CygnusX BioOps 科研软件生态中的独立组件，与其他工具共同探索从科研问题到可信计算成果的标准化交付路径。
+BioReport 作为独立组件运行的同时，与 **CygnusX BioOps** 生态中的其他工具协同构建从“科学问题”到“可信计算成果”的全链路闭环：
 
 | 生态组件 | 核心定位 |
 |---|---|
-| 科研寻宝鼠（Treasure-Seeking Mouse） | 公共组学数据与文献发现、科研证据检索 |
-| Polariseq | 公共测序数据的获取、下载与传输 |
-| FlowFrame | 版本化、标准化组学分析流程架构 |
-| BioReport | 分析结果组织、交互式可视化与科研报告交付 |
-| CygnusX BioOps | 受控科研 Agent、工作流编排、可信计算与证据追溯基础设施 |
+| **[GEO寻宝鼠 (GeoMuse)](https://github.com/xsx123123/GeoMuse)** | 公共组学数据与文献发现、科研证据链检索与构建 |
+| **[Polariseq](https://github.com/xsx123123/polariseq)** | 公共测序数据的高效获取、下载与传输工具 |
+| **[FlowFrame](https://github.com/xsx123123/FlowFrame)** | 版本化、标准化生物信息学分析工作流架构 |
+| **[BioReport](https://github.com/xsx123123/bioreport)** | 分析结果组织、交互式可视化与标准化科研报告交付 |
+| **[CygnusX BioOps](https://github.com/xsx123123/OmicHub_BioOps)** | 受控科研 Agent、工作流编排、可信计算与证据追溯基础设施 |
 
-整个生态围绕四项核心原则持续建设：
+整个生态围绕四项核心工程原则持续演进：
 
-**Research Agents · Reproducible Workflows · Governed Execution · Verifiable Evidence**
+::: {.pill-row}
+::: {.pill-badge}
+<span class="pill-dot"></span><span class="pill-en">Research Agents</span><span class="pill-sep"></span><span class="pill-cn">科研智能体</span>
+:::
+::: {.pill-badge}
+<span class="pill-dot"></span><span class="pill-en">Reproducible Workflows</span><span class="pill-sep"></span><span class="pill-cn">可复现工作流</span>
+:::
+::: {.pill-badge}
+<span class="pill-dot"></span><span class="pill-en">Governed Execution</span><span class="pill-sep"></span><span class="pill-cn">受控执行</span>
+:::
+::: {.pill-badge}
+<span class="pill-dot"></span><span class="pill-en">Verifiable Evidence</span><span class="pill-sep"></span><span class="pill-cn">可核验证据</span>
+:::
+:::
 
-即科研智能体、可复现工作流、受控执行与可核验证据。
+## 演进规划与致谢
 
-各组件可独立使用，并根据实际集成条件逐步建立跨模块协作链路。具体能力以对应仓库版本及文档为准。
+### 演进方向 (Roadmap)
 
----
+::: {.roadmap-grid}
+::: {.roadmap-card}
+<div class="roadmap-num">01</div>
+<div class="roadmap-title">多组学模块扩展</div>
+<div class="roadmap-desc">持续丰富单细胞转录组、表观组、基因组等标准化分析报告模块体系。</div>
+:::
+::: {.roadmap-card}
+<div class="roadmap-num">02</div>
+<div class="roadmap-title">全链路证据溯源</div>
+<div class="roadmap-desc">深度打通与 FlowFrame、CygnusX BioOps 的元数据接口，将流程版本、运行参数与数据指纹自动锚定至报告中。</div>
+:::
+::: {.roadmap-card}
+<div class="roadmap-num">03</div>
+<div class="roadmap-title">受控智能解读</div>
+<div class="roadmap-desc">在可审查、可追溯的证据边界内，增强多模态 AI 辅助图表解读与文献关联能力。</div>
+:::
+:::
 
-## 愿景与使命（Vision & Mission）
+### 开源协作与致谢
 
-### FROM STARDUST, TO DISCOVERY
-
-> *We are made of star-stuff.*
->
-> 我们由星辰的物质构成，也借由科学探索理解星辰、生命与自身。
-
-组成生命的碳、氧等元素，经历了恒星内部的核合成与宇宙漫长的演化，最终成为构成生命的物质基础。
-
-从宇宙中的微小粒子，到细胞中的复杂分子；从生命系统的精密运作，到人类对自然规律的持续探索——科学使我们得以逐渐理解自己与世界的联系。
-
-**From Stardust, to Discovery** 不仅是一句品牌标语，更是我们对科学研究的理解：
-
-**以好奇心提出问题，以严谨的方法探索未知，以可验证的证据不断接近真相。**
-
-### 我们的使命
-
-**From Research Questions to Reproducible Scientific Evidence.**
-
-从科研问题出发，组织受控计算实验，形成可验证、可追溯、可复现的科研证据。
-
-对于 BioReport，我们希望进一步实现：
-
-**From Analysis Results to Verifiable Research Reports.**
-
-让每一份科研分析结果都能够被清晰表达、有效审阅，并成为科学知识持续积累的一部分。
-
-我们相信，AI for Science 的价值并不只是让科研计算变得更快，而是让科研过程更加透明、可靠、可复现，让研究人员将更多精力投入科学问题本身。
-
----
-
-## 发展规划（Roadmap）
-
-BioReport 将围绕以下方向持续迭代：
-
-1. **标准化报告生成：** 完善 RNA-seq 报告模块、配置规范及 HTML/PDF 交付能力。
-2. **多组学扩展：** 逐步支持更多组学类型和自定义分析结果，建立可复用的报告模块体系。
-3. **可信科研证据：** 探索将分析参数、流程版本、数据来源和结果产物关联到报告中，增强结果可追溯性。
-4. **生态协同：** 逐步完善与 FlowFrame、CygnusX BioOps 等组件的协作接口，支持标准化计算成果交付。
-5. **智能科研报告：** 在可审查、可追溯的前提下扩展 AI 辅助结果解释与报告生成能力。
-
-上述规划属于持续演进方向，尚未完成验证和集成的功能不视为当前版本已实现能力。
-
----
-
-## 开源与协作（Open Source & Collaboration）
-
-BioReport 秉持开放协作、可复现研究与科学知识共享的理念，致力于降低生物信息学分析成果整理和交付的技术门槛。
-
-项目欢迎科研人员和开发者通过问题反馈、文档完善、模块贡献及技术交流共同参与建设。具体开源和使用条件以仓库许可证为准。
-
-**GitHub：**
-
-- [BioReport](https://github.com/xsx123123/bioreport)
-- [CygnusX BioOps](https://github.com/xsx123123/OmicHub_BioOps)
-- [FlowFrame](https://github.com/xsx123123/FlowFrame)
-- [Polariseq](https://github.com/xsx123123/polariseq)
-
----
-
-## 支持与致谢（Acknowledgments）
-
-本项目源于真实生命科学科研场景中的分析与成果交付需求，在持续的科研实践与工程迭代中逐步完善。
-
-感谢华中农业大学相关科研团队在研究场景、分析需求与工具测试方面提供的支持。
-
-**开发与维护：** BioReport / CygnusX BioOps 研发团队
-
-**愿景：** FROM STARDUST, TO DISCOVERY
-
-*让每一次计算留下证据，让每一份报告承载发现。*
+::: {.about-footer-card}
+<div class="footer-vision"><span class="footer-vision-kicker">愿景 · FROM STARDUST, TO DISCOVERY</span><span class="footer-vision-text">让每一次计算留下证据，让每一份报告承载发现。</span></div>
+<div class="footer-notes">
+<div class="footer-note">本项目源于真实生命科学科研场景中的分析与交付需求，秉持开放协作与可复现研究理念，欢迎通过 <a href="https://github.com/xsx123123/bioreport" target="_blank" rel="noopener">GitHub</a> 提交问题反馈与模块贡献。</div>
+<div class="footer-note">感谢<strong>华中农业大学</strong>相关科研团队在研究场景、分析需求与工具测试方面提供的宝贵支持。</div>
+</div>
+<div class="footer-meta"><span class="footer-label">开发与维护</span><span class="footer-value">BioReport / CygnusX BioOps 研发团队</span><a class="footer-gh" href="https://github.com/xsx123123/bioreport" target="_blank" rel="noopener">GitHub 仓库 ↗</a></div>
+:::

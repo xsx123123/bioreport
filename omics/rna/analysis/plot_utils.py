@@ -230,7 +230,7 @@ def plot_volcano_pvalue(
         xaxis_title=c_logfc,
         yaxis_title=f"-log10({c_pval})",
         template="simple_white",
-        width=800, height=600
+        height=600
     )
 
     return fig
