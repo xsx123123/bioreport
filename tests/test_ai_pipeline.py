@@ -81,7 +81,8 @@ def test_ai_input_includes_each_comparison(tmp_path, monkeypatch):
         (enrichment_dir / f"{name}_UP.csv").write_text("Description,Count\nPathway,3\n", encoding="utf-8")
     config_path = tmp_path / "report.json"
     config_path.write_text(
-        '{"input_files": {"data_dir": "data", "deg_dir": "deg", "enrichment_dir": "enrichment"}}',
+        '{"project": {"project_id": "PRJ-AI-TEST"}, '
+        '"input_files": {"data_dir": "data", "deg_dir": "deg", "enrichment_dir": "enrichment"}}',
         encoding="utf-8",
     )
     monkeypatch.setattr("bioreport.utils.consolidate_rna_seq_data.setup_logging", lambda verbose: None)
@@ -109,6 +110,7 @@ def test_ai_input_follows_contrasts_and_explicit_files(tmp_path, monkeypatch):
     preferred.write_text("gene,pvalue\nPreferredGene,0.001\n", encoding="utf-8")
     config_path = tmp_path / "report.json"
     config_path.write_text(json.dumps({
+        "project": {"project_id": "PRJ-AI-TEST"},
         "input_files": {
             "data_dir": "data",
             "deg_dir": "deg",

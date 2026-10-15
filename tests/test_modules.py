@@ -34,7 +34,7 @@ def test_single_report_uses_shared_styles_by_default(tmp_path):
     assert '- theme/bioreport.scss' in settings
 
 
-def test_website_report_stages_six_independent_pages_with_shared_styles(tmp_path):
+def test_website_report_stages_seven_independent_pages_with_shared_styles(tmp_path):
     import yaml
 
     root = Path(__file__).resolve().parents[1]
@@ -49,7 +49,7 @@ def test_website_report_stages_six_independent_pages_with_shared_styles(tmp_path
 
     settings = yaml.safe_load((staged / "_quarto.yml").read_text())
     paths = settings["project"]["render"]
-    assert len(paths) == 6
+    assert len(paths) == 7
     assert settings["format"]["html"]["theme"] == ["theme/bioreport.scss"]
     assert settings["format"]["html"]["css"] == ["theme/styles.css", "theme/itables_saas.css"]
     assert settings["website"]["navbar"]["pinned"] is True
@@ -62,11 +62,12 @@ def test_website_report_stages_six_independent_pages_with_shared_styles(tmp_path
     assert [i for i, doc in enumerate(documents) if "bibliography:" in doc] == [2]
     assert "::: {#refs}" in documents[2]
     assert "```{mermaid}" in documents[2]
-    assert "body-classes: about-project" in documents[5]
-    assert "::: {.about-project}" not in documents[5]
+    assert "load_provenance(" in documents[5]
+    assert "body-classes: about-project" in documents[6]
+    assert "::: {.about-project}" not in documents[6]
 
 
-def test_rna_report_has_six_pages_with_samples_outside_overview(tmp_path):
+def test_rna_report_has_seven_pages_with_samples_outside_overview(tmp_path):
     root = Path(__file__).resolve().parents[1]
     shutil.copytree(root / "templates/shared", tmp_path / "qmd")
     shutil.copytree(root / "omics/rna/qmd", tmp_path / "qmd", dirs_exist_ok=True)
@@ -77,7 +78,7 @@ def test_rna_report_has_six_pages_with_samples_outside_overview(tmp_path):
     document = compose_report(config, tmp_path).read_text(encoding="utf-8")
 
     titles = re.findall(r'<a href="#report-page-\d+"[^>]*class="nav-link"[^>]*>([^<]+)</a>', document)
-    assert titles == ["项目概述", "样本信息", "分析概述", "质量控制", "分析结果", "关于"]
+    assert titles == ["项目概述", "样本信息", "分析概述", "质量控制", "分析结果", "溯源信息", "关于"]
     overview = document.split("# 项目概述\n", 1)[1].split("# 样本信息\n", 1)[0]
     samples = document.split("# 样本信息\n", 1)[1].split("# 分析概述\n", 1)[0]
     assert "get_project_summary_stats(" in overview
@@ -86,7 +87,7 @@ def test_rna_report_has_six_pages_with_samples_outside_overview(tmp_path):
     assert "number-sections: false" in document
     assert "{{< include" not in document
     assert "## 总数据量" not in document
-    assert len(re.findall(r"::: \{\.report-page(?: \.about-project)? #report-page-", document)) == 6
+    assert len(re.findall(r"::: \{\.report-page(?: \.about-project)? #report-page-", document)) == 7
     workflow = document.split("# 分析概述\n", 1)[1].split("# 质量控制\n", 1)[0]
     assert "::: {#refs}" in workflow
     assert 'class="navbar report-navbar"' in document
@@ -109,6 +110,7 @@ def test_json_paths_resolve_from_data_dir(tmp_path):
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps({
         "report": {"modules": ["about"], "output_format": ["html", "pdf"]},
+        "project": {"project_id": "TEST-001"},
         "input_files": {"data_dir": "data", "sample_file": "samples.csv"},
     }), encoding="utf-8")
 
@@ -122,6 +124,7 @@ def test_ai_prompt_resolves_from_config_directory(tmp_path):
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps({
         "report": {"modules": ["about", "ai"]},
+        "project": {"project_id": "TEST-001"},
         "ai": {"prompt_file": "prompts/interpretation.txt"},
         "input_files": {"data_dir": "data"},
     }), encoding="utf-8")
@@ -152,7 +155,10 @@ def test_generated_config_uses_container_data_mount_and_preserves_paths(tmp_path
 
 def test_cli_default_search_and_explicit_missing_config(tmp_path, monkeypatch):
     config_path = tmp_path / "report.json"
-    config_path.write_text('{"report": {"modules": ["about"]}}', encoding="utf-8")
+    config_path.write_text(
+        '{"report": {"modules": ["about"]}, "project": {"project_id": "TEST-001"}}',
+        encoding="utf-8",
+    )
     monkeypatch.setattr("bioreport.config.DEFAULT_CONFIG_PATHS", [str(config_path)])
 
     assert load_config_with_fallback(None)["_config_path"] == str(config_path)
@@ -164,6 +170,7 @@ def test_metadata_does_not_fill_missing_inputs_from_sample_data(tmp_path, monkey
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps({
         "report": {"modules": ["results.matrix"]},
+        "project": {"project_id": "TEST-001"},
         "input_files": {"tpm_file": "matrix.tsv"},
     }), encoding="utf-8")
     monkeypatch.setenv("REPORT_CONFIG", str(config_path))
@@ -180,6 +187,7 @@ def test_json_schema_reports_invalid_analysis_field(tmp_path):
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps({
         "report": {"modules": ["about"], "output_format": "html"},
+        "project": {"project_id": "TEST-001"},
         "analysis": {"deg": {"pvalue_threshold": 1.5}},
     }), encoding="utf-8")
 
@@ -266,7 +274,7 @@ def test_legacy_json_uses_default_modules():
     legacy = Path(__file__).resolve().parents[1] / "examples" / "rna-seq-project_summary.json"
     config = load_config(legacy)
 
-    assert selected_modules(config) == ["index", "workflow", "qc", "results", "about"]
+    assert selected_modules(config) == ["index", "workflow", "qc", "results", "provenance", "about"]
 
 
 def test_ai_include_is_resolved_after_generation(tmp_path):
@@ -306,6 +314,7 @@ def test_custom_module_resolves_from_json_and_stages_bibliography(tmp_path):
                 }
             },
         },
+        "project": {"project_id": "TEST-001"},
         "input_files": {"measurements": "measurements.csv"},
     }), encoding="utf-8")
     template_dir = tmp_path / "templates"

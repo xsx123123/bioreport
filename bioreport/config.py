@@ -154,6 +154,15 @@ def load_config(
         for key in ("report", "project", "stats", "input_files", "analysis", "ai"):
             data.setdefault(key, {})
 
+    # project.project_id 是必填项：项目唯一标识，贯穿日志、离线数据库与报告溯源。
+    # 放在 schema 校验之前，给出更友好的中文报错。
+    project = data.get("project", {})
+    if not isinstance(project, dict) or not isinstance(project.get("project_id"), str) or not project["project_id"].strip():
+        raise ValueError(
+            f"project.project_id 必须是非空字符串（项目唯一标识），请在 {path} 的 project 段添加，"
+            '例如 "project_id": "PRJ-2026-001"'
+        )
+
     validate_config(data, path)
     data["_legacy_format"] = legacy_format
 
@@ -291,6 +300,7 @@ def load_project_metadata(
         "species": "Unknown Species",
         "genome": "Unknown Genome",
         "software": "RNAFlow Pipeline",
+        "project_id": "N/A",
         "input_files": {
             "data_dir": "../data/index/",
             "qc_file": "multiqc_qc_general_stats.txt",
@@ -325,6 +335,7 @@ def load_project_metadata(
     if isinstance(project, dict):
         meta_info["client"] = project.get("client", meta_info["client"])
         meta_info["species"] = project.get("species", meta_info["species"])
+        meta_info["project_id"] = project.get("project_id", meta_info["project_id"])
         meta_info["genome"] = project.get(
             "genome_version", project.get("genome", meta_info["genome"])
         )

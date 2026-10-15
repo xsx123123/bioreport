@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import os
 import json
+from pathlib import Path
 from bioreport.utils.render_output import show_table as show
 from itables import options
 from bioreport.utils.visualize_utils import plot_software_table, plot_software_table_modern
@@ -722,3 +723,25 @@ def software_version_table(df_sw,sw_file) -> None:
         sw_ver_map = {}
 
     return sw_ver_map
+
+def load_provenance() -> dict:
+    """
+    读取临时项目中的报告溯源信息 (qmd/provenance.json)。
+
+    Quarto 代码单元的工作目录随文档位置变化，依次尝试常见候选路径；
+    任何情况下读不到都返回 {}，保证页面优雅降级、不报错。
+    """
+    candidates = (
+        Path("provenance.json"),              # cwd == qmd/
+        Path("qmd") / "provenance.json",      # cwd == 项目根
+        Path.cwd().parent / "qmd" / "provenance.json",
+    )
+    for candidate in candidates:
+        try:
+            if candidate.is_file():
+                with open(candidate, "r", encoding="utf-8") as handle:
+                    data = json.load(handle)
+                return data if isinstance(data, dict) else {}
+        except Exception:
+            continue
+    return {}

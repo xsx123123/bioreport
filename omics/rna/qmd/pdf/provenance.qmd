@@ -1,0 +1,55 @@
+---
+title: "报告溯源信息"
+---
+
+本页由 BioReport 引擎在报告生成时自动锚定，用于科研可复现与合规审计。
+
+```{python}
+#| label: pdf-provenance
+#| output: asis
+from datetime import datetime
+
+import pandas as pd
+
+import bioreport
+from bioreport.registry import get_registry
+from bioreport.utils.report_utils import load_provenance
+from bioreport.utils.render_output import show_print_table, typst_note
+
+prov = load_provenance() or {}
+
+_BUILTIN_TITLES = {
+    "ai": "AI 解读", "about": "关于", "faq": "常见问题",
+    "license": "许可", "trademark": "商标", "provenance": "溯源信息",
+}
+_FORMAT_NAMES = {"html": "HTML", "pdf": "PDF"}
+_registry = get_registry()
+
+
+def _module_title(module_id):
+    canonical = _registry.canonical(module_id)
+    if canonical in _registry.modules:
+        return _registry.modules[canonical].title
+    return _BUILTIN_TITLES.get(module_id, module_id)
+
+
+rows = [
+    {"项目": "项目 ID", "内容": prov.get("project_id", "N/A")},
+    {"项目": "生成引擎", "内容": f"BioReport v{prov.get('bioreport_version') or bioreport.__version__}"},
+    {"项目": "生成时间", "内容": prov.get("generated_at", "N/A")},
+    {"项目": "报告模块", "内容": "、".join(_module_title(m) for m in prov.get("rendered_modules") or []) or "N/A"},
+    {"项目": "输出布局", "内容": prov.get("layout", "N/A")},
+    {"项目": "输出格式", "内容": "、".join(_FORMAT_NAMES.get(f, f) for f in prov.get("output_format") or []) or "N/A"},
+]
+if prov.get("pipeline_version"):
+    rows.append({"项目": "分析流程版本", "内容": prov["pipeline_version"]})
+show_print_table(pd.DataFrame(rows), limit=None)
+
+checksums = prov.get("input_checksums") or {}
+if checksums:
+    fingerprints = [{"输入文件": key, "SHA256": digest} for key, digest in checksums.items()]
+    show_print_table(pd.DataFrame(fingerprints), limit=None)
+    typst_note("指纹用于核验数据是否被篡改。")
+else:
+    typst_note("未采集到输入文件指纹（本报告可能由旧版本引擎生成）。")
+```

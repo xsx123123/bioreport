@@ -4,7 +4,8 @@
     "species": "Mus musculus (C57BL/6)",
     "genome_version": "GRCm39 (Ensembl v109)",
     "pipeline_version": "RNAFlow_v0.1.6",
-    "analysis_date": "2026-01-13"
+    "analysis_date": "2026-01-13",
+    "project_id": "PRJ-LEGACY-001"
   },
   "stats": {
     "total_samples": 12,

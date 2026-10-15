@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 
-def build_default_report_config(client, species, genome, pipeline_version):
+def build_default_report_config(client, species, genome, pipeline_version, project_id="DEMO-PROJECT"):
     """构造默认的统一 YAML 配置结构。"""
     today = datetime.now().strftime("%Y-%m-%d")
     return {
@@ -47,6 +47,7 @@ def build_default_report_config(client, species, genome, pipeline_version):
             }
         },
         "project": {
+            "project_id": project_id,
             "client": client,
             "species": species,
             "genome_version": genome,
@@ -97,9 +98,9 @@ def build_default_report_config(client, species, genome, pipeline_version):
     }
 
 
-def update_yaml_config(client, species, genome, pipeline_version, output_path):
+def update_yaml_config(client, species, genome, pipeline_version, output_path, project_id="DEMO-PROJECT"):
     """更新或创建统一的 JSON 报告配置。"""
-    default_data = build_default_report_config(client, species, genome, pipeline_version)
+    default_data = build_default_report_config(client, species, genome, pipeline_version, project_id)
 
     out_path = Path(output_path)
     if out_path.exists():
@@ -131,10 +132,11 @@ def update_yaml_config(client, species, genome, pipeline_version, output_path):
         yaml.safe_dump(final_data, f, allow_unicode=True, sort_keys=False)
 
 
-def update_json_config(client, species, genome, pipeline_version, output_path):
+def update_json_config(client, species, genome, pipeline_version, output_path, project_id="DEMO-PROJECT"):
     """更新 data/project_summary.json（旧版兼容）"""
     default_data = {
         "project_meta": {
+            "project_id": project_id,
             "client": client,
             "species": species,
             "genome_version": genome,

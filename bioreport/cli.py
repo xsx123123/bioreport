@@ -27,6 +27,8 @@ from .pipeline import run_ai_pipeline
 from .renderer import render_templates
 from .modules import selected_modules
 from .registry import get_registry
+from .utils.provenance import build_provenance, write_provenance
+from .utils.run_db import default_db_path, record_run
 
 
 console = Console()
@@ -94,9 +96,9 @@ def setup_logging(output_dir: str | None = None) -> str | None:
 
     logger.add(
         sys.stderr,
-        format="<dim>{time:HH:mm:ss}</dim>  <level>{level: <7}</level>  {message}",
+        format="<green>{time:HH:mm:ss}</green>  <level>{level: <7}</level>  {message}",
         level="INFO",
-        colorize=sys.stderr.isatty(),
+        colorize=True,
     )
 
     if output_dir is None:
@@ -104,7 +106,7 @@ def setup_logging(output_dir: str | None = None) -> str | None:
     log_file = os.path.join(output_dir, "pipeline.log")
     logger.add(
         log_file,
-        format="{time:YYYY-MM-DD HH:mm:ss}  {level: <7}  {message}",
+        format="{time:YYYY-MM-DDTHH:mm:ssZZ}  {level: <7}  {message}",
         level="DEBUG",
         rotation="10 MB",
     )
@@ -360,6 +362,46 @@ def main():
         rna_qmd = next((path for path in rna_qmd_candidates if path.is_dir()), None)
         if rna_qmd:
             shutil.copytree(rna_qmd, template_dir / "qmd", dirs_exist_ok=True)
+        # 组装阶段写入溯源信息（引擎版本/生成时间/模块清单/输入指纹），
+        # 供共享页、组学页与页脚在 Quarto 执行阶段读取。
+        provenance = build_provenance(config, selected_modules(config))
+        provenance_path = write_provenance(provenance, template_dir / "qmd")
+        logger.info(f"报告溯源信息已写入: {provenance_path}")
+
+        def _record_run(status: str) -> None:
+            """将本次运行写入本地离线数据库；失败只告警，不阻断报告。"""
+            try:
+                db = default_db_path()
+                row_id = record_run(
+                    db,
+                    project_id=config["project"]["project_id"],
+                    provenance=provenance,
+                    config_path=config["_config_path"],
+                    output_dir=str(Path(args.output).resolve()),
+                    status=status,
+                )
+                logger.info(f"运行记录已写入本地数据库: {db} (id={row_id}, 状态={status})")
+            except Exception as exc:
+                logger.warning(f"写入本地运行数据库失败（不影响报告生成）: {exc}")
+
+        # 同步输出到运行日志（pipeline.log），便于不开报告即可审计核验。
+        logger.info(
+            "报告溯源: 引擎 BioReport v{} · 生成于 {} · 布局 {} · 格式 {}",
+            provenance["bioreport_version"],
+            provenance["generated_at"],
+            provenance["layout"],
+            "+".join(provenance["output_format"]),
+        )
+        logger.info(
+            "报告溯源: 模块 {}",
+            " · ".join(provenance["rendered_modules"]),
+        )
+        if provenance.get("pipeline_version"):
+            logger.info("报告溯源: 分析流程版本 {}", provenance["pipeline_version"])
+        # 控制台截断显示指纹，完整 SHA256 见 pipeline.log (DEBUG) 与本地数据库。
+        for key, digest in provenance["input_checksums"].items():
+            logger.info("输入指纹: {} = SHA256:{}…", key, digest[:12])
+            logger.debug("输入指纹(完整): {} = SHA256:{}", key, digest)
         render_templates(config, str(Path(args.output).resolve()), str(template_dir))
         if args.dry_run:
             logger.info("配置与模块已验证，跳过 Quarto 渲染。")
@@ -373,9 +415,11 @@ def main():
             render_report(config, config["_config_path"], args.output, template_dir)
         except (RuntimeError, FileNotFoundError) as exc:
             logger.error("{}", exc)
+            _record_run("failed")
             raise SystemExit(1) from None
 
     backup_config(config["_config_path"], args.output)
+    _record_run("success")
 
 
 if __name__ == "__main__":

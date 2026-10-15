@@ -9,6 +9,7 @@
       "rna.workflow",
       "rna.qc",
       "rna.results",
+      "provenance",
       "about"
     ],
     "output_format": "html"
@@ -17,7 +18,8 @@
     "client": "本地测试课题组",
     "species": "Mus musculus",
     "genome_version": "GRCm39",
-    "pipeline_version": "RNAFlow example"
+    "pipeline_version": "RNAFlow example",
+    "project_id": "PRJ-RNA-HTML-001"
   },
   "input_files": {
     "data_dir": "../examples/rna-seq/data",

@@ -6,6 +6,7 @@ import re
 import shutil
 from html import escape
 
+import bioreport
 import yaml
 from jinja2 import Template
 
@@ -18,6 +19,7 @@ MODULES = {
     "faq": ("faq.qmd", "常见问题"),
     "license": ("license.qmd", "许可"),
     "trademark": ("trademark.qmd", "商标"),
+    "provenance": ("provenance.qmd", "溯源信息"),
 }
 
 # Bootstrap icons (without the bi- prefix) shown before each navbar entry.
@@ -29,6 +31,7 @@ BUILTIN_PAGE_ICONS = {
     "faq": "question-circle",
     "license": "file-earmark-text",
     "trademark": "award",
+    "provenance": "shield-lock",
 }
 CATEGORY_PAGE_ICONS = {
     "index": "house",
@@ -52,6 +55,31 @@ def _canonical(module_id: str) -> str:
     return get_registry().canonical(module_id)
 
 
+def _report_footer(template_dir: Path) -> str:
+    """构建真实 HTML 页脚元素，内容取自自动生成的溯源信息。
+
+    provenance.json 缺失时回退到引擎当前版本，保证旧流程不受影响。
+    """
+    version = bioreport.__version__
+    generated_at = ""
+    provenance_path = template_dir / "qmd" / "provenance.json"
+    try:
+        data = json.loads(provenance_path.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            version = data.get("bioreport_version") or version
+            generated_at = data.get("generated_at") or ""
+    except Exception:
+        pass
+    text = f"Powered by BioReport v{version}"
+    if generated_at:
+        text += f" · 生成于 {generated_at}"
+    return (
+        '```{=html}\n'
+        f'<footer class="report-footer">{escape(text)}</footer>\n'
+        '```\n'
+    )
+
+
 def selected_modules(config: dict) -> list[str]:
     report = config.get("report", {})
     custom = report.get("module_definitions", {})
@@ -62,9 +90,9 @@ def selected_modules(config: dict) -> list[str]:
         raise ValueError(f"Custom module IDs conflict with built-in modules: {', '.join(sorted(collisions))}")
     registry = get_registry()
     default_modules = (
-        ("index", "workflow", "qc", "results", "about")
+        ("index", "workflow", "qc", "results", "provenance", "about")
         if config.get("_legacy_format")
-        else (*registry.default_modules, "about")
+        else (*registry.default_modules, "provenance", "about")
     )
     modules = report.get("modules", report.get("sections", list(default_modules)))
     if not isinstance(modules, list) or not modules:
@@ -267,6 +295,8 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         ]:
             if value:
                 fields.append(json.dumps(f'{label}：{value}', ensure_ascii=False))
+        # 自动注入报告引擎版本，随 __version__ 自动更新，无需手填。
+        fields.append(json.dumps(f'报告引擎：BioReport v{bioreport.__version__}', ensure_ascii=False))
         cover = Template((style_dir / "rna-cover.typ.j2").read_text(encoding="utf-8")).render(
             title=json.dumps(str(lines[0]).replace('PDF', '').strip(), ensure_ascii=False), fields=fields,
             subtitle=str(lines[0]).replace('PDF', '').strip() != 'RNA-seq 转录组分析报告',
@@ -278,8 +308,8 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         canonical = _canonical(module_id)
         if module_id in MODULES:
             filename, heading = MODULES[module_id]
-            if pdf and has_rna and module_id == "about":
-                filename = "pdf/about.qmd"
+            if pdf and has_rna and module_id in ("about", "provenance"):
+                filename = f"pdf/{module_id}.qmd"
             module_meta, body = _read_module(template_dir / "qmd" / filename)
             definition = None
         elif canonical in registered:
@@ -383,7 +413,10 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                         content,
                     )
                 page_frontmatter = yaml.safe_dump(page_meta, allow_unicode=True, sort_keys=False)
-                page_path.write_text(f"---\n{page_frontmatter}---\n\n{content.strip()}\n", encoding="utf-8")
+                page_path.write_text(
+                    f"---\n{page_frontmatter}---\n\n{content.strip()}\n\n" + _report_footer(template_dir),
+                    encoding="utf-8",
+                )
                 website_pages.append({"href": f"qmd/{page_path.name}", "title": title, "icon": _page_icon(chapter_id, registered)})
             elif pdf:
                 sections.append(('```{=typst}\n#pagebreak(weak: true)\n```\n\n' if has_rna else "") + f"# {content_heading}\n\n{content.strip()}\n")
@@ -439,5 +472,9 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             '</nav>\n```\n\n'
         )
     frontmatter = yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False)
-    target.write_text(f"---\n{frontmatter}---\n\n" + navigation + "\n".join(sections), encoding="utf-8")
+    target.write_text(
+        f"---\n{frontmatter}---\n\n" + navigation + "\n".join(sections)
+        + ("" if pdf else "\n" + _report_footer(template_dir)),
+        encoding="utf-8",
+    )
     return target

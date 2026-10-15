@@ -71,10 +71,10 @@ def test_rna_json_renders_one_html_and_pdf(tmp_path):
     assert "RNA-seq" in html
     soup = BeautifulSoup(html, "html.parser")
     assert [node.get_text(strip=True) for node in soup.select('.report-navbar a.nav-link')] == [
-        "项目概述", "样本信息", "分析概述", "质量控制", "分析结果", "关于",
+        "项目概述", "样本信息", "分析概述", "质量控制", "分析结果", "溯源信息", "关于",
     ]
     pages = soup.select('.report-page')
-    assert len(pages) == 6
+    assert len(pages) == 7
     assert pages[2].select_one('.mermaid') is not None
     assert soup.select_one('#refs').find_parent(class_='report-page') == pages[2]
     assert len(soup.select('.report-brand img')) == 1

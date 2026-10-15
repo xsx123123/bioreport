@@ -55,43 +55,61 @@ current_date = datetime.date.today().strftime("%Y-%m-%d")
 
 本项目旨在通过转录组测序（RNA-seq）技术，探究目标样本在特定处理条件下的基因表达差异。通过对测序数据的深度挖掘，揭示其潜在的分子机制。
 
-::: {layout-ncol=5}
+::: {.report-info-grid}
 
-<div class="p-3 rounded-3 text-center" style="background-color: #e7f1ff;">
-  <div style="font-size: 1.5rem;">👤</div>
-  <div class="small text-muted mt-1">委托客户</div>
-  <div class="fw-bold text-primary">`{python} project_info['client']`</div>
-</div>
+::: {.info-card}
+<i class="bi bi-person-badge"></i>
 
-<div class="p-3 rounded-3 text-center" style="background-color: #e6f8f0;">
-  <div style="font-size: 1.5rem;">🦁</div>
-  <div class="small text-muted mt-1">目标物种</div>
-  <div class="fw-bold text-success">`{python} project_info['species']`</div>
-</div>
+委托客户
 
-<div class="p-3 rounded-3 text-center" style="background-color: #fce8e9;">
-  <div style="font-size: 1.5rem;">🧬</div>
-  <div class="small text-muted mt-1">基因组</div>
-  <div class="fw-bold text-danger">`{python} project_info['genome']`</div>
-</div>
+`{python} project_info['client']`
+:::
 
-<div class="p-3 rounded-3 text-center" style="background-color: #fff8e1;">
-  <div style="font-size: 1.5rem;">🤖</div>
-  <div class="small text-muted mt-1">流程版本</div>
-  <div class="fw-bold text-warning-emphasis">`{python} project_info['software']`</div>
-</div>
+::: {.info-card}
+<i class="bi bi-tag"></i>
 
-<div class="p-3 rounded-3 text-center" style="background-color: #f8f9fa;">
-  <div style="font-size: 1.5rem;">🗓</div>
-  <div class="small text-muted mt-1">报告日期</div>
-  <div class="fw-bold text-secondary">`{python} current_date`</div>
-</div>
+项目 ID
+
+`{python} project_info['project_id']`
+:::
+
+::: {.info-card}
+<i class="bi bi-globe2"></i>
+
+目标物种
+
+`{python} project_info['species']`
+:::
+
+::: {.info-card}
+<i class="bi bi-diagram-3"></i>
+
+参考基因组
+
+`{python} project_info['genome']`
+:::
+
+::: {.info-card}
+<i class="bi bi-cpu"></i>
+
+分析流程
+
+`{python} project_info['software']`
+:::
+
+::: {.info-card}
+<i class="bi bi-calendar3"></i>
+
+报告日期
+
+`{python} current_date`
+:::
 
 :::
 
 ::: {.callout-note appearance="simple" icon=false}
 
-#### 📝 分析声明
+#### 分析声明
 本次分析的平均 Q30 为 **`{python} f"{avg_q30:.1f}"` %**。分析所使用的参考基因组版本为 **`{python} project_info['genome']`**，详细的软件参数与版本信息请参阅报告附录。
 
 :::
@@ -102,111 +120,48 @@ current_date = datetime.date.today().strftime("%Y-%m-%d")
 
 **项目测序数据产出与核心质控指标总览如下:**
 
-::: {.report-overview-grid}
+```{python}
+#| echo: false
+# 统一 KPI 卡：中性卡 + 主题色顶边；仅指标异常（红色顶边）提示。
+from html import escape
+from IPython.display import HTML, display
 
-::: {.callout-note appearance="minimal"}
 
-**样本信息 (Samples)**
+def _kpi_card(title, number, unit, note, danger=False):
+    classes = "kpi-card kpi-danger" if danger else "kpi-card"
+    unit_html = (
+        "<span class='report-metric-unit'>" + escape(str(unit)) + "</span>" if unit else ""
+    )
+    return (
+        "<div class='" + classes + "'>"
+        "<div class='kpi-title'>" + escape(str(title)) + "</div>"
+        "<div class='report-metric'>" + escape(str(number)) + unit_html + "</div>"
+        "<div class='kpi-note'>" + str(note) + "</div>"
+        "</div>"
+    )
 
-::: {.report-metric}
 
-<span class="report-metric-num">**`{python} total_samples_count`**</span> <span class="report-metric-unit">Samples</span>
-
-:::
-
-包含 **`{python} total_groups`** 个实验分组
-
-:::
-
-::: {.callout-tip appearance="minimal"}
-
-**总数据量 (Data)**
-
-::: {.report-metric}
-
-<span class="report-metric-num">**`{python} f"{total_data_gb:.1f}"`**</span> <span class="report-metric-unit">Gb</span>
-
-:::
-
-平均 `{python} f"{avg_data_per_sample:.1f}"` Gb / Sample
-
-:::
-
-::: {.callout-note appearance="minimal"}
-
-**测序质量 (Q30)**
-
-::: {.report-metric}
-
-<span class="report-metric-num">**`{python} f"{avg_q30:.1f}"`**</span> <span class="report-metric-unit">%</span>
-
-:::
-
-`{python} qc_status_text`
-
-:::
-
-::: {.callout-important appearance="minimal"}
-
-**基因检出 (Genes)**
-
-::: {.report-metric}
-
-<span class="report-metric-num">**`{python} genes_detected`**</span>
-
-:::
-
-TPM > 1 的基因数量
-
-:::
-
-::: {.callout-note appearance="minimal"}
-
-**比对率 (Mapping)**
-
-::: {.report-metric}
-
-<span class="report-metric-num">**`{python} f"{mapping_rate:.1f}"`**</span> <span class="report-metric-unit">%</span>
-
-:::
-
-`{python} mapping_status_text`
-
-:::
-
-::: {.callout-note appearance="minimal"}
-
-**唯一比对 (Unique)**
-
-::: {.report-metric}
-
-<span class="report-metric-num">**`{python} f"{unique_mapping_rate:.1f}"`**</span> <span class="report-metric-unit">%</span>
-
-:::
-
-`{python} unique_status_text`
-
-:::
-
-::: {.callout-warning appearance="minimal"}
-
-**重复率 (Dup)**
-
-::: {.report-metric}
-
-<span class="report-metric-num">**`{python} f"{avg_dup:.1f}"`**</span> <span class="report-metric-unit">%</span>
-
-:::
-
-序列重复水平
-
-:::
-
-:::
+_kpis = [
+    _kpi_card("样本信息 (Samples)", total_samples_count, "Samples",
+              f"包含 <strong>{total_groups}</strong> 个实验分组"),
+    _kpi_card("总数据量 (Data)", f"{total_data_gb:.1f}", "Gb",
+              f"平均 {avg_data_per_sample:.1f} Gb / Sample"),
+    _kpi_card("测序质量 (Q30)", f"{avg_q30:.1f}", "%", escape(str(qc_status_text)),
+              danger=avg_q30 < 80),
+    _kpi_card("基因检出 (Genes)", genes_detected, "", "TPM &gt; 1 的基因数量"),
+    _kpi_card("比对率 (Mapping)", f"{mapping_rate:.1f}", "%", escape(str(mapping_status_text)),
+              danger=mapping_rate < 70),
+    _kpi_card("唯一比对 (Unique)", f"{unique_mapping_rate:.1f}", "%", escape(str(unique_status_text)),
+              danger=unique_mapping_rate < 60),
+    _kpi_card("重复率 (Dup)", f"{avg_dup:.1f}", "%", "序列重复水平",
+              danger=avg_dup > 50),
+]
+display(HTML("<div class='report-kpi-grid'>" + "".join(_kpis) + "</div>"))
+```
 
 ::: {.callout-note collapse="true"}
 
-### 🔬 详细结论描述 (点击展开)
+### 详细结论描述 (点击展开)
 本次项目共分析了 **`{python} total_samples_count`** 个样本，涉及 **`{python} total_groups`** 个实验分组。测序数据质量整体表现`{python} "优秀" if avg_q30 >= 90 else "良好"`。
 
 - **测序质量**：平均 Q30 达到 `{python} f"{avg_q30:.1f}"`%，`{python} qc_status_text`。
@@ -227,7 +182,7 @@ Sample_Info_table_modern(df_final)
 
 ::: {.callout-note .report-note-hint appearance="minimal" icon=false collapse="true"}
 
-### 📝 表格列名说明 (点击展开)
+### 表格列名说明 (点击展开)
 
 - **Sample ID**: 样本编号，用于区分不同的测序样本。
 - **Group**: 样本所属的实验分组。

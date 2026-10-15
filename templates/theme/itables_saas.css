@@ -19,9 +19,9 @@
     --dt-header-text: #a1a1aa; /* Zinc-400 */
     --dt-border: #27272a;      /* Zinc-800 */
     --dt-header-border: #3f3f46; /* Zinc-700 */
-    --dt-hover: #18181b;       /* Zinc-900 */
-    --dt-input-bg: #18181b;
-    --dt-btn-bg: #18181b;
+    --dt-hover: #26364a;       /* Zinc-900 */
+    --dt-input-bg: #26364a;
+    --dt-btn-bg: #26364a;
     --dt-btn-hover: #27272a;
 }
 
