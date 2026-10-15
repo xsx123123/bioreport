@@ -18,8 +18,8 @@ def test_single_report_uses_shared_styles_by_default(tmp_path):
     root = Path(__file__).resolve().parents[1]
     shutil.copyfile(root / 'templates/_quarto-single.yml.j2', tmp_path / '_quarto-single.yml.j2')
     (tmp_path / 'qmd').mkdir()
-    shutil.copyfile(root / 'omics/rna/qmd/about.qmd', tmp_path / 'qmd/about.qmd')
-    shutil.copytree(root / 'omics/rna/qmd/assets', tmp_path / 'qmd/assets')
+    shutil.copyfile(root / 'templates/shared/about.qmd', tmp_path / 'qmd/about.qmd')
+    shutil.copytree(root / 'templates/shared/assets', tmp_path / 'qmd/assets')
 
     render_templates({'report': {'layout': 'single', 'modules': ['about']}}, str(tmp_path / 'output'), str(tmp_path))
 
@@ -40,7 +40,8 @@ def test_website_report_stages_six_independent_pages_with_shared_styles(tmp_path
     root = Path(__file__).resolve().parents[1]
     shutil.copytree(root / "templates", tmp_path / "templates")
     staged = tmp_path / "templates"
-    shutil.copytree(root / "omics/rna/qmd", staged / "qmd")
+    shutil.copytree(staged / "shared", staged / "qmd")
+    shutil.copytree(root / "omics/rna/qmd", staged / "qmd", dirs_exist_ok=True)
     config = load_config(root / "tests/report.rna.local.json")
     config["report"]["layout"] = "website"
     config["report"]["output_format"] = "html"
@@ -67,7 +68,8 @@ def test_website_report_stages_six_independent_pages_with_shared_styles(tmp_path
 
 def test_rna_report_has_six_pages_with_samples_outside_overview(tmp_path):
     root = Path(__file__).resolve().parents[1]
-    shutil.copytree(root / "omics/rna/qmd", tmp_path / "qmd")
+    shutil.copytree(root / "templates/shared", tmp_path / "qmd")
+    shutil.copytree(root / "omics/rna/qmd", tmp_path / "qmd", dirs_exist_ok=True)
     shutil.copytree(root / "templates/reference", tmp_path / "reference")
     shutil.copytree(root / "templates/pdf", tmp_path / "pdf")
     config = load_config(root / "tests/report.rna.local.json")
@@ -268,7 +270,7 @@ def test_legacy_json_uses_default_modules():
 
 
 def test_ai_include_is_resolved_after_generation(tmp_path):
-    source = Path(__file__).resolve().parents[1] / "omics" / "rna" / "qmd" / "AI.qmd"
+    source = Path(__file__).resolve().parents[1] / "templates" / "shared" / "AI.qmd"
     qmd = tmp_path / "qmd"
     qmd.mkdir()
     shutil.copyfile(source, qmd / "AI.qmd")

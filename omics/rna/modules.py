@@ -7,19 +7,19 @@ from bioreport.registry import Module
 
 _ROOT = str(Path(__file__).resolve().parent)
 MODULES = [
-    Module("rna.workflow", "qmd/workflow.qmd", "分析流程", "workflow", package_root=_ROOT, optional_inputs=("software_versions_file",)),
-    Module("rna.qc", "qmd/qc.qmd", "质量控制", "qc", ("fastp_stats_file", "fastp_report_dir", "fastq_screen_r1_dir", "fastq_screen_r2_dir", "qualimap_dir"), package_root=_ROOT),
+    Module("rna.workflow", "qmd/workflow.qmd", "分析流程", "workflow", package_root=_ROOT, optional_inputs=("software_versions_file",), icon="signpost-split"),
+    Module("rna.qc", "qmd/qc.qmd", "质量控制", "qc", ("fastp_stats_file", "fastp_report_dir", "fastq_screen_r1_dir", "fastq_screen_r2_dir", "qualimap_dir"), package_root=_ROOT, icon="clipboard2-check"),
     Module("rna.qc.fastp", "qmd/modules/qc/fastp.qmd", "fastp 质控", "qc", ("fastp_stats_file", "fastp_report_dir"), package_root=_ROOT, parent="rna.qc", setup_qmd="qmd/modules/qc/setup.qmd"),
     Module("rna.qc.screen", "qmd/modules/qc/screen.qmd", "污染检测", "qc", ("fastq_screen_r1_dir", "fastq_screen_r2_dir"), package_root=_ROOT, parent="rna.qc", setup_qmd="qmd/modules/qc/setup.qmd"),
     Module("rna.qc.qualimap", "qmd/modules/qc/qualimap.qmd", "QualiMap 比对质控", "qc", ("qualimap_dir",), package_root=_ROOT, parent="rna.qc", setup_qmd="qmd/modules/qc/setup.qmd"),
     Module("rna.qc.star", "qmd/modules/qc/star.qmd", "STAR 比对结果", "qc", ("qualimap_dir",), package_root=_ROOT, parent="rna.qc", setup_qmd="qmd/modules/qc/setup.qmd"),
-    Module("rna.results", "qmd/results.qmd", "分析结果", "results", ("tpm_file", "sample_file", "contrasts_file", "deg_dir", "enrichment_dir"), package_root=_ROOT),
+    Module("rna.results", "qmd/results.qmd", "分析结果", "results", ("tpm_file", "sample_file", "contrasts_file", "deg_dir", "enrichment_dir"), package_root=_ROOT, icon="bar-chart"),
     Module("rna.results.samples", "qmd/modules/results/samples.qmd", "样本关系与表达分布", "results", ("tpm_file", "sample_file"), package_root=_ROOT, parent="rna.results", setup_qmd="qmd/modules/results/setup.qmd"),
     Module("rna.results.matrix", "qmd/modules/results/matrix.qmd", "基因表达矩阵", "results", ("tpm_file",), package_root=_ROOT, parent="rna.results", setup_qmd="qmd/modules/results/setup.qmd"),
     Module("rna.results.heatmap", "qmd/modules/results/heatmap.qmd", "基因表达热图", "results", ("tpm_file", "sample_file"), package_root=_ROOT, parent="rna.results", setup_qmd="qmd/modules/results/setup.qmd"),
     Module("rna.results.deg", "qmd/modules/results/deg.qmd", "差异表达分析", "results", ("contrasts_file", "deg_dir"), package_root=_ROOT, parent="rna.results", setup_qmd="qmd/modules/results/setup.qmd"),
     Module("rna.results.enrichment", "qmd/modules/results/enrichment.qmd", "富集分析结果", "results", ("contrasts_file", "enrichment_dir"), package_root=_ROOT, parent="rna.results", setup_qmd="qmd/modules/results/setup.qmd"),
-    Module("rna.index", "qmd/index.qmd", "项目概况", "index", ("qc_file", "mapping_file", "tpm_file", "sample_file"), package_root=_ROOT),
+    Module("rna.index", "qmd/index.qmd", "项目概况", "index", ("qc_file", "mapping_file", "tpm_file", "sample_file"), package_root=_ROOT, icon="house"),
 ]
 
 

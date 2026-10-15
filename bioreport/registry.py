@@ -16,6 +16,7 @@ class Module:
     parent: str | None = None
     setup_qmd: str | None = None
     optional_inputs: tuple[str, ...] = ()
+    icon: str = ""
 
 
 class Registry:

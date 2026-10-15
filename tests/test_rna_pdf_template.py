@@ -13,7 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def stage(tmp_path):
     shutil.copytree(ROOT / "templates", tmp_path / "templates")
-    shutil.copytree(ROOT / "omics/rna/qmd", tmp_path / "templates/qmd")
+    shutil.copytree(ROOT / "templates/shared", tmp_path / "templates/qmd")
+    shutil.copytree(ROOT / "omics/rna/qmd", tmp_path / "templates/qmd", dirs_exist_ok=True)
     return tmp_path / "templates"
 
 

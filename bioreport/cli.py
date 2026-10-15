@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-RNAReport CLI 与主流程编排。
+BioReport CLI 与主流程编排。
 """
 
 import argparse
@@ -348,9 +348,11 @@ def main():
     with tempfile.TemporaryDirectory(prefix="bioreport-") as temporary:
         template_dir = Path(temporary) / "templates"
         shutil.copytree(source_template, template_dir)
-        # omics/rna/qmd holds the RNA pages plus the shared built-in pages
-        # (about/faq/license/trademark/AI) used by every report type; stage it
-        # beside shared templates so the renderer has one stable project root.
+        # Shared built-in pages (about/faq/license/trademark/AI) and their
+        # assets ship with the core templates, so the engine never depends
+        # on any specific omics package; stage them first as the qmd/ root.
+        shutil.copytree(template_dir / "shared", template_dir / "qmd")
+        # Omics packages (e.g. omics/rna) overlay their own pages on top.
         rna_qmd_candidates = [
             Path(__file__).resolve().parents[1] / "omics" / "rna" / "qmd",
             Path(__file__).resolve().parents[1] / ".." / "omics" / "rna" / "qmd",

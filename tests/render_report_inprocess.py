@@ -37,6 +37,7 @@ def render(config_path: Path, output: Path, output_format: str):
         raise ValueError('The verification utility supports single documents')
     staged = output / 'templates'
     shutil.copytree(ROOT / 'templates', staged, dirs_exist_ok=True)
+    shutil.copytree(ROOT / 'templates/shared', staged / 'qmd', dirs_exist_ok=True)
     shutil.copytree(ROOT / 'omics/rna/qmd', staged / 'qmd', dirs_exist_ok=True)
     render_templates(config, str(output / 'rendered'), str(staged))
     source = staged / 'qmd' / ('report_pdf.qmd' if output_format == 'pdf' else 'report.qmd')

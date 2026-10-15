@@ -47,7 +47,7 @@ python -m bioreport run -c tests/report.rna.local.json -o output/rna-report
 
 示例数据位于 `examples/rna-seq/data/`，本地配置在 `tests/report.rna.local.json`，默认使用 `single` 模式，生成 `output/rna-report/report.html`，样式、脚本及图片资源嵌入 HTML。报告内通过顶部导航切换六个章节视图。页面使用 `templates/theme/New_Brutalism.scss`、`styles.css` 和 `itables_saas.css`；修改模板或 Logo 后重新生成即可更新。若需要六份独立 HTML，可将 `report.layout` 改为 `website`，从 `output/rna-report/index.html` 打开。先用 `--dry-run` 可检查配置和模板组合，此模式不生成 HTML。`configs/report.example.json` 的数据根目录为容器内 `/data`，本地直接运行前须修改路径。
 
-需要单文件 HTML/PDF 时，将 `report.layout` 设为 `"single"`，并按需设置 `report.output_format`。修改报告章节内容请编辑 `omics/rna/qmd/`，调整共享样式请编辑 `templates/theme/`；报告默认使用其中的白色背景亮色主题和 CSS。报告标题、模块顺序、分析阈值等由配置文件控制。
+需要单文件 HTML/PDF 时，将 `report.layout` 设为 `"single"`，并按需设置 `report.output_format`。修改 RNA 报告章节请编辑 `omics/rna/qmd/`，修改各类型共用的内置页面（关于/常见问题/许可/商标/AI 解读）请编辑 `templates/shared/`，调整共享样式请编辑 `templates/theme/`；报告默认使用其中的白色背景亮色主题和 CSS。报告标题、模块顺序、分析阈值等由配置文件控制。
 
 ### Docker 生成报告
 
@@ -204,7 +204,7 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 | 可选 AI 辅助解读 | 大语言模型接入 · Markdown | 选择 AI 模块且启用后，整合指定差异与富集结果并生成 Markdown 解读，渲染前就绪；模型生成内容需研究人员审阅 |
 | 运行环境 | 本地 Python / Quarto · Docker | 本地或容器内完成模板渲染、代码执行与文档构建；报告阅读使用浏览器或 PDF 阅读器 |
 
-> 架构图源文件唯一维护于 [`omics/rna/qmd/assets/architecture.mmd`](omics/rna/qmd/assets/architecture.mmd)：报告「关于」页通过 include 机制内嵌同一份 Mermaid 源码，PDF 中的静态 SVG（`omics/rna/qmd/assets/architecture.svg`）由该文件离线导出，README 中的副本与其保持同步。当前内置 RNA-seq 模块；新增组学类型需要提供对应的数据读取、图表和解释模块。
+> 架构图源文件唯一维护于 [`templates/shared/assets/architecture.mmd`](templates/shared/assets/architecture.mmd)：报告「关于」页通过 include 机制内嵌同一份 Mermaid 源码，PDF 中的静态 SVG（`templates/shared/assets/architecture.svg`）由该文件离线导出，README 中的副本与其保持同步。当前内置 RNA-seq 模块；新增组学类型需要提供对应的数据读取、图表和解释模块。
 
 ## 📂 目录结构说明
 
@@ -230,12 +230,13 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 │       ├── report_utils.py
 │       └── prompt.txt
 ├── omics/rna/                   # RNA-seq 模块、QMD 与分析脚本
-│   ├── modules.py               # RNA 模块声明与输入契约
-│   ├── qmd/                     # RNA 页面 + 全类型共用内置页面（见下方说明）
+│   ├── modules.py               # RNA 模块声明、输入契约与导航图标
+│   ├── qmd/                     # RNA 专属页面（index/workflow/qc/results 及 pdf/、modules/）
 │   └── analysis/
 ├── templates/                   # 通用 Quarto 壳、主题与资源
 │   ├── _quarto.yml.j2           # Quarto 网站配置 Jinja2 模板
 │   ├── _quarto-single.yml.j2    # 单页 HTML/PDF 配置模板
+│   ├── shared/                  # 全类型共用内置页面（about/faq/license/trademark/AI）及其资产
 │   ├── theme/
 │   └── logo/
 ├── configs/                     # 报告配置文件
@@ -251,7 +252,7 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 
 ### 共用内置页面（所有报告类型通用）
 
-`omics/rna/qmd/` 中的 `about.qmd`、`faq.qmd`、`license.qmd`、`trademark.qmd`、`AI.qmd` 是**所有报告模版共用**的内置页面：它们由 `bioreport/modules.py` 的 `MODULES` 注册为组学无关的内置模块，且 `bioreport/cli.py` 在渲染任何 assay 类型（RNA-seq 或通用 assay）时都会把 `omics/rna/qmd/` 整体 stage 到模版 `qmd/` 目录。因此修改这些文件会影响全部报告类型，只有 `rna.*` 注册模块及 `pdf/` 子目录下的内容才是 RNA-seq 专属。
+`templates/shared/` 中的 `about.qmd`、`faq.qmd`、`license.qmd`、`trademark.qmd`、`AI.qmd` 是**所有报告模版共用**的内置页面：它们由 `bioreport/modules.py` 的 `MODULES` 注册为组学无关的内置模块，随核心模板一起分发。`bioreport/cli.py` 在渲染任何 assay 类型（RNA-seq 或通用 assay）时都会先把 `templates/shared/` stage 为临时 Quarto 项目的 `qmd/` 根目录，再让各组学包（如 `omics/rna/qmd/`）覆盖叠加自己的页面——因此核心引擎不依赖任何具体组学，修改这些共享文件会影响全部报告类型，只有 `rna.*` 注册模块及 `pdf/` 子目录下的内容才是 RNA-seq 专属。
 
 ## 📝 配置文件 (`configs/report.example.json`) 关键字段
 

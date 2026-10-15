@@ -597,7 +597,7 @@ code { color: #29496f; }
   .about-project .arch-figure { padding: .8rem .6rem; }
   /* Keep the diagram at its designed width so text stays readable;
      only the figure container scrolls sideways. Match the viewBox
-     width of omics/rna/qmd/assets/architecture.svg. */
+     width of templates/shared/assets/architecture.svg. */
   .about-project .arch-figure .report-mermaid-container,
   .about-project .arch-figure .mermaid { display: inline-block; min-width: 1200px; }
   .about-project .about-footer-card { padding: 1.4rem 1.2rem 1.3rem; }
