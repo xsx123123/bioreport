@@ -13,21 +13,45 @@ project_config = load_config()
 input_files = project_config['input_files']
 pdf_settings = settings(project_config)
 project = project_config.get('project', {})
+pipeline_name = project.get('pipeline_version') or project.get('software') or 'RNA-seq Pipeline'
+reference_genome = project.get('genome_version') or project.get('genome') or '参考基因组'
+display(Markdown(
+    f'本报告由 **BioReport** 自动化报告引擎基于上游转录组分析流程（`{pipeline_name}`）的产出结果构建。'
+    f'报告涵盖测序原始数据质量控制、外源污染筛查、参考基因组（`{reference_genome}`）比对统计、'
+    '样本间表达谱关系评估、差异表达基因筛查及功能富集分析等模块，'
+    '旨在为下游实验验证与课题研究提供标准化的数据概览与可复现溯源记录。\n\n'
+    '**核心汇总指标说明：**\n'
+    '- **样本数与分组数**：依据输入样本元数据表（Sample Sheet）解析的有效样本总数及实验设计分组数。\n'
+    '- **平均 Q30**：全样本过滤后 Clean Reads 中 Phred 质量得分 $\\ge 30$（碱基识别准确率 $\\ge 99.9\\%$）的碱基比例算术均值，用于衡量整体测序碱基质量。\n'
+    '- **平均比对率**：全样本成功比对至参考基因组的 Reads 占总有效 Reads 比例的算术均值，反映测序序列与参考基因组的整体匹配度。\n'
+    '- **检出基因数**：全样本表达量矩阵中，满足至少在 1 个样本中表达丰度 $\\text{TPM} > 1$ 的注释基因总数，反映本次测序的转录本有效检出广度。'))
 labels = {'client':'委托客户', 'species':'物种', 'genome_version':'参考基因组', 'genome':'参考基因组', 'pipeline_version':'分析流程', 'project_id':'项目编号', 'report_date':'报告日期', 'run_id':'运行标识'}
 metadata = pd.DataFrame([{'项目':label, '内容':project[key]} for key,label in labels.items() if project.get(key)])
 if not metadata.empty: show_print_table(metadata, limit=None)
 show_print_table(summary_metrics(project_config), limit=None)
 summary = comparison_summaries(project_config)
 if not summary.empty:
-    display(Markdown('## 各比较组差异基因摘要'))
+    display(Markdown('## 各比较组差异基因摘要\n\n'
+        '差异表达分析旨在识别不同实验处理组（Treat）与对照组（Control）之间转录水平发生显著变化的基因。'
+        '下表汇总了各设定比较组（Contrast）在预设统计学阈值下的显著上调（Up-regulated）、'
+        '显著下调（Down-regulated）基因数量及参与检验的基因总记录数。'))
     show_print_table(summary, limit=None)
     thresholds = project_config.get('analysis', {}).get('deg', {})
-    typst_note(f"统计口径：原始 P < {thresholds.get('pvalue_threshold',.05)}；上调 Log2FC > {thresholds.get('log2fc_threshold',1.)}，下调 Log2FC < -{thresholds.get('log2fc_threshold',1.)}。方向由 contrasts 中 Treat 相对于 Control 定义，各比较组分别统计，不合并计数。")
+    p_cut = thresholds.get('pvalue_threshold', .05)
+    fc_cut = thresholds.get('log2fc_threshold', 1.)
+    display(Markdown(
+        f'**统计口径说明**：默认显著性判定阈值为原始检验 $P < {p_cut}$ 且表达变化倍数满足 '
+        f'$\\vert\\log_2\\text{{FC}}\\vert > {fc_cut}$（其中 $\\log_2\\text{{FC}} > {fc_cut}$ 定义为上调，'
+        f'$\\log_2\\text{{FC}} < -{fc_cut}$ 定义为下调）。比较方向严格由输入 `contrasts` 表中的处理组（Treat）'
+        '相对于对照组（Control）定义，各比较组独立统计，不作跨组合并计数。\n\n'
+        '> **报告声明**：本报告忠实展示配置文件中选定模块的实际输入分析结果，'
+        '仅提供客观统计汇总与可视化图表，不依据上述汇总指标自动判定质控通过与否，'
+        '亦不对下游生物学机制做主观推断。'))
 ```
 
-本报告展示配置中选定模块的实际输入结果，不依据这些汇总指标自动判定质控通过或推断生物学机制。
-
 ## 样本信息
+
+下表展示纳入本次分析的样本元数据映射关系。其中 `sample` 为上游原始分析流程中的内部样本标识，`sample_name` 为报告图表中统一展示的规范化样本名称，`group` 为实验设计分组标识。后续章节的图表与表达矩阵均按分组（`group`）及组内输入顺序排列展示。
 
 ```{python}
 #| label: pdf-sample-info

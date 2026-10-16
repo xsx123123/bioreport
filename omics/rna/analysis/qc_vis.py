@@ -432,4 +432,20 @@ def _visualize_pdf_json(data, analysis_dir, targets):
             _show_print_qc(fig, identifier, caption)
     if not matched:
         raise ValueError(f'No QC plot datasets for {targets} in {analysis_dir}')
-    typst_note(f"质控图读取 MultiQC 保存的数据集；{'正文保留关键图，过滤曲线使用 After filtering 阶段' if detail=='key' else '展示全部已保存的曲线和柱状诊断图，含各 reads 与过滤阶段'}。完整质控结果（数据目录内相对路径）：{display_path(analysis_dir)}")
+    # 底部数据源说明按模块区分：只有 fastp 存在 Before/After filtering 过滤阶段，
+    # 其余模块（FastQ Screen、QualiMap 等）不引用“过滤曲线”措辞，避免张冠李戴。
+    lowered = [str(t).lower() for t in (targets or [])]
+    if any(t.startswith('fastp') for t in lowered):
+        source_note = ('质控图读取 MultiQC 保存的 fastp 汇总数据集；'
+                       + ('正文保留关键图，过滤曲线使用 After filtering 阶段' if detail=='key'
+                          else '展示全部已保存的曲线和柱状诊断图，含各 reads 与过滤阶段')
+                       + '。')
+    elif any(t.startswith('fastq_screen') for t in lowered):
+        source_note = '外源污染评估图读取 MultiQC 保存的 FastQ Screen 汇总数据集。'
+    elif any(t.startswith('star') for t in lowered):
+        source_note = '比对统计图读取 MultiQC 保存的 STAR 汇总数据集。'
+    elif lowered:
+        source_note = '比对质控图读取 MultiQC 保存的 QualiMap BamQC 汇总数据集。'
+    else:
+        source_note = '质控图读取 MultiQC 保存的汇总数据集。'
+    typst_note(f"{source_note}完整质控结果（数据目录内相对路径）：{display_path(analysis_dir)}")

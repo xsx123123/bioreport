@@ -4,7 +4,7 @@ bibliography: ../reference/qc_references.bib
 csl: ../reference/china-national-standard-gb-t-7714-2015-numeric.csl
 ---
 
-本报告读取已有分析结果并进行可视化，不重新执行序列比对、差异检验或富集检验。以下说明仅对应当前启用的报告模块；软件版本以提供的流程记录为准。
+本报告系统采用“计算与渲染解耦”架构，直接读取上游标准生信分析流水线已产出的统计矩阵与结果文件进行标准化重绘与排版，报告生成过程本身不重新执行序列比对、差异表达检验或功能富集计算。以下方法学说明仅对应当前配置所启用的报告模块，软件具体版本号以流程运行记录为准。
 
 ```{python}
 #| label: pdf-methods
@@ -21,31 +21,28 @@ selected = [get_registry().canonical(m) for m in selected_modules(cfg)]
 path = cfg['input_files'].get('software_versions_file')
 records = load_software_data(path) if path and os.path.isfile(path) else None
 def uses(name): return any(m == name or m.startswith(name+'.') for m in selected)
+def emit(body):
+    # Markdown 输出经 asis 直通，标题与前后正文之间显式空行，避免与上一段粘连。
+    display(Markdown('\n\n' + body.strip() + '\n\n'))
 software = set()
 if uses('rna.qc'):
+    emit('## 质量控制与比对统计方法\n\n本模块读取上游质控与比对工具的汇总数据进行多维度质量评估，仅所选子模块对应的结果纳入报告。各质控子图的数据源统一解析自 **MultiQC** 生成的标准化汇总数据集 [@MultiQC]：')
     modules = [
-        ('fastp','fastp', 'fastp 过滤及质量统计 [@chen2018fastp]。'),
-        ('screen','FastQ Screen', 'FastQ Screen 物种比对统计 [@wingett2018fastq]。'),
-        ('qualimap','Qualimap', 'QualiMap 比对后质量统计 [@okonechnikov2016qualimap]。'),
-        ('star','STAR', 'STAR 比对分类统计 [@dobin2013star]。')]
-    active = [(child,name,prose) for child,name,prose in modules if 'rna.qc' in selected or 'rna.qc.'+child in selected]
-    names = '、'.join(name for _,name,_ in active)
-    display(Markdown(f'## 质量控制方法\n\n读取 {names} 的已有统计结果，评估测序及比对质量。仅所选子模块对应的结果纳入报告。'))
-    display(Markdown('质控图使用 MultiQC 保存的汇总数据集 [@MultiQC]，本报告不重新执行上游质控工具。'))
+        ('fastp','fastp', '1. **原始序列过滤与碱基质控**：上游使用 **fastp** [@chen2018fastp] 对原始测序读段（Raw Reads）执行自动接头识别与切除、低质量碱基滑窗修剪及过短序列过滤，并统计过滤前后的 Q20/Q30 比例、GC 含量与序列重复率（Duplication rate）。'),
+        ('screen','FastQ Screen', '2. **外源物种污染筛查**：使用 **FastQ Screen** [@wingett2018fastq] 从各样本随机抽样测序序列，与预构建的多物种参考基因组索引库（涵盖目标物种、常见模式生物、人类、微生物及克隆载体等）进行比对，统计单一物种特异比对与多物种共比对比例。'),
+        ('qualimap','QualiMap', '3. **基因组比对与转录本定量**：采用可变剪接感知型比对工具 **STAR** [@dobin2013star] 将 Clean Reads 比对至参考基因组，输出唯一比对（Uniquely mapped）与多处比对（Multi-mapped）统计；随后通过 **QualiMap (BamQC)** [@okonechnikov2016qualimap] 评估比对结果在基因组窗口上的覆盖深度分布。')]
     for child, name, prose in modules:
         if 'rna.qc' in selected or 'rna.qc.'+child in selected:
-            software.add(name); display(Markdown(prose))
+            software.add(name); emit(prose)
 if uses('rna.results'):
-    display(Markdown('## 结果分析方法\n\n仅说明当前启用的结果模块；过滤与绘图参数见对应图注。'))
-    if any(m in selected for m in ['rna.results','rna.results.samples','rna.results.heatmap']):
-        display(Markdown('样本关系与表达图使用输入 TPM 经 Log2(TPM+1) 变换。'))
+    emit('## 表达定量与下游结果分析方法\n\n仅说明当前启用的结果分析模块，具体过滤阈值与绘图参数详见各图表题注：')
+    if any(m in selected for m in ['rna.results','rna.results.samples','rna.results.matrix','rna.results.heatmap']):
+        emit('1. **基因表达定量与样本关系分析**：上游基于比对结果使用 **RSEM** 构建基因水平表达矩阵，并以 **TPM（Transcripts Per Million）** 标准化消除基因长度与测序深度差异。样本间主成分分析（PCA）、表达分布小提琴图及高变异基因（HVGs）聚类热图均预先剔除全样本平均 TPM ≤ 1 的低表达噪声基因，并对表达值执行 $\\log_2(\\text{TPM} + 1)$ 对数转换。')
     if 'rna.results' in selected or 'rna.results.deg' in selected:
-        display(Markdown('差异结果由输入文件提供，火山图按配置的原始 P 值与 Log2FC 阈值着色，统计方法以输入流程记录为准。'))
-        if records is not None and 'Software' in records and records['Software'].astype(str).str.casefold().eq('deseq2').any():
-            display(Markdown('输入流程版本表列出 DESeq2，方法文献见 [@love2014moderated]；本报告只读取差异结果，不重新运行该工具。'))
+        emit('2. **差异表达分析**：读取上游 **DESeq2** [@love2014moderated] 基于负二项分布广义线性模型（GLM）计算的差异检验结果表。报告引擎依据配置文件设定的原始 $P$ 值（`pvalue`）与差异倍数（`log2FoldChange`）阈值对基因进行上下调分类着色并绘制火山图，不修改上游原始检验统计量。')
     if 'rna.results' in selected or 'rna.results.enrichment' in selected:
-        display(Markdown('富集图使用输入 GeneRatio、Count 与 p.adjust。GO/KEGG 类别仅据输入字段标识，不推断未提供的 BP/CC/MF 分类。'))
-display(Markdown('## 实际提供的软件版本'))
+        emit('3. **功能富集分析**：读取上游 **clusterProfiler** [@yu2012clusterprofiler] 针对显著上调与显著下调差异基因集分别执行的 GO（Gene Ontology）与 KEGG 通路超几何分布检验结果。富集气泡图依据输入文件中的基因比例（`GeneRatio`）、富集基因数（`Count`）及多重假设检验校正后 $P$ 值（`p.adjust`）按显著性升序绘制；GO/KEGG 类别严格依据输入字段标识，不主观推断未提供的子分类（如 BP/CC/MF）。')
+emit('## 实际提供的软件版本')
 if records is not None:
     # Keep the full source record while showing versions relevant to enabled modules.
     wanted = {'multiqc'} if uses('rna.qc') else set()
@@ -60,5 +57,6 @@ if records is not None:
     else:
         typst_note('软件记录中没有与当前启用模块对应的版本，不填充示例版本。')
     typst_note(f'软件版本来源（数据目录内相对路径）：{display_path(path)}。正文仅列与当前模块对应的输入版本记录；完整原始版本表保留在该文件中，不据此断言可选分析已执行。')
-else:typst_note('未提供软件版本记录，不填充示例版本。')
+else:
+    typst_note('未提供软件版本记录，不填充示例版本。')
 ```

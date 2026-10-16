@@ -6,11 +6,21 @@ title: 交付文件与报告说明
 
 本报告由输入数据和配置自动生成，PDF 提供静态图表与结果摘要；完整结果以原始分析文件为准。
 
-### 报告生成架构
+## 报告生成架构
 
 BioReport 采用配置驱动的模块化报告架构：系统读取已有分析结果，根据 JSON / YAML 配置选择报告章节、绑定输入文件与展示参数，组合 Quarto 文档后生成交互式 HTML 或适合打印归档的 PDF；AI 解读为可选分支，在渲染前生成辅助解释内容。
 
-![BioReport 报告生成架构：配置驱动模块组合，Quarto 执行所选模块并读取分析结果，分别适配交互式 HTML 与打印 PDF；虚线为可选 AI 分支。](assets/architecture.svg){#fig-bioreport-arch width="100%"}
+```{=typst}
+// 架构示意不进入正文图表编号（图 1–14 已被分析图表占用），以“附图”独立标注。
+#align(center)[#block[
+  #image("assets/architecture.svg", width: 100%)
+  #text(size: 9pt, fill: rgb("#53636a"))[附图 1 BioReport 报告生成架构：配置驱动模块组合，Quarto 执行所选模块并读取分析结果，分别适配交互式 HTML 与打印 PDF；虚线为可选 AI 分支。]
+]]
+```
+
+## 交付数据目录索引与映射说明
+
+由于 PDF 报告版面仅展示核心统计图表与高显著性记录预览（Top N），完整全量分析结果（如全基因组全部转录本表达矩阵、全部差异检验记录及完整富集通路表）均保存在随报告一同交付的数据目录中。下表列出了报告各模块数据源对应的配置键名（`输入类型`）及其在交付数据包内的相对路径映射，研究人员可按路径使用 Excel、R 或 Python 直接读取原始文本文件进行深度挖掘：
 
 ```{python}
 #| label: pdf-delivery
@@ -19,13 +29,15 @@ from bioreport.config import load_config, display_path
 from bioreport import __version__
 from bioreport.utils.render_output import show_print_table, typst_note
 import pandas as pd
+from pathlib import Path
 cfg = load_config()
 files = [{"输入类型": key, "数据目录内路径": display_path(value, cfg)} for key,value in cfg["input_files"].items() if key != "data_dir"]
 if files:
     show_print_table(pd.DataFrame(files), limit=None)
 else:
     typst_note('当前配置未提供分析交付文件，不填充示例路径。')
-typst_note(f"报告生成器：BioReport v{__version__}。配置来源：{cfg.get('_config_path','NA')}。数据目录（交付目录，配置值 {cfg.get('_data_dir', cfg['input_files'].get('data_dir',''))}）内的文件按相对路径描述；配置备份随正常 CLI 输出保存。")
+config_source = Path(cfg.get('_config_path','NA')).name if cfg.get('_config_path') else 'NA'
+typst_note(f"报告生成器：BioReport v{__version__}。配置来源：{config_source}。数据目录（交付目录，配置值 {cfg.get('_data_dir', cfg['input_files'].get('data_dir',''))}）内的文件按相对路径描述；配置备份随正常 CLI 输出保存。")
 ```
 
 - 软件作者：JZHANG

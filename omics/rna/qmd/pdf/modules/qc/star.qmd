@@ -1,7 +1,7 @@
 ## STAR 比对统计
 
 ```{=typst}
-#report-intro("展示各样本的序列比对结果，结合唯一比对率评估数据可用性。")
+#report-intro("将过滤后的高质量序列精准定位至参考基因组是转录本定量分析的前提。本流程采用支持可变剪接跨内含子比对的 STAR 软件将 Clean Reads 比对至参考基因组，各样本比对统计结果汇总如下表所示：Total reads 与 Mapped reads 为参与比对的有效读段总数及成功比对到参考基因组上的读段数（数值沿用 MultiQC 统计单位，通常为百万条 10^6）；Mapped (%) 为总比对率，反映测序文库与所选参考基因组组装版本的整体匹配程度；Unique reads 与 Unique (%) 为唯一比对到参考基因组单一物理位置的读段数及占比，唯一比对率是衡量后续基因表达定量准确性的核心指标；Multi reads 为同时比对到参考基因组多个位置的读段数，通常来源于基因家族串联重复区域、转座元件或高拷贝 rRNA 基因。")
 ```
 
 ```{python}
@@ -41,7 +41,7 @@ else:
         'star-uniquely_mapped_percent': 'Unique (%)', 'star-multimapped': 'Multi reads'})
     limit = star_pdf.get('qc_rows',30)
     show_print_table(mapping, limit=limit)
-    typst_note(f"STAR 统计预览：前 {min(limit,len(mapping))} / {len(mapping)} 条记录；{'默认仅展示最终比对，排除 STARpass1' if star_pdf.get('qc_detail','key')=='key' else '保留输入中的比对阶段标签'}。样本名使用元数据的 sample_name，原始映射见样本文件。Reads 数值沿用输入文件单位；百分比列单位为 %。完整结果（数据目录内相对路径）：{display_path(mapping_path)}")
+    typst_note(f"STAR 统计预览：前 {min(limit,len(mapping))} / {len(mapping)} 条记录；{'默认仅展示最终比对，排除 STARpass1' if star_pdf.get('qc_detail','key')=='key' else '保留输入中的比对阶段标签'}。样本名使用元数据的 sample_name，原始映射见样本文件。Reads 数值沿用输入文件单位（Million），百分比列单位为 %。完整结果（数据目录内相对路径）：{display_path(mapping_path)}")
     if star_pdf.get('qc_detail','key')=='all':
         visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['STAR'])
 ```
