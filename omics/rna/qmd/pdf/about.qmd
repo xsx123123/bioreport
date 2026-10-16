@@ -15,17 +15,17 @@ BioReport 采用配置驱动的模块化报告架构：系统读取已有分析�
 ```{python}
 #| label: pdf-delivery
 #| output: asis
-from bioreport.config import load_config
+from bioreport.config import load_config, display_path
 from bioreport import __version__
 from bioreport.utils.render_output import show_print_table, typst_note
 import pandas as pd
 cfg = load_config()
-files = [{"输入类型": key, "完整结果路径": value} for key,value in cfg["input_files"].items() if key != "data_dir"]
+files = [{"输入类型": key, "数据目录内路径": display_path(value, cfg)} for key,value in cfg["input_files"].items() if key != "data_dir"]
 if files:
     show_print_table(pd.DataFrame(files), limit=None)
 else:
     typst_note('当前配置未提供分析交付文件，不填充示例路径。')
-typst_note(f"报告生成器：BioReport v{__version__}。配置来源：{cfg.get('_config_path','NA')}。配置备份随正常 CLI 输出保存；上述路径均由当前配置解析。")
+typst_note(f"报告生成器：BioReport v{__version__}。配置来源：{cfg.get('_config_path','NA')}。数据目录（交付目录，配置值 {cfg.get('_data_dir', cfg['input_files'].get('data_dir',''))}）内的文件按相对路径描述；配置备份随正常 CLI 输出保存。")
 ```
 
 - 软件作者：JZHANG

@@ -6,28 +6,16 @@ filter genes, recluster samples, or change the underlying result files.
 import html
 import re
 from pathlib import Path
-from functools import lru_cache
-import subprocess
+
+# Font discovery lives in utils.fonts (shared with Typst and the CLI); this
+# re-export keeps the historical import path working.
+from .fonts import FONT_STACK, font_families  # noqa: F401
 
 PALETTE = ['#4477AA', '#EE6677', '#228833', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB']
 
 
 class UnsupportedTrace(ValueError):
     """A third-party plot needs Plotly's own static exporter."""
-
-
-@lru_cache(maxsize=1)
-def font_families():
-    """Select installed, embeddable font families; keep a portable fallback."""
-    candidates = ('Noto Serif CJK SC', 'Noto Sans CJK SC', 'Droid Sans Fallback', 'DejaVu Serif')
-    try:
-        result = subprocess.run(['fc-list', ':', 'family'], capture_output=True,
-                                text=True, check=True, timeout=5)
-        available = {name.strip() for line in result.stdout.splitlines() for name in line.split(',')}
-        found = tuple(name for name in candidates if name in available)
-        return found or candidates
-    except (OSError, subprocess.SubprocessError):
-        return candidates
 
 
 def group_palette(groups):
@@ -114,6 +102,7 @@ def export_vector(figure, path):
     from matplotlib.lines import Line2D
     import numpy as np
     import textwrap
+    from .fonts import init_bioreport_plot_style
 
     def color(value, default=PALETTE[0]):
         if value is None: return default
@@ -131,7 +120,9 @@ def export_vector(figure, path):
     height = max(2.7, min(7.0, float(meta.get('print_height', 4.0))))
     if figure.data and all(t.type=='bar' and t.orientation=='h' for t in figure.data):
         height = max(height, min(7., 1.4 + .4*len(figure.data[0].y)))
-    with plt.rc_context({'font.family': ['DejaVu Sans', *font_families()], 'font.size': 10,
+    # Built-in fonts (Source Sans 3 + CJK) registered first, DejaVu kept as last resort.
+    plot_fonts = init_bioreport_plot_style()
+    with plt.rc_context({'font.family': [*plot_fonts, 'DejaVu Sans'], 'font.size': 10,
                          'axes.labelsize': 10, 'xtick.labelsize': 9, 'ytick.labelsize': 9,
                          'legend.fontsize': 9, 'svg.fonttype': 'path',
                          'axes.spines.top': False, 'axes.spines.right': False,

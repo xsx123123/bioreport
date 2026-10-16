@@ -5,6 +5,7 @@ title: "报告溯源信息"
 以下溯源区块由引擎自动锚定，随报告留痕：
 
 ```{python}
+#| label: provenance-summary
 #| echo: false
 from datetime import datetime
 from html import escape

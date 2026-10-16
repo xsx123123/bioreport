@@ -75,6 +75,20 @@ def test_summary_excludes_extra_read_and_mapping_stages_and_missing_is_na(tmp_pa
     assert summary_metrics(cfg).set_index('项目').loc['平均 Q30','数值']=='NA'
 
 
+def test_display_path_reports_delivery_relative_paths_only():
+    from bioreport.config import display_path
+    cfg = load_config(ROOT / 'tests/report.rna.pdf.json')
+    resolved = cfg['input_files']['data_dir']
+    # 交付目录内文件显示为相对路径，不暴露运行环境的绝对目录。
+    assert display_path(cfg['input_files']['sample_file'], cfg) == 'index/sample.csv'
+    assert resolved not in display_path(cfg['input_files']['sample_file'], cfg)
+    # 目录之外的路径保持原样，保证可核验。
+    assert display_path('/etc/hostname', cfg) == '/etc/hostname'
+    assert display_path('', cfg) == ''
+    # 没有配置时降级为原路径，不在展示环节抛错。
+    assert display_path(str(Path('/opt')/'x.txt'), {'input_files': {}}) == str(Path('/opt')/'x.txt')
+
+
 def test_each_comparison_is_counted_separately_and_disabled_modules_do_not_read_deg(tmp_path):
     cfg=load_config(ROOT/'tests/report.rna.pdf.json')
     cfg['input_files']['contrasts_file']=str(tmp_path/'contrasts.csv')

@@ -42,7 +42,10 @@ BioReport 是基于 **Python** 和 **Quarto** 的组学报告生成器。目前�
 ```bash
 pip install -e '.[rna]'
 python -m bioreport validate -c tests/report.rna.local.json
-python -m bioreport run -c tests/report.rna.local.json -o output/rna-report
+# 生成htmL 报告
+python -m bioreport run -c tests/report.rna.html.json -o output/rna-report
+# 生成 pdf 报告
+python -m bioreport run -c tests/report.rna.pdf.json -o output/rna-report-pdf
 ```
 
 示例数据位于 `examples/rna-seq/data/`，本地配置在 `tests/report.rna.local.json`，默认使用 `single` 模式，生成 `output/rna-report/report.html`，样式、脚本及图片资源嵌入 HTML。报告内通过顶部导航切换六个章节视图。页面使用 `templates/theme/New_Brutalism.scss`、`styles.css` 和 `itables_saas.css`；修改模板或 Logo 后重新生成即可更新。若需要六份独立 HTML，可将 `report.layout` 改为 `website`，从 `output/rna-report/index.html` 打开。先用 `--dry-run` 可检查配置和模板组合，此模式不生成 HTML。`configs/report.example.json` 的数据根目录为容器内 `/data`，本地直接运行前须修改路径。
@@ -117,7 +120,7 @@ bioreport run -c tests/report.rna.pdf.json -o output/rna-pdf-report
 - `bioreport/modules.py`：根据项目配置填充封面和组合章节。
 - `omics/rna/analysis/`：HTML 与 PDF 共用的数据处理和绘图函数。
 
-PDF 表格提供结果预览，表达矩阵默认展示前 8 个基因和最多 6 个样本列，差异基因和富集结果默认展示前 10 行；完整结果路径随表格提供。PDF 使用 A4 页面、独立封面和目录、页眉页码与静态 SVG 图表。建议安装 Noto CJK 字体以获得一致的中文排版。
+PDF 表格提供结果预览，表达矩阵默认展示前 8 个基因和最多 6 个样本列，差异基因和富集结果默认展示前 10 行；完整结果路径随表格提供，并统一描述为数据目录（`input_files.data_dir`，即交付目录）内的相对路径，不暴露运行环境的绝对路径。PDF 使用 A4 页面、独立封面和目录、页眉页码与静态 SVG 图表。建议安装 Noto CJK 字体以获得一致的中文排版。
 
 可通过 `report.pdf` 配置表格预览行数、富集 Top N 与 `qc_detail: key / all`。共享样式约定、验证命令和兼容边界见 [科研 PDF 样式规范](docs/pdf-style.md)。
 

@@ -80,6 +80,16 @@ def _report_footer(template_dir: Path) -> str:
     )
 
 
+def output_formats(config: dict) -> list[str]:
+    requested = config.get("report", {}).get("output_format", "html")
+    formats = [requested] if isinstance(requested, str) else requested
+    if not isinstance(formats, list) or not formats or any(
+        value not in ("html", "pdf") for value in formats
+    ):
+        raise ValueError("report.output_format must be html, pdf, or a list of them")
+    return list(dict.fromkeys(formats))
+
+
 def selected_modules(config: dict) -> list[str]:
     report = config.get("report", {})
     custom = report.get("module_definitions", {})
@@ -251,7 +261,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
     registered = get_registry().modules
     has_rna = any(_canonical(module).startswith("rna.") for module in module_ids)
     if pdf:
-        from .utils.print_theme import font_families
+        from .utils.fonts import MONO_STACK, font_families
         fonts = tuple(report.get('pdf', {}).get('fonts') or font_families())
         style_dir = template_dir / "pdf"
         style_dir.mkdir(exist_ok=True)
@@ -259,6 +269,9 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         short_name = project.get('short_name') or project.get('project_id') or report.get('title', 'BioReport')
         # Context and shared print helpers also serve custom, non-RNA modules.
         context = '#let report-fonts = (' + ''.join(json.dumps(f, ensure_ascii=False)+',' for f in fonts) + ')\n'
+        context += '#let report-mono-fonts = (' + ''.join(
+            json.dumps(f, ensure_ascii=False)+',' for f in report.get('pdf', {}).get('mono_fonts') or MONO_STACK
+        ) + ')\n'
         context += '#let report-project = ' + json.dumps(str(short_name), ensure_ascii=False) + '\n'
         (style_dir / 'print-context.typ').write_text(context, encoding='utf-8')
         metadata['format'] = {'typst': {

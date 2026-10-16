@@ -14,7 +14,7 @@ $success: #2d9c78 !default;
 $warning: #d99024 !default;
 $danger: #c94a5b !default;
 $surface: #f3f7fb !default;
-$font-family-sans-serif: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !default;
+$font-family-sans-serif: "BioReport-Latin", "BioReport-CN", "Source Sans 3", "HarmonyOS Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !default;
 $headings-font-family: $font-family-sans-serif !default;
 $headings-font-weight: 650 !default;
 $border-radius: .35rem !default;
@@ -39,7 +39,13 @@ h1, h2, h3, h4, h5, h6 {
 h1 { font-size: 2rem; margin-bottom: 1.25rem; }
 h2 { font-size: 1.55rem; margin-top: 2.4rem; }
 h3 { font-size: 1.2rem; margin-top: 1.8rem; }
-p, li { max-width: 74ch; }
+/* Full-width paragraphs align with cards/headings; cap only on very wide
+   screens for readability. ch-based caps misfit CJK: the unit tracks the
+   Latin "0" glyph, so mixed Chinese lines wrap raggedly short. */
+p, li { max-width: 100%; }
+@media (min-width: 1400px) {
+  p, li { max-width: 62rem; }
+}
 a { text-underline-offset: .18em; }
 
 /* Quarto grid: a stable reading column with a narrow, useful TOC. */
@@ -370,7 +376,7 @@ code { color: #29496f; }
 .about-project .about-manifesto .manifesto-kicker {
   position: relative;
   z-index: 1;
-  max-width: 55rem;
+  max-width: 100%;
   margin-bottom: .9rem;
   color: var(--manifesto-accent);
   font-size: .7rem;
@@ -381,7 +387,7 @@ code { color: #29496f; }
 .about-project .about-manifesto .manifesto-body {
   position: relative;
   z-index: 1;
-  max-width: 55rem;
+  max-width: 100%;
   padding-left: 1.6rem;
 }
 
@@ -423,7 +429,7 @@ code { color: #29496f; }
 .about-project .about-manifesto .manifesto-quote > p { margin: 0; }
 
 .about-project .about-manifesto .manifesto-body > p {
-  max-width: 47.5rem;
+  max-width: 100%;
   margin: 0;
   color: $secondary;
   font-size: .95rem;
@@ -433,7 +439,7 @@ code { color: #29496f; }
 .about-project .about-manifesto .manifesto-attribution {
   position: relative;
   z-index: 1;
-  max-width: 55rem;
+  max-width: 100%;
   margin-top: 1.1rem;
   padding-left: 1.6rem;
   color: $secondary;

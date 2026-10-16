@@ -5,7 +5,7 @@
 ```
 
 ```{python}
-#| label: QualiMap
+#| label: qc-qualimap
 #| results: asis
 visualize_multiqc_logs(
     analysis_dir=input_files["qualimap_dir"],

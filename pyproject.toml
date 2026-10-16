@@ -33,6 +33,7 @@ ai = [
     "tenacity",
     "pydantic",
 ]
+security = ["pikepdf"]
 dev = [
     "pytest",
     "black",
@@ -54,7 +55,7 @@ include = ["bioreport*", "omics*"]
 pythonpath = ["."]
 
 [tool.setuptools.package-data]
-bioreport = ["utils/prompt.txt", "report.schema.json"]
+bioreport = ["utils/prompt.txt", "report.schema.json", "assets/fonts/**/*"]
 "omics.rna" = ["qmd/**/*.qmd", "qmd/assets/*.svg", "schema.json"]
 
 [tool.setuptools.data-files]

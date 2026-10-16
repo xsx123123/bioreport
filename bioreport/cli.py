@@ -13,19 +13,22 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
+import time
 from importlib import resources
 from pathlib import Path
 
 from loguru import logger
-from rich.console import Console
+from rich.box import ROUNDED
+from rich.console import Console, Group
 from rich.panel import Panel
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 from rich.text import Text
 
 from .config import load_config
 from .pipeline import run_ai_pipeline
 from .renderer import render_templates
-from .modules import selected_modules
+from .modules import output_formats, selected_modules
 from .registry import get_registry
 from .utils.provenance import build_provenance, write_provenance
 from .utils.run_db import default_db_path, record_run
@@ -46,7 +49,7 @@ def show_help() -> None:
     console.print(commands)
     console.print("\n[dim]选项[/dim]  -c, --config 配置路径    -o, --output 输出目录")
     console.print("[dim]      [/dim]  --dry-run 仅检查模板       --data-prefix 数据挂载前缀")
-    console.print("[dim]      [/dim]  -h, --help 显示帮助")
+    console.print("[dim]      [/dim]  --verbose 显示调试日志    -h, --help 显示帮助")
     console.print("\n[dim]本地示例[/dim]  bioreport run -c tests/report.rna.local.json -o output/rna-report")
     console.print("[dim]Docker 示例[/dim]  bioreport run -c configs/report.example.json -o output/rna-report")
 
@@ -81,6 +84,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="仅渲染模板并检查配置，不执行 Quarto 渲染",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="在终端显示调试日志（临时文件路径等内部细节，默认仅写入 pipeline.log）",
+    )
 
     arguments = sys.argv[1:] if argv is None else argv
     args = parser.parse_args(arguments)
@@ -90,20 +98,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return args
 
 
-def setup_logging(output_dir: str | None = None) -> str | None:
-    """Configure concise console logs and optional file logs."""
+def setup_logging(output_dir: str | None = None, verbose: bool = False) -> str | None:
+    """Configure concise console logs and a DEBUG-level file log."""
     logger.remove()
 
+    # 终端只展示精简的高价值步骤状态；--verbose 才放开 DEBUG。
     logger.add(
         sys.stderr,
         format="<green>{time:HH:mm:ss}</green>  <level>{level: <7}</level>  {message}",
-        level="INFO",
+        level="DEBUG" if verbose else "INFO",
         colorize=True,
     )
 
     if output_dir is None:
         return None
     log_file = os.path.join(output_dir, "pipeline.log")
+    # 文件日志完整记录 DEBUG 及以上（含 /tmp 路径与完整 64 位 SHA256）。
     logger.add(
         log_file,
         format="{time:YYYY-MM-DDTHH:mm:ssZZ}  {level: <7}  {message}",
@@ -130,6 +140,29 @@ def print_banner():
     console.print()
 
 
+def print_task_overview(config: dict, provenance: dict, output_dir: str) -> None:
+    """Banner 之后的紧凑任务概览面板，替代逐行 INFO 刷屏。"""
+    formats = " + ".join(f.upper() for f in provenance["output_format"])
+    grid = Table.grid(padding=(0, 2))
+    grid.add_column(style="bold", justify="right", no_wrap=True)
+    grid.add_column(style="cyan", no_wrap=True)
+    grid.add_column(style="bold", justify="right", no_wrap=True)
+    grid.add_column(style="cyan", no_wrap=True)
+    grid.add_row(
+        "引擎", f"BioReport v{provenance['bioreport_version']}",
+        "流程", provenance.get("pipeline_version", "-"),
+    )
+    grid.add_row("格式", formats, "布局", provenance["layout"])
+    grid.add_row("输出", output_dir, "", "")
+    modules_line = Text.assemble(
+        ("模块", "bold"),
+        ("  ", ""),
+        (" → ".join(provenance["rendered_modules"]), "cyan"),
+    )
+    content = Group(grid, Text(), modules_line)
+    console.print(Panel(content, title="任务概览", title_align="left", border_style="cyan", padding=(0, 1)))
+
+
 def load_config_with_fallback(config_path: str | None) -> dict:
     logger.info(f"正在读取配置文件: {config_path or '默认搜索路径'}")
     try:
@@ -139,16 +172,26 @@ def load_config_with_fallback(config_path: str | None) -> dict:
         sys.exit(1)
 
 
-def check_input_files(config: dict) -> None:
-    """使用 Rich Table 展示输入文件检查结果。"""
-    logger.info("开始检查输入文件完整性...")
+def check_input_files(config: dict, provenance: dict | None = None) -> None:
+    """使用紧凑的 Rich Table 展示输入文件检查结果（含 SHA256 指纹）。"""
+    logger.info("检查输入文件完整性...")
 
     table = Table(
-        title="输入文件检查清单", show_header=True, header_style="bold magenta"
+        title="输入文件检查清单",
+        show_header=True,
+        header_style="bold magenta",
+        box=ROUNDED,
+        expand=False,
     )
     table.add_column("Key", style="cyan", no_wrap=True)
-    table.add_column("Path", style="white")
+    table.add_column("Relative Path", style="white")
+    table.add_column("SHA256", style="dim", no_wrap=True)
     table.add_column("Status", justify="center")
+
+    checksums = provenance["input_checksums"] if provenance else {}
+    data_dir = config.get("input_files", {}).get("data_dir", "")
+    if data_dir:
+        table.caption = f"基准目录: {data_dir}"
 
     files_to_check = config.get("input_files", {})
     selected = selected_modules(config)
@@ -176,18 +219,33 @@ def check_input_files(config: dict) -> None:
     all_passed = True
 
     for key, path_str in files_to_check.items():
+        if key == "data_dir":
+            continue
         path = Path(path_str)
         exists = path.exists() or Path(os.getcwd()).joinpath(path).exists()
+        rel_path = path_str
+        if data_dir and str(path).startswith(str(Path(data_dir).resolve()) + os.sep):
+            rel_path = os.path.relpath(str(path), str(Path(data_dir).resolve()))
+        elif data_dir and not path.is_absolute():
+            rel_path = os.path.relpath(str(path), str(Path(data_dir).resolve()))
+
+        digest = checksums.get(key)
+        if digest:
+            sha_display = digest[:12]
+        elif exists and path.is_dir():
+            sha_display = "-"
+        else:
+            sha_display = "-"
 
         if exists:
-            status = "[bold green]Found[/]"
+            status = "[bold green]✔ Found[/]"
         else:
-            status = "[bold red]Missing[/]"
+            status = "[bold red]✘ Missing[/]"
             if key in required:
                 all_passed = False
             logger.warning(f"缺失文件: {key} -> {path_str}")
 
-        table.add_row(key, str(path_str), status)
+        table.add_row(key, rel_path, sha_display, status)
 
     console.print(table)
 
@@ -205,17 +263,7 @@ def check_quarto_env():
 
     res = subprocess.run(["quarto", "--version"], capture_output=True, text=True)
     version = res.stdout.strip()
-    logger.info("Quarto Environment: {}", version)
-
-
-def output_formats(config: dict) -> list[str]:
-    requested = config.get("report", {}).get("output_format", "html")
-    formats = [requested] if isinstance(requested, str) else requested
-    if not isinstance(formats, list) or not formats or any(
-        value not in ("html", "pdf") for value in formats
-    ):
-        raise ValueError("report.output_format must be html, pdf, or a list of them")
-    return list(dict.fromkeys(formats))
+    logger.debug("Quarto Environment: {}", version)
 
 
 def resolve_template_candidates() -> list[Path]:
@@ -236,17 +284,71 @@ def resolve_template_candidates() -> list[Path]:
     return candidates
 
 
+# Quarto 输出中的 Cell 进度行，例如 ``Cell 3/22: 'qc-fastp'...Done``。
+_CELL_PATTERN = re.compile(r"Cell (\d+)/(\d+):\s*'([^']*)'")
+
+
+def _stream_quarto_output(process: subprocess.Popen, output_format: str) -> tuple[str, str, bool]:
+    """读取 Quarto stdout：原始行全部写入 pipeline.log，终端仅显示单行动态进度条。
+
+    返回 (last_cell, error_summary, cells_completed)。
+    """
+    last_cell = None
+    error_summary = None
+    cells_completed = False
+    progress_columns = [
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+    ]
+    with Progress(*progress_columns, console=console, transient=True) as progress:
+        task = progress.add_task(f"Quarto 渲染 ({output_format.upper()})", total=None)
+
+        for raw_line in iter(process.stdout.readline, ""):
+            line = re.sub(r"\x1b\[[0-9;]*m", "", raw_line).strip()
+            if not line:
+                continue
+            logger.debug("[Quarto] {}", line)
+            match = _CELL_PATTERN.match(line)
+            if match:
+                index, total, cell_name = int(match.group(1)), int(match.group(2)), match.group(3)
+                last_cell = line
+                progress.update(
+                    task,
+                    total=total,
+                    completed=index,
+                    description=f"正在执行代码块 [{index}/{total}]: {cell_name or '-'}",
+                )
+                if index == total:
+                    cells_completed = True
+            elif line.startswith("Output created:"):
+                logger.info("[Quarto] {}", line)
+            if re.match(r"^(?:ERROR|FATAL):\s+.+", line, re.IGNORECASE) or re.match(
+                r"^[A-Za-z_][\w.]*(?:Error|Exception):\s+.+", line
+            ):
+                error_summary = line
+                logger.error("[Quarto] {}", line)
+
+    return last_cell, error_summary, cells_completed
+
+
 def render_report(config: dict, config_path: str, output_dir: str, template_dir: Path) -> None:
-    logger.info("启动 Quarto 渲染引擎...")
     layout = config.get("report", {}).get("layout", "single")
     env = os.environ.copy()
     env["REPORT_CONFIG"] = config_path
     env["XDG_CACHE_HOME"] = str(template_dir.parent / "cache")
     env["XDG_DATA_HOME"] = str(template_dir.parent / "share")
+    # Typst scans TYPST_FONT_PATHS for the built-in font stack, so reports
+    # render identically on machines without system CJK fonts installed.
+    from .utils.fonts import typst_font_paths
+    env["TYPST_FONT_PATHS"] = typst_font_paths()
     package_root = str(Path(__file__).resolve().parents[1])
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [package_root, env.get("PYTHONPATH")]))
     abs_output_dir = str(Path(output_dir).resolve())
     for output_format in output_formats(config):
+        logger.info("启动 Quarto 渲染引擎 ({})...", output_format.upper())
         if layout == "website" and output_format != "html":
             raise ValueError("PDF output requires report.layout: single")
         quarto_format = "typst" if output_format == "pdf" else "html"
@@ -257,31 +359,7 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
             cmd, cwd=template_dir, env=env, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, text=True,
         )
-        last_cell = None
-        error_summary = None
-        cells_completed = False
-        for raw_line in iter(process.stdout.readline, ""):
-            line = re.sub(r"\x1b\[[0-9;]*m", "", raw_line).strip()
-            if not line:
-                continue
-            if line.startswith("Cell "):
-                last_cell = line
-                logger.info("[Quarto] {}", line)
-                match = re.match(r"^Cell (\d+)/(\d+):.*Done$", line)
-                if match and match.group(1) == match.group(2):
-                    cells_completed = True
-                    logger.info("[Quarto] 代码执行完成，正在转换图表并渲染 {}...", output_format.upper())
-            elif line.startswith("Output created:"):
-                logger.info("[Quarto] {}", line)
-            elif re.match(r"^(?:ERROR|FATAL):\s+.+", line, re.IGNORECASE):
-                logger.error("[Quarto] {}", line)
-            else:
-                logger.debug("[Quarto] {}", line)
-            if re.match(r"^(?:ERROR|FATAL):\s+.+", line, re.IGNORECASE) or re.match(
-                r"^[A-Za-z_][\w.]*(?:Error|Exception):\s+.+", line
-            ):
-                error_summary = line
-
+        last_cell, error_summary, cells_completed = _stream_quarto_output(process, output_format)
         process.stdout.close()
         return_code = process.wait()
 
@@ -305,7 +383,11 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
             expected = Path(abs_output_dir) / "index.html"
         if not expected.exists():
             raise RuntimeError(f"Quarto finished but expected artifact is missing: {expected}")
-        console.print(Panel(f"报告生成成功: {expected}", border_style="green"))
+        if output_format == "pdf" and expected.suffix == ".pdf":
+            # 交付加固:按配置给 PDF 注入 AES-256 只读权限锁(免密阅读+打印,禁止编辑)。
+            from .utils.pdf_security import protect_report_pdf
+            if protect_report_pdf(expected, config):
+                logger.info("PDF 已启用只读加密: 可免密阅读与打印,编辑功能已锁定")
 
 
 def backup_config(config_path: str, output_dir: str) -> None:
@@ -317,7 +399,28 @@ def backup_config(config_path: str, output_dir: str) -> None:
         logger.warning(f"备份失败: {e}")
 
 
+def print_success_summary(config: dict, output_dir: str, log_file: str | None, elapsed: float) -> None:
+    """渲染成功后的绿色交付摘要：总耗时、报告主文件与日志位置。"""
+    formats = output_formats(config)
+    primary = formats[0] if formats else "html"
+    layout = config.get("report", {}).get("layout", "single")
+    if layout == "single":
+        report_path = Path(output_dir).resolve() / f"report.{primary}"
+    else:
+        report_path = Path(output_dir).resolve() / "index.html"
+
+    grid = Table.grid(padding=(0, 1))
+    grid.add_column(style="bold green", no_wrap=True)
+    grid.add_column()
+    grid.add_row(f"✨ 报告生成完成！总耗时 {elapsed:.1f}s", "")
+    grid.add_row("📄 报告路径", str(report_path))
+    if log_file:
+        grid.add_row("📋 日志文件", str(Path(output_dir) / "pipeline.log"))
+    console.print(Panel(grid, border_style="green", padding=(0, 1)))
+
+
 def main():
+    start_time = time.perf_counter()
     signal.signal(signal.SIGINT, signal_handler)
 
     args = parse_args()
@@ -336,9 +439,9 @@ def main():
     if not os.path.exists(args.output):
         os.makedirs(args.output, exist_ok=True)
 
-    log_file = setup_logging(args.output)
-    logger.info(f"日志文件已创建: {log_file}")
-    selected_modules(config)
+    log_file = setup_logging(args.output, verbose=args.verbose)
+    logger.debug(f"日志文件已创建: {log_file}")
+    selected = selected_modules(config)
     formats = output_formats(config)
     if config["report"].get("layout") == "website" and "pdf" in formats:
         raise ValueError("PDF output requires report.layout: single")
@@ -364,9 +467,9 @@ def main():
             shutil.copytree(rna_qmd, template_dir / "qmd", dirs_exist_ok=True)
         # 组装阶段写入溯源信息（引擎版本/生成时间/模块清单/输入指纹），
         # 供共享页、组学页与页脚在 Quarto 执行阶段读取。
-        provenance = build_provenance(config, selected_modules(config))
+        provenance = build_provenance(config, selected)
         provenance_path = write_provenance(provenance, template_dir / "qmd")
-        logger.info(f"报告溯源信息已写入: {provenance_path}")
+        logger.debug(f"报告溯源信息已写入: {provenance_path}")
 
         def _record_run(status: str) -> None:
             """将本次运行写入本地离线数据库；失败只告警，不阻断报告。"""
@@ -380,36 +483,24 @@ def main():
                     output_dir=str(Path(args.output).resolve()),
                     status=status,
                 )
-                logger.info(f"运行记录已写入本地数据库: {db} (id={row_id}, 状态={status})")
+                logger.debug(f"运行记录已写入本地数据库: {db} (id={row_id}, 状态={status})")
             except Exception as exc:
                 logger.warning(f"写入本地运行数据库失败（不影响报告生成）: {exc}")
 
-        # 同步输出到运行日志（pipeline.log），便于不开报告即可审计核验。
-        logger.info(
-            "报告溯源: 引擎 BioReport v{} · 生成于 {} · 布局 {} · 格式 {}",
-            provenance["bioreport_version"],
-            provenance["generated_at"],
-            provenance["layout"],
-            "+".join(provenance["output_format"]),
-        )
-        logger.info(
-            "报告溯源: 模块 {}",
-            " · ".join(provenance["rendered_modules"]),
-        )
-        if provenance.get("pipeline_version"):
-            logger.info("报告溯源: 分析流程版本 {}", provenance["pipeline_version"])
-        # 控制台截断显示指纹，完整 SHA256 见 pipeline.log (DEBUG) 与本地数据库。
+        # 先读取配置并检查输入文件完整性（含计算 SHA256），再渲染 Quarto 模板。
+        check_input_files(config, provenance)
+        # 完整 SHA256 指纹同步写入运行日志（pipeline.log），终端只展示前 12 位。
         for key, digest in provenance["input_checksums"].items():
-            logger.info("输入指纹: {} = SHA256:{}…", key, digest[:12])
             logger.debug("输入指纹(完整): {} = SHA256:{}", key, digest)
+        print_task_overview(config, provenance, args.output)
+        check_quarto_env()
+
         render_templates(config, str(Path(args.output).resolve()), str(template_dir))
         if args.dry_run:
             logger.info("配置与模块已验证，跳过 Quarto 渲染。")
             return
 
-        check_input_files(config)
-        check_quarto_env()
-        if "ai" in selected_modules(config):
+        if "ai" in selected:
             run_ai_pipeline(config, config["_config_path"], args.output, template_dir)
         try:
             render_report(config, config["_config_path"], args.output, template_dir)
@@ -420,6 +511,7 @@ def main():
 
     backup_config(config["_config_path"], args.output)
     _record_run("success")
+    print_success_summary(config, args.output, log_file, time.perf_counter() - start_time)
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 `STAR` 基于最大可比对前缀（`Maximal Mappable Prefix`, `MMP`）策略执行序列比对。该算法在保证高比对速度的同时，克服了 `RNA-seq` 数据中 `reads` 跨越内含子的比对挑战，实现了对新颖剪切位点（`novel splice sites`）的高灵敏度检测及外显子边界的精确定位[@dobin2013star]。
 
 ```{python}
-#| label: STAR
+#| label: qc-star
 #| results: asis
 visualize_multiqc_logs(
     analysis_dir=input_files["qualimap_dir"],

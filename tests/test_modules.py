@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from bioreport.cli import check_input_files, load_config_with_fallback, output_formats
+from bioreport.cli import check_input_files, load_config_with_fallback
+from bioreport.modules import output_formats
 from bioreport.config import load_config, load_project_metadata
 from bioreport.modules import compose_report, selected_modules
 from bioreport.renderer import render_templates
@@ -51,7 +52,10 @@ def test_website_report_stages_seven_independent_pages_with_shared_styles(tmp_pa
     paths = settings["project"]["render"]
     assert len(paths) == 7
     assert settings["format"]["html"]["theme"] == ["theme/bioreport.scss"]
-    assert settings["format"]["html"]["css"] == ["theme/styles.css", "theme/itables_saas.css"]
+    css = settings["format"]["html"]["css"]
+    # Built-in fonts stage first, then the shared theme styles.
+    assert css[-2:] == ["theme/styles.css", "theme/itables_saas.css"]
+    assert css[0].endswith("fonts.css") and (Path(css[0])).exists()
     assert settings["website"]["navbar"]["pinned"] is True
     assert [page["href"] for page in settings["website"]["navbar"]["left"]] == paths
     documents = [(staged / path).read_text() for path in paths]
@@ -265,8 +269,8 @@ def test_selected_qc_fragments_keep_shared_setup_once(tmp_path):
 
     assert content.count("label: setup-import-qc") == 1
     assert "label: fastp-table" in content
-    assert "label: STAR" in content
-    assert "label: QualiMap" not in content
+    assert "label: qc-star" in content
+    assert "label: qc-qualimap" not in content
     assert "label: fastq-screen-R1" not in content
 
 

@@ -9,6 +9,7 @@ execute:
 ---
 
 ```{python}
+#| label: load-metadata
 import pandas as pd
 import datetime
 import os
@@ -121,6 +122,7 @@ current_date = datetime.date.today().strftime("%Y-%m-%d")
 **项目测序数据产出与核心质控指标总览如下:**
 
 ```{python}
+#| label: project-kpi-cards
 #| echo: false
 # 统一 KPI 卡：中性卡 + 主题色顶边；仅指标异常（红色顶边）提示。
 from html import escape

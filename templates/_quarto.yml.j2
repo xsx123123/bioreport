@@ -82,11 +82,14 @@ format:
     self-contained: false
     theme:
       - {{ (report.get('theme') or {}).get('light', 'theme/bioreport.scss') }}
-    mainfont: "Public Sans"
+    mainfont: "Source Sans 3"
     toc: true
     toc-depth: 3
     number-sections: false
     css:
+{% if staged_fonts %}
+      - {{ staged_fonts }}
+{% endif %}
 {% for css_file in (report.get('css') or ['theme/styles.css', 'theme/itables_saas.css']) %}
       - {{ css_file }}
 {% endfor %}

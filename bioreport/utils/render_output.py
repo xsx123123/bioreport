@@ -106,6 +106,14 @@ def typst_note(text):
                      + json.dumps(str(text), ensure_ascii=False) + ")\n```"))
 
 
+def _breakable(text: str) -> str:
+    """Make long tokens wrap in Typst tables: insert zero-width spaces into
+    SHA256-length hex runs and any path/hex token longer than a table cell."""
+    from .fonts import breakable_hash
+    value = str(text)
+    return re.sub(r"[0-9A-Fa-f]{16,}", lambda m: breakable_hash(m.group()), value)
+
+
 def show_print_table(frame, limit=10):
     """Splittable Typst table with repeated headers; no HTML or numeric coercion."""
     import pandas as pd
@@ -126,7 +134,7 @@ def show_print_table(frame, limit=10):
                 if isinstance(value, (int, np.integer)): text = str(value)
                 else: text = f"{value:.2f}"
             else: text = str(value)
-            cells.append(text)
+            cells.append(_breakable(text))
         rows.append(cells)
     numeric = [bool(pd.api.types.is_numeric_dtype(frame[c]) or str(c) == '数值' or str(c).lower() in ['pvalue','padj','p.adjust','qvalue']) for c in frame.columns]
     display(Markdown("```{=typst}\n#report-table(" + typst_literal(headers)

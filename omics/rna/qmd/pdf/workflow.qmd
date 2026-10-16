@@ -9,7 +9,7 @@ csl: ../reference/china-national-standard-gb-t-7714-2015-numeric.csl
 ```{python}
 #| label: pdf-methods
 #| output: asis
-from bioreport.config import load_config
+from bioreport.config import load_config, display_path
 from bioreport.modules import selected_modules
 from bioreport.registry import get_registry
 from bioreport.utils.visualize_utils import load_software_data
@@ -59,6 +59,6 @@ if records is not None:
         show_print_table(shown_records.drop(columns=['Link'],errors='ignore'),limit=None)
     else:
         typst_note('软件记录中没有与当前启用模块对应的版本，不填充示例版本。')
-    typst_note(f'软件版本来源：{path}。正文仅列与当前模块对应的输入版本记录；完整原始版本表保留在该文件中，不据此断言可选分析已执行。')
+    typst_note(f'软件版本来源（数据目录内相对路径）：{display_path(path)}。正文仅列与当前模块对应的输入版本记录；完整原始版本表保留在该文件中，不据此断言可选分析已执行。')
 else:typst_note('未提供软件版本记录，不填充示例版本。')
 ```

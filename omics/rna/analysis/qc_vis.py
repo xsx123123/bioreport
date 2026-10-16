@@ -380,7 +380,7 @@ def _show_print_qc(fig, identifier, title):
 
 def _visualize_pdf_json(data, analysis_dir, targets):
     """Export each real MultiQC dataset, including filtering/read stages."""
-    from bioreport.config import load_config
+    from bioreport.config import load_config, display_path
     from bioreport.utils.render_output import typst_note
     from bioreport.utils.print_theme import plain
     detail = load_config().get('report',{}).get('pdf',{}).get('qc_detail','key')
@@ -432,4 +432,4 @@ def _visualize_pdf_json(data, analysis_dir, targets):
             _show_print_qc(fig, identifier, caption)
     if not matched:
         raise ValueError(f'No QC plot datasets for {targets} in {analysis_dir}')
-    typst_note(f"质控图读取 MultiQC 保存的数据集；{'正文保留关键图，过滤曲线使用 After filtering 阶段' if detail=='key' else '展示全部已保存的曲线和柱状诊断图，含各 reads 与过滤阶段'}。完整质控结果：{analysis_dir}")
+    typst_note(f"质控图读取 MultiQC 保存的数据集；{'正文保留关键图，过滤曲线使用 After filtering 阶段' if detail=='key' else '展示全部已保存的曲线和柱状诊断图，含各 reads 与过滤阶段'}。完整质控结果（数据目录内相对路径）：{display_path(analysis_dir)}")

@@ -8,7 +8,7 @@
 #| label: fastp-table
 #| results: asis
 from bioreport.utils.render_output import show_print_table, typst_note
-from bioreport.config import load_config
+from bioreport.config import load_config, display_path
 qc_config = load_config()
 data_path = input_files['fastp_stats_file']
 qc_frame = pd.read_csv(data_path, sep='\t')
@@ -24,7 +24,7 @@ if sample_path:
     qc_frame = qc_frame.assign(_order=qc_frame['Sample'].map({s:i for i,s in enumerate(ordered)})).sort_values('_order',kind='stable').drop(columns='_order')
 qc_limit = qc_config.get('report',{}).get('pdf',{}).get('qc_rows',30)
 show_print_table(qc_frame, limit=qc_limit)
-typst_note(f"fastp 统计预览 {min(qc_limit,len(qc_frame))} / {len(qc_frame)} 行；单位为百分比，缺失值显示 NA。完整结果：{data_path}")
+typst_note(f"fastp 统计预览 {min(qc_limit,len(qc_frame))} / {len(qc_frame)} 行；单位为百分比，缺失值显示 NA。完整结果（数据目录内相对路径）：{display_path(data_path)}")
 ```
 
 ```{python}

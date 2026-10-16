@@ -28,7 +28,7 @@
 .dataTables_wrapper {
     background: var(--dt-bg) !important;
     padding: 0px;
-    font-family: "Public Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: "BioReport-Latin", "BioReport-CN", -apple-system, BlinkMacSystemFont, sans-serif;
     color: var(--dt-text) !important;
 }
 

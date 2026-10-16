@@ -6,7 +6,7 @@
 
 ```{python}
 #| label: plot-pca
-
+from bioreport.config import display_path
 # 使用前面定义的变量，不再重复定义
 if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
     # 调用函数
@@ -20,13 +20,14 @@ if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
 
     show_figure(fig, config=config_plot, caption='样本 PCA：保留平均 TPM > 1 的基因，输入 TPM 经 Log2(TPM + 1) 变换；颜色表示样本分组，坐标轴标注各主成分解释的方差比例。')
     sample_count = sum(len(t.x) for t in fig.data if t.showlegend)
-    typst_note(f"PCA 包含 {sample_count} 个实际匹配样本，每个子图的一点对应一个样本。完整表达矩阵：{tpm_file}")
+    typst_note(f"PCA 包含 {sample_count} 个实际匹配样本，每个子图的一点对应一个样本。完整表达矩阵（数据目录内相对路径）：{display_path(tpm_file)}")
 else:
     raise FileNotFoundError(f"PCA requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}")
 ```
 
 ```{python}
 #| label: plot-dist
+from bioreport.config import display_path
 
 if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
     fig, conf = draw_expression_distribution_plotly(
@@ -40,7 +41,7 @@ if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
     # 2. 显示或保存
     if fig:
         show_figure(fig, config=conf, caption=f"样本表达分布：保留平均 TPM > {distribution_settings.get('threshold', 1)} 的基因，纵轴为 Log2(TPM + 1)，颜色表示样本分组。")
-        typst_note(f"表达分布包含 {len(fig.layout.meta['sample_order'])} 个样本、{fig.layout.meta['retained_genes']} 个过滤后基因；样本按分组与组内输入顺序排列。完整表达矩阵：{tpm_file}")
+        typst_note(f"表达分布包含 {len(fig.layout.meta['sample_order'])} 个样本、{fig.layout.meta['retained_genes']} 个过滤后基因；样本按分组与组内输入顺序排列。完整表达矩阵（数据目录内相对路径）：{display_path(tpm_file)}")
 else:
     raise FileNotFoundError(f"Expression distribution requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}")
 ```

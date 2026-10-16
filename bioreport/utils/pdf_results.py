@@ -6,6 +6,7 @@ from .render_output import show_print_table, typst_note
 
 def preview(frame, path, sort_by=None, limit=10, columns=None):
     from decimal import Decimal
+    from ..config import display_path
     total = len(frame)
     if sort_by in ['pvalue','padj','p.adjust','qvalue']:
         ordered = frame.sort_values(sort_by, kind='stable', na_position='last',
@@ -14,7 +15,7 @@ def preview(frame, path, sort_by=None, limit=10, columns=None):
         ordered = frame.sort_values(sort_by, kind='stable', na_position='last') if sort_by else frame
     if columns: ordered = ordered[[c for c in columns if c in ordered]]
     show_print_table(ordered, limit=limit)
-    typst_note(f"预览 {min(limit,total)} / {total} 行；排序：{sort_by or '输入顺序'}。完整结果：{path}")
+    typst_note(f"预览 {min(limit,total)} / {total} 行；排序：{sort_by or '输入顺序'}。完整结果（数据目录内相对路径）：{display_path(path)}")
 
 
 def raw_probability_columns(path, frame):

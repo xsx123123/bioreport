@@ -157,6 +157,37 @@
                 "type": "string",
                 "minLength": 1
               }
+            },
+            "mono_fonts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "enable_read_only_lock": {
+              "type": "boolean"
+            },
+            "allow_copy_text": {
+              "type": "boolean"
+            },
+            "allow_print": {
+              "type": "boolean"
+            },
+            "owner_password": {
+              "type": "string",
+              "minLength": 1
+            },
+            "owner_password_env": {
+              "type": "string",
+              "minLength": 1
             }
           },
           "additionalProperties": false

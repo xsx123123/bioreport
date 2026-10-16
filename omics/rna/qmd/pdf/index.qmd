@@ -6,7 +6,7 @@ title: 项目概况与结果摘要
 #| label: pdf-project-summary
 import pandas as pd
 from IPython.display import display, Markdown
-from bioreport.config import load_config
+from bioreport.config import load_config, display_path
 from bioreport.utils.pdf_results import summary_metrics, comparison_summaries, settings, ordered_samples
 from bioreport.utils.render_output import show_print_table, typst_note
 project_config = load_config()
@@ -37,5 +37,5 @@ if group_col:
     samples = samples.assign(**{group_col:samples[group_col].astype(str)}).sort_values(group_col, kind='stable')
 limit = pdf_settings.get('sample_rows',30)
 show_print_table(samples.iloc[:, :6], limit=limit)
-typst_note(f"样本预览 {min(limit,len(samples))} / {len(samples)} 行，最多 6 列；按分组与组内输入顺序排列。sample 与 sample_name 保留原始对应关系。完整样本信息：{input_files['sample_file']}")
+typst_note(f"样本预览 {min(limit,len(samples))} / {len(samples)} 行，最多 6 列；按分组与组内输入顺序排列。sample 与 sample_name 保留原始对应关系。完整样本信息（数据目录内相对路径）：{display_path(input_files['sample_file'], project_config)}")
 ```

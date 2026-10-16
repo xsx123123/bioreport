@@ -178,6 +178,8 @@ def load_config(
         data_dir = path.resolve().parent / data_dir
     data_dir = data_dir.resolve()
     if "data_dir" in input_files:
+        # 保留配置中书写的数据目录（交付目录），供报告展示；运行态仍用解析后的绝对路径。
+        data["_data_dir"] = str(input_files["data_dir"])
         input_files["data_dir"] = str(data_dir)
     for key, value in input_files.items():
         if key == "data_dir":
@@ -273,6 +275,32 @@ def resolve_path(config: Dict[str, Any], path_str: Optional[str]) -> Optional[Pa
             data_dir_path = Path(config_path).parent / data_dir_path
 
     return (data_dir_path / path_str).resolve()
+
+
+def display_path(path_str: Optional[str], config: Optional[Dict[str, Any]] = None) -> str:
+    """
+    报告展示用路径：位于交付目录（input_files.data_dir）内的输入文件
+    显示为相对交付目录的路径，避免暴露运行环境的绝对路径。
+
+    data_dir 之外的路径保持原样（如显式给出的绝对路径），保证可核验性。
+    """
+    if not path_str:
+        return ""
+    path_str = str(path_str)
+    if config is None:
+        try:
+            config = load_config()
+        except Exception:
+            # 找不到配置时无法判定交付目录；保留原路径，不在展示环节抛错。
+            return path_str
+    data_dir = config.get("input_files", {}).get("data_dir")
+    if not data_dir:
+        return path_str
+    try:
+        relative = Path(path_str).resolve().relative_to(Path(data_dir).resolve())
+    except (ValueError, OSError):
+        return path_str
+    return relative.as_posix()
 
 
 def load_project_metadata(

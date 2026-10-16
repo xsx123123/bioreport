@@ -3,7 +3,7 @@
 `QualiMap` 对比对后的 `BAM` 文件进行深度的质量控制分析。该工具通过评估基因组覆盖度均匀性、`5'-3'` 端偏好性以及 `Reads` 在基因组特征（如外显子、内含子、基因间区）上的分布情况，来衡量文库制备的完整性和测序比对的整体质量[@okonechnikov2016qualimap]。
 
 ```{python}
-#| label: QualiMap
+#| label: qc-qualimap
 #| results: asis
 visualize_multiqc_logs(
     analysis_dir=input_files["qualimap_dir"],
