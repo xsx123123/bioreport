@@ -39,6 +39,12 @@ def validate_observations(observations):
             if images != captions or not images:
                 errors.append({'check':'figure_caption', 'id':identity,'image_pages':sorted(images),'caption_pages':sorted(captions)})
         if kind == 'table':
+            captions = [v for v in items if v['part']=='caption']
+            first_rows = [v for v in items if v['part']=='row-0']
+            if captions and (len(captions) != 1 or not first_rows
+                             or captions[0]['page'] != first_rows[0]['page']
+                             or captions[0]['y'] >= first_rows[0]['y']):
+                errors.append({'check':'table_caption', 'id':identity})
             pages = {v['page'] for v in items if v['part'].startswith('row-')}
             headers = {v['page'] for v in items if v['part']=='header'}
             if pages - headers: errors.append({'check':'missing_header','id':identity,'pages':sorted(pages-headers)})

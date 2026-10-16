@@ -169,6 +169,12 @@
             "hvg_top_n": {
               "type": "integer",
               "minimum": 1
+            },
+            "qc_sample_coverage": {
+              "enum": [
+                "warn",
+                "error"
+              ]
             }
           },
           "additionalProperties": false
@@ -304,6 +310,71 @@
               "minimum": 1
             }
           }
+        },
+        "fastq_screen": {
+          "type": "object",
+          "properties": {
+            "axis": {
+              "enum": [
+                "reads",
+                "percent"
+              ]
+            },
+            "legend": {
+              "type": "object",
+              "properties": {
+                "min_fraction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "max_categories": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "aggregate_other": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "qualimap": {
+          "type": "object",
+          "properties": {
+            "coverage": {
+              "type": "object",
+              "properties": {
+                "drop_zero": {
+                  "type": "boolean"
+                },
+                "yscale": {
+                  "enum": [
+                    "linear",
+                    "log"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "volcano": {
+          "type": "object",
+          "properties": {
+            "annotate_top": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "y_axis": {
+              "type": "object",
+              "properties": {
+                "display_cap": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
+          }
         }
       },
       "additionalProperties": true
@@ -356,6 +427,12 @@
     },
     "paths": {
       "type": "object",
+      "properties": {
+        "gene_annotation_file": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
       "additionalProperties": {
         "type": "string",
         "minLength": 1

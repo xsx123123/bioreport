@@ -41,6 +41,7 @@ class MetricGrid(Block):
 
 @dataclass(kw_only=True)
 class TableBlock(Block):
+    caption: str = "数据概览"
     headers: list[str] = field(default_factory=list)
     rows: list[list[str]] = field(default_factory=list)
     numeric: list[bool] = field(default_factory=list)

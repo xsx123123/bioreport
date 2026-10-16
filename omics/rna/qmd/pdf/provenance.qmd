@@ -43,7 +43,7 @@ rows = [
 ]
 if prov.get("pipeline_version"):
     rows.append({"项目": "分析流程版本", "内容": prov["pipeline_version"]})
-show_print_table(pd.DataFrame(rows), limit=None)
+show_print_table(pd.DataFrame(rows), limit=None, caption="报告运行与分析溯源信息")
 
 checksums = prov.get("input_checksums") or {}
 if checksums:
@@ -52,7 +52,7 @@ if checksums:
     cfg = load_config()
     fingerprints = [{"输入文件": key, "数据目录内路径": display_path(cfg['input_files'].get(key,''), cfg),
                      "SHA256": digest} for key, digest in checksums.items()]
-    show_print_table(pd.DataFrame(fingerprints), limit=None, evidence={"kind":"sha256"})
+    show_print_table(pd.DataFrame(fingerprints), limit=None, caption="输入文件 SHA-256 指纹", evidence={"kind":"sha256"})
     typst_note(f"指纹用于核验文件完整性。完整 Input Manifest 覆盖 {len(prov.get('input_manifest', []))} 个唯一文件（包括声明的结果目录）；完整路径、角色、SHA256 和大小保存在 input-manifest.json。Report / Artifact / Reproduction Manifest 随正常 CLI 输出交付。")
 else:
     typst_note("未采集到输入文件指纹（本报告可能由旧版本引擎生成）。")

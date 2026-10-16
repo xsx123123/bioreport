@@ -155,10 +155,14 @@ def plot_volcano_pvalue(
     fc_cutoff: float = 1.0,
     pval_cutoff: float = 0.05,     # 现在的含义是 P-value < 0.05
     palette: Optional[dict] = None,
-    display_cap: Optional[float] = None
+    display_cap: Optional[float] = None,
+    annotate_top: int = 0
 ) -> go.Figure:
     """
     绘制交互式火山图 (使用 Raw P-value 进行筛选).
+
+    annotate_top > 0 时，为上调与下调各取最显著的若干基因添加基因名引线标注；
+    排序口径与预览表一致：先按 padj/pvalue 升序，同值按 |log2FoldChange| 降序。
     """
     
     df = df.copy()
@@ -241,7 +245,45 @@ def plot_volcano_pvalue(
                          tickvals=list(np.linspace(0, display_cap, 6)),
                          ticktext=[f'{v:g}' for v in np.linspace(0, display_cap, 6)[:-1]] + [f'{display_cap:g}+'])
         fig.update_layout(meta={'display_cap': display_cap})
+
+    if annotate_top and annotate_top > 0:
+        _annotate_top_genes(fig, df, col_status, c_logfc, c_pval, c_symbol, display_cap, annotate_top)
     return fig
+
+
+def _volcano_rank(frame, p_col, fc_col):
+    """显著性排序：先按 P 值升序，同值按 |log2FC| 降序（与预览表口径一致）。"""
+    ranked = frame.assign(
+        _p=pd.to_numeric(frame[p_col], errors='coerce').fillna(np.inf),
+        _fc=pd.to_numeric(frame[fc_col], errors='coerce').abs().fillna(0))
+    return ranked.sort_values(['_p', '_fc'], ascending=[True, False], kind='stable')
+
+
+def _annotate_top_genes(fig, df, col_status, col_logfc, col_pval, col_symbol, display_cap, top_n):
+    """为上调/下调各前 N 个显著基因加基因名引线标注，顶部裁剪线上的标签阶梯错开。"""
+    annotations = []
+    for status, sign in (('Up', 1), ('Down', -1)):
+        subset = df[df[col_status] == status]
+        if subset.empty:
+            continue
+        top = _volcano_rank(subset, col_pval, col_logfc).head(int(top_n))
+        for rank, (_, row) in enumerate(top.iterrows()):
+            name = str(row[col_symbol]) if col_symbol in row else str(row.name)
+            height = float(np.minimum(-np.log10(float(row[col_pval]) + 1e-300), display_cap)
+                           if display_cap is not None else -np.log10(float(row[col_pval]) + 1e-300))
+            # 顶部裁剪线上的点会重叠，按序阶梯式下移，并留出引线可见距离。
+            capped = display_cap is not None and height >= display_cap
+            offset = -rank if capped else 0
+            annotations.append(dict(
+                x=float(row[col_logfc]),
+                y=height - (0.04 * display_cap if display_cap else 0) - offset * (0.05 * (display_cap or 10)),
+                text=name, showarrow=True, arrowhead=0, arrowsize=.7, arrowwidth=.7, arrowcolor='#8795a5',
+                ax=0, ay=-18 if sign < 0 else 18, xanchor='center',
+                yanchor='bottom' if sign > 0 else 'top',
+                font=dict(size=8.5, color='#243746'),
+            ))
+    if annotations:
+        fig.update_layout(annotations=list(fig.layout.annotations or []) + annotations)
 
 # --- 新增功能 ---
 

@@ -38,7 +38,7 @@ else:
         'star-mapped_percent': 'Mapped (%)', 'star-uniquely_mapped': 'Unique reads',
         'star-uniquely_mapped_percent': 'Unique (%)', 'star-multimapped': 'Multi reads'})
     limit = star_pdf.get('qc_rows',30)
-    show_print_table(mapping, limit=limit)
+    show_print_table(mapping, limit=limit, caption="STAR 比对质量统计")
     typst_note(f"STAR 统计预览：前 {min(limit,len(mapping))} / {len(mapping)} 条记录；{'默认仅展示最终比对，排除 STARpass1' if star_pdf.get('qc_detail','key')=='key' else '保留输入中的比对阶段标签'}。样本名使用元数据的 sample_name，原始映射见样本文件。Reads 数值沿用输入文件单位（Million），百分比列单位为 %。完整结果（数据目录内相对路径）：{display_path(mapping_path)}")
     if star_pdf.get('qc_detail','key')=='all':
         visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['STAR'])

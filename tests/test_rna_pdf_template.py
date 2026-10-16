@@ -1,6 +1,7 @@
 """Verify dedicated print composition and its data/plotting cells."""
 
 from pathlib import Path
+import json
 import re
 import shutil
 
@@ -30,12 +31,42 @@ def test_pdf_has_own_content_and_print_layout(tmp_path):
     assert "panel-tabset" not in pdf and "callout-" not in pdf
     assert "<div" not in pdf and "<span" not in pdf
     assert "静态图表与结果摘要" in pdf
+    assert "assets/architecture.svg" in pdf
+    assert "技术架构" in pdf
+    assert "BioReport 愿景" in pdf
     assert "about-manifesto" in html
     assert "panel-tabset" in html
     assert "```{mermaid}" in html and "```{mermaid}" not in pdf
     cover = (staged / "pdf/rna-cover.typ").read_text()
     assert config["project"]["client"] in cover
     assert config["report"]["title"] in cover
+    # 元数据卡片承载新的科研交付字段，物种学名走真斜体渲染。
+    for label in ("项目编号", "核心比较组", "报告引擎"):
+        assert label in cover
+    assert f"ProjectID: {config['project']['project_id']}" in cover
+    assert "BioReport: v2.0.0" in cover
+    assert "FlowVersion: RNAFlow" in cover
+    assert "RNAFlow example" not in cover
+    assert "align: center" in (staged / "pdf/print-style.typ").read_text()
+    print_style = (staged / "pdf/print-style.typ").read_text()
+    assert 'numbering("1-1"' in print_style and "supplement: [图]" in print_style
+    assert "block(sticky: true)[#figure(" in print_style
+    assert "sci(" in cover and "Group 2 vs Group 1" in cover
+    assert "2_vs_1" not in cover
+    # 双徽标保留在同一眉栏。
+    assert 'logo/logo.png' in cover and 'Huazhong_Agricultural_University_logo.svg' in cover
+    # 报告日期与数据校验状态来自溯源快照，就绪时才写入封面。
+    (staged / "qmd/provenance.json").write_text(json.dumps({
+        "generated_at": "2026-10-17T01:18:04+0800",
+        "input_checksums": {"tpm_file": "a" * 64},
+        "input_manifest": [{"path": "index/merge_rsem_tpm.tsv"}],
+    }), encoding="utf-8")
+    compose_report(config, staged, pdf=True)
+    cover = (staged / "pdf/rna-cover.typ").read_text()
+    assert "报告生成日期" in cover and "2026-10-17" in cover
+    assert "数据完整性校验状态" in cover and "SHA-256 指纹已记录" in cover
+    assert "Verified" not in cover
+    assert "未比对可信基准" in cover
 
 
 def test_pdf_cells_read_rna_example_and_produce_tables_and_figures(tmp_path, monkeypatch):
@@ -59,3 +90,35 @@ def test_pdf_cells_read_rna_example_and_produce_tables_and_figures(tmp_path, mon
     assert namespace["comparisons"]
     assert len(namespace["shown"].columns) > 1
     assert not namespace["mapping"].empty
+
+
+def test_cover_missing_metadata_does_not_invent_evidence(tmp_path):
+    staged = stage(tmp_path)
+    config = load_config(ROOT / "tests/report.rna.local.json")
+    config["project"] = {"project_id": "DYNAMIC-42", "client": None,
+                         "species": "null", "pipeline_version": "undefined"}
+    config["report"]["modules"] = ["rna.index"]
+    config["input_files"].pop("contrasts_file")
+    compose_report(config, staged, pdf=True)
+    cover = (staged / "pdf/rna-cover.typ").read_text()
+    assert '"None"' not in cover and '"null"' not in cover and '"undefined"' not in cover
+    assert "未提供校验结果" in cover and "Verified" not in cover
+    assert "DYNAMIC-42" in cover and "未提供" in cover
+    assert "STUDY INFORMATION" in cover and "ANALYSIS PROVENANCE" in cover
+    config["project"].update(client="委托研究中心" * 20, pipeline_version="RNAFlow v3.2.1")
+    compose_report(config, staged, pdf=True)
+    cover = (staged / "pdf/rna-cover.typ").read_text()
+    assert "委托研究中心" * 20 in cover and "RNAFlow v3.2.1" in cover
+
+
+def test_print_table_preserves_title_and_escapes_typst(monkeypatch):
+    import pandas as pd
+    from bioreport.utils import render_output
+    blocks, outputs = [], []
+    monkeypatch.setattr(render_output, 'record_block', blocks.append)
+    monkeypatch.setattr(render_output, 'display', outputs.append)
+    title = '样本 "A" 与 Control 的质量统计'
+    render_output.show_print_table(pd.DataFrame({'样本': ['A'], '数量': [6]}), caption=title)
+    assert blocks[0].caption == title
+    assert blocks[0].rows == [['A', '6']]
+    assert 'caption: ' + json.dumps(title, ensure_ascii=False) in outputs[0].data

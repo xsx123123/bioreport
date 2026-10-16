@@ -148,6 +148,90 @@ def test_saved_multiqc_html_keeps_qualimap_and_star(monkeypatch):
     assert len(seen)==1 and 'STAR' in seen[0].layout.title.text
 
 
+def test_fastq_screen_reports_missing_samples_instead_of_dropping_bars(tmp_path,monkeypatch):
+    """缺样必须显性化：缺失样本写入正文提示，绘图样本集合不被静默裁剪。"""
+    import json as _json
+    from omics.rna.analysis import qc_vis
+    from bioreport.utils import render_output
+    root=Path(__file__).resolve().parents[1]
+    source=root/'examples/rna-seq/data/fastq_screen_report/fastq_screen_multiqc_r1/multiqc_r1_fastq_screen_report_data'
+    directory=tmp_path/'screen';directory.mkdir()
+    data=_json.loads((source/'multiqc_data.json').read_text())
+    # 人为去掉一个样本，模拟上游只汇总 5/6 个样本。
+    dataset=data['report_plot_data']['fastq_screen_plot']['datasets'][0]
+    dropped=dataset['samples'].pop(0)
+    for cat in dataset['cats']: cat['data'] = cat['data'][1:]
+    (directory/'multiqc_data.json').write_text(_json.dumps(data))
+    cfg=_json.loads((root/'tests/report.rna.pdf.json').read_text())
+    cfg['input_files']['data_dir']=str(root/'examples/rna-seq/data')
+    path=tmp_path/'report.json';path.write_text(_json.dumps(cfg))
+    monkeypatch.setenv('REPORT_CONFIG',str(path))
+    monkeypatch.setenv('BIOREPORT_OUTPUT_FORMAT','pdf')
+    notes=[];seen=[]
+    monkeypatch.setattr(render_output,'typst_note',notes.append)
+    monkeypatch.setattr(qc_vis,'_show_print_qc',lambda fig,identifier,title:seen.append(fig))
+    monkeypatch.setattr(qc_vis,'typst_note',notes.append,raising=False)
+    qc_vis.visualize_multiqc_logs(str(directory),['fastq_screen'])
+    assert seen and len(seen[0].data[0].x) == 5
+    assert any('5 / 12' in note or '缺失' in note for note in notes), notes
+
+
+def test_fastq_screen_coverage_error_mode_raises(tmp_path,monkeypatch):
+    import json as _json, pytest
+    from omics.rna.analysis import qc_vis
+    root=Path(__file__).resolve().parents[1]
+    cfg=_json.loads((root/'tests/report.rna.pdf.json').read_text())
+    cfg['input_files']['data_dir']=str(root/'examples/rna-seq/data')
+    cfg['report']['pdf']['qc_sample_coverage']='error'
+    path=tmp_path/'report.json';path.write_text(_json.dumps(cfg))
+    monkeypatch.setenv('REPORT_CONFIG',str(path))
+    with pytest.raises(ValueError, match='缺失'):
+        qc_vis._assert_sample_coverage('FastQ Screen: Mapped Reads',['1-1_raw_R1_screen'],'demo')
+
+
+def test_fastq_screen_percent_axis_reports_normalized_shares(tmp_path,monkeypatch):
+    import json as _json
+    from omics.rna.analysis import qc_vis
+    import pandas as pd
+    root=Path(__file__).resolve().parents[1]
+    cfg=_json.loads((root/'tests/report.rna.pdf.json').read_text())
+    cfg['input_files']['data_dir']=str(root/'examples/rna-seq/data')
+    cfg['analysis']={'fastq_screen':{'axis':'percent'}}
+    path=tmp_path/'report.json';path.write_text(_json.dumps(cfg))
+    monkeypatch.setenv('REPORT_CONFIG',str(path))
+    monkeypatch.setenv('BIOREPORT_OUTPUT_FORMAT','pdf')
+    directory=root/'examples/rna-seq/data/fastq_screen_report/fastq_screen_multiqc_r1/multiqc_r1_fastq_screen_report_data'
+    data=_json.loads((directory/'multiqc_data.json').read_text())
+    plot=data['report_plot_data']['fastq_screen_plot'];dataset=plot['datasets'][0]
+    fig,title=qc_vis._dataset_figure('fastq_screen_plot',plot,dataset)
+    totals=[sum(float(t.x[i]) for t in fig.data) for i in range(len(dataset['samples']))]
+    assert all(abs(total-100)<1e-6 for total in totals), totals
+    assert tuple(fig.layout.xaxis.range)==(0,100)
+
+
+def test_qualimap_coverage_drops_zero_bin_and_supports_log_scale(tmp_path,monkeypatch):
+    """0X bin 计数 1e9 量级会把 1X–100X 曲线压死；默认剔除并支持对数纵轴。"""
+    import json as _json
+    from omics.rna.analysis import qc_vis
+    root=Path(__file__).resolve().parents[1]
+    cfg=_json.loads((root/'tests/report.rna.pdf.json').read_text())
+    cfg['input_files']['data_dir']=str(root/'examples/rna-seq/data')
+    path=tmp_path/'report.json';path.write_text(_json.dumps(cfg))
+    monkeypatch.setenv('REPORT_CONFIG',str(path))
+    monkeypatch.setenv('BIOREPORT_OUTPUT_FORMAT','pdf')
+    directory=root/'examples/rna-seq/data/QualiMap/multiqc_data'
+    data=_json.loads((directory/'multiqc_data.json').read_text())
+    plot=data['report_plot_data']['qualimap_coverage_histogram']
+    fig,_=qc_vis._dataset_figure('qualimap_coverage_histogram',plot,plot['datasets'][0])
+    fig,note=qc_vis._apply_coverage_options('qualimap_coverage_histogram',fig)
+    assert min(float(x) for t in fig.data for x in t.x)>=1 and '0X' in note
+    cfg['analysis']={'qualimap':{'coverage':{'yscale':'log'}}}
+    path.write_text(_json.dumps(cfg))
+    fig2=qc_vis._dataset_figure('qualimap_coverage_histogram',plot,plot['datasets'][0])[0]
+    fig2,note2=qc_vis._apply_coverage_options('qualimap_coverage_histogram',fig2)
+    assert fig2.layout.yaxis.type=='log' and '对数刻度' in note2
+
+
 def test_visual_comparison_rejects_changed_figure_region(tmp_path,monkeypatch):
     import importlib.util
     import pytest
@@ -183,3 +267,13 @@ def test_real_pdf_toc_destinations_and_broken_target(tmp_path):
     annotation['/A'][NameObject('/D')]=ArrayObject([writer.pages[0].indirect_reference,NameObject('/XYZ'),FloatObject(0),FloatObject(800),FloatObject(0)])
     broken=tmp_path/'broken-toc.pdf';writer.write(broken);writer.close();reader.close()
     assert any(e['check']=='toc_page_number' for e in validate_navigation(broken)['errors'])
+
+
+def test_table_caption_stays_above_first_row():
+    from bioreport.report.validation import validate_observations
+    rows = [dict(kind='table', id='t', part='header', page=2, y=30),
+            dict(kind='table', id='t', part='row-0', page=2, y=40)]
+    caption = dict(kind='table', id='t', part='caption', page=2, y=20)
+    assert validate_observations([caption, *rows]) == []
+    assert validate_observations([{**caption, 'page':1}, *rows]) == [dict(check='table_caption', id='t')]
+    assert validate_observations([{**caption, 'y':50}, *rows]) == [dict(check='table_caption', id='t')]

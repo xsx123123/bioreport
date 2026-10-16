@@ -21,7 +21,18 @@
 #set list(indent: 2em)
 #set enum(indent: 2em)
 #set heading(numbering: "1.1")
-#show heading.where(level: 1): it => block(sticky: true, above: 6mm, below: 4mm)[#text(size: 19pt, fill: rgb("#24476a"), weight: "bold")[#it]]
+#let report-table-counter = counter("report-table")
+#let report-figure-numbering(..nums) = {
+  let chapter = counter(heading).at(here()).first()
+  numbering("1-1", chapter, nums.pos().first())
+}
+#set figure(numbering: report-figure-numbering, supplement: [图#h(-0.33em)])
+#show heading.where(level: 1): it => {
+  // 一级章节开始时重置图计数，形成“图 章节-序号”（如图 8-1）。
+  counter(figure.where(kind: image)).update(0)
+  report-table-counter.update(0)
+  block(sticky: true, above: 6mm, below: 4mm)[#text(size: 19pt, fill: rgb("#24476a"), weight: "bold")[#it]]
+}
 #show heading.where(level: 2): it => block(sticky: true, above: 5mm, below: 3mm)[#text(size: 14pt, fill: rgb("#24476a"), weight: "bold")[#it]]
 #show heading.where(level: 3): it => block(sticky: true, above: 3mm, below: 2mm)[#text(size: 11pt, weight: "bold")[#it]]
 #show figure.caption: set text(size: 9pt, fill: rgb("#53636a"))
@@ -42,10 +53,10 @@
 #let report-observation(id, kind, part) = context [#metadata((id: id, kind: kind, part: part, page: here().position().page, y: here().position().y.pt()))<bioreport-layout>]
 #let report-figure(path, caption, ratio, preferred-height: none, id: "figure") = {
   let height = if preferred-height == none { calc.min(166mm * ratio, 190mm) } else { preferred-height }
-  figure(
+  block(sticky: true)[#figure(
     [#report-observation(id, "figure", "image")#image(path, width: 100%, height: height, fit: "contain")],
-    caption: [#report-observation(id, "figure", "caption")#text(caption)], supplement: [图], numbering: "1", placement: none,
-  )
+    caption: [#report-observation(id, "figure", "caption")#text(caption)], placement: none,
+  )]
 }
 #let report-continuation(id) = context {
   let rows = query(<bioreport-layout>).filter(it => it.value.kind == "table" and it.value.id == id and it.value.part.starts-with("row-"))
@@ -54,13 +65,24 @@
     text("（续表）")
   }
 }
-#let report-table(headers, rows, numeric, keep-together: true, id: "table") = layout(size => {
+#let report-table(headers, rows, numeric, keep-together: true, note: none, caption: "数据概览", id: "table") = layout(size => {
   let widths = headers.map(h => if h == "SHA256" { 4fr } else if h in ("Description", "通路名称", "数据目录内路径", "统计口径") { 3fr } else if h in ("Gene ID", "Sample", "样本", "项目", "比较组") { 1.8fr } else { 1fr })
   let body = [
+    #report-table-counter.step()
+    #block(width: 100%, sticky: true, below: 2mm)[
+      #set par(first-line-indent: 0pt, justify: false)
+      #align(center, context [
+        #report-observation(id, "table", "caption")
+        #text(size: 9.5pt, weight: "medium", fill: rgb("#29445F"))[
+          表 #counter(heading).at(here()).first()-#report-table-counter.display("1") #h(.5em)#caption
+        ]
+      ])
+    ]
     #set text(size: 9pt)
     #table(
       columns: widths, inset: (x: 5pt, y: 5.5pt),
-      align: (x, y) => if numeric.at(x) { right } else { left },
+      // 科研交付表格统一居中，避免不同列类型造成视觉错位。
+      align: center,
       stroke: (x, y) => (bottom: .35pt + rgb("#dce3ec")),
       fill: (x, y) => if y == 0 { rgb("#eaf0f7") } else if calc.even(y) { rgb("#f6f9fc") } else { none },
       table.header(repeat: true, ..headers.enumerate().map(((j, h)) => [#if j == 0 { report-observation(id, "table", "header") }#text(weight: "bold", report-cell(h))#if j == 0 { report-continuation(id) }])),
@@ -70,7 +92,10 @@
   ]
   let fits = measure(body, width: size.width).height <= 225mm
   report-observation(id, "table", if keep-together and fits { "small" } else { "large" })
-  block(breakable: not (keep-together and fits), above: 3mm, below: 3mm, body)
+  block(breakable: not (keep-together and fits), sticky: keep-together and fits, above: 3mm, below: 3mm)[
+    #body
+    #if note != none { v(1.5mm); text(size: 9pt, fill: rgb("#53636a"))[#note] }
+  ]
 })
 
 // Pair / triplet / grid: preserve captions and move the reading unit together

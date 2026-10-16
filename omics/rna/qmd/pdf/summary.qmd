@@ -36,7 +36,7 @@ display(Markdown('```{=typst}\n' + lead + '\n```'))
 show_metric_grid(cards, block_id='executive-metrics')
 display(Markdown('## 差异表达客观统计汇总\n\n以下为输入结果的客观统计汇总；各比较组独立计数，不合并去重，不由此推断生物学机制。'))
 if not comparisons_summary.empty:
-    show_print_table(comparisons_summary, limit=None, block_id='executive-contrasts', evidence={'kind':'deg_summary'})
+    show_print_table(comparisons_summary, limit=None, block_id='executive-contrasts', caption='各比较组差异表达基因数量汇总', evidence={'kind':'deg_summary'})
 display(Markdown('## 数据范围与溯源说明\n\n本报告直接读取上游分析产物以生成所选模块的统计汇总与可视化图表，不重新执行序列比对或差异统计检验。完整的原始数据、文件路径及 SHA256 校验值请参阅「溯源及交付」章节；各项统计指标的计算分母与筛选阈值详见「项目概况」及后续对应结果章节。'))
 if summary_config.get('ai', {}).get('enabled'):
     display(Markdown('**Evidence-grounded Interpretation**：可选辅助解释见 AI 章节。Auxiliary interpretation; not a replacement for statistical evidence.'))

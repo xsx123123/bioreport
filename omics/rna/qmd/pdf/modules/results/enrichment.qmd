@@ -52,8 +52,8 @@ for comp in comparisons:
                 show_figure(fig, evidence={"kind":"enrichment","comparison":comp,"direction":direction,"top_n":count,"indices":list(chunk.index)}, caption=f"{comp} {label}富集分析（{category}），Top {count} 中条目 {start+1}–{start+len(chunk)}（实际展示 {len(chosen)}）。基因比例为输入 GeneRatio；气泡面积对应 Count，颜色对应校正后 P 值。同一方向各分图共用色标和气泡大小比例。")
                 if part == len(chunks)-1:
                     preview(raw_probability_columns(path,frame).loc[chosen.index], path, sort_by='p.adjust', limit=count,
+                        caption=f'{comp} {label}功能富集结果预览',
                         columns=['Description','GeneRatio','Count','p.adjust'],
                         evidence={'kind':'enrichment','comparison':comp,'direction':direction,'top_n':count})
         typst_note(f"{comp} {label}：{len(filtered)} / {len(frame)} 个条目满足校正后 P < {cutoff}；正文展示前 {len(chosen)} 个。")
-
 ```

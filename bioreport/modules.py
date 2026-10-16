@@ -244,6 +244,48 @@ def _namespace_chunk_labels(body: str, module_id: str, position: int) -> str:
     return body
 
 
+def _cover_provenance(template_dir: Path) -> dict:
+    """Read the staged provenance so the cover can show the generation date and
+    verification state; a missing file degrades to an empty mapping."""
+    try:
+        data = json.loads((template_dir / "qmd" / "provenance.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _cover_comparisons(config: dict) -> list[str]:
+    """Control→Treat 形式的比较组名称；对照表缺失时返回空列表。"""
+    path = config.get("input_files", {}).get("contrasts_file")
+    if not path:
+        return []
+    try:
+        from .utils.report_utils import get_comparisons_from_csv
+        return get_comparisons_from_csv(path)
+    except Exception:
+        return []
+
+
+def _cover_pills(config: dict) -> list[str]:
+    """实验规模速览胶囊：仅显示样本数与分组数，研究及溯源信息留给面板。
+
+    任一依据缺失时跳过该胶囊，绝不填充示例值。
+    """
+    pills = []
+    sample_file = config.get("input_files", {}).get("sample_file")
+    if sample_file:
+        try:
+            import pandas as pd
+            samples = pd.read_csv(sample_file)
+            pills.append(f"{len(samples)} Samples")
+            group_col = next((c for c in samples if c.lower() == 'group'), None)
+            if group_col:
+                pills.append(f"{samples[group_col].nunique()} Groups")
+        except Exception:
+            pass
+    return pills
+
+
 def compose_report(config: dict, template_dir: Path, pdf: bool = False, website: bool = False) -> Path | list[dict]:
     """Compose selected chapters as one document or separate website pages."""
     report = config.get("report", {})
@@ -301,23 +343,61 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                  project.get("client", ""), project.get("species", ""),
                  project.get("genome_version", project.get("genome", "")),
                  project.get("pipeline_version", project.get("software", ""))]
-        quoted = [json.dumps(str(value), ensure_ascii=False) for value in lines]
-        labels = ["委托客户", "目标物种", "参考基因组", "分析流程"]
-        fields = [json.dumps(f"{label}：{value}", ensure_ascii=False)
-                  for label, value in zip(labels, lines[1:]) if value]
-        for label, value in [
-            ('项目编号', project.get('project_id', project.get('id'))),
-            ('报告日期', project.get('report_date', project.get('date'))),
-            ('报告版本', report.get('version', project.get('report_version'))),
-            ('运行标识', project.get('run_id')),
-        ]:
-            if value:
-                fields.append(json.dumps(f'{label}：{value}', ensure_ascii=False))
-        # 自动注入报告引擎版本，随 __version__ 自动更新，无需手填。
-        fields.append(json.dumps(f'报告引擎：BioReport v{bioreport.__version__}', ensure_ascii=False))
+        title = str(lines[0]).replace('PDF', '').strip()
+        # 封面在 build_provenance 之后渲染，直接读取溯源结果以保证日期与校验状态就绪。
+        provenance = _cover_provenance(template_dir)
+        # Presentation only: checksum collection is not trusted hash verification.
+        # Keep evidence generation and validation unchanged.
+        def clean(value):
+            if value is None:
+                return ""
+            text = str(value).strip()
+            return "" if text.lower() in {"none", "null", "undefined"} else text
+
+        pipeline = clean(lines[4])
+        report_date = clean(project.get('report_date') or project.get('date'))
+        if not report_date and provenance.get('generated_at'):
+            report_date = str(provenance['generated_at']).split('T')[0]
+        comparisons = _cover_comparisons(config)
+        def comparison_name(identifier):
+            parts = identifier.split('_vs_', 1)
+            if len(parts) != 2:
+                return identifier
+            return ' vs '.join(f"Group {p}" if p.isdigit() else p for p in parts)
+
+        checksums = provenance.get('input_checksums') or {}
+        integrity = (f"SHA-256 指纹已记录（{len(checksums)} 个输入文件）；未比对可信基准"
+                     if checksums else "未提供校验结果")
+        study = [
+            ("委托单位", clean(lines[1]), False),
+            ("研究物种", clean(lines[2]), True),
+            ("参考基因组", clean(lines[3]), False),
+            ("核心比较组", "；".join(map(comparison_name, comparisons)), False),
+        ]
+        analysis = [
+            ("项目编号", clean(project.get('project_id') or project.get('id')), False),
+            ("RNAFlow 流程版本", pipeline, False),
+            ("BioReport 报告引擎版本", f"BioReport v{bioreport.__version__}", False),
+            ("数据完整性校验状态", integrity, False),
+        ]
+        def quoted_fields(pairs):
+            return [(json.dumps(label, ensure_ascii=False),
+                     json.dumps(value or "未提供", ensure_ascii=False), italic)
+                    for label, value, italic in pairs]
         cover = Template((style_dir / "rna-cover.typ.j2").read_text(encoding="utf-8")).render(
-            title=json.dumps(str(lines[0]).replace('PDF', '').strip(), ensure_ascii=False), fields=fields,
-            subtitle=str(lines[0]).replace('PDF', '').strip() != 'RNA-seq 转录组分析报告',
+            title=json.dumps(title, ensure_ascii=False),
+            study_fields=quoted_fields(study), analysis_fields=quoted_fields(analysis),
+            report_date=json.dumps(report_date or "未提供", ensure_ascii=False),
+            pills=[json.dumps(text, ensure_ascii=False) for text in _cover_pills(config)],
+            project_id=json.dumps(
+                f"ProjectID: {project.get('project_id', project.get('id')) or short_name}",
+                ensure_ascii=False),
+            bioreport_version_label=json.dumps(f"BioReport: v{bioreport.__version__}", ensure_ascii=False),
+            pipeline_version_label=json.dumps(f"FlowVersion: {pipeline or 'RNAFlow'}", ensure_ascii=False),
+            english_subtitle=json.dumps(
+                report.get('english_subtitle')
+                or 'Standardized Transcriptome Sequencing Analysis & Data Lineage Report',
+                ensure_ascii=False),
         )
         metadata.pop("title", None)
         metadata.pop("date", None)

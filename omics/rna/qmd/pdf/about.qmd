@@ -11,24 +11,12 @@ title: 交付文件与报告说明
 BioReport 采用配置驱动的模块化报告架构：系统读取已有分析结果，根据 JSON / YAML 配置选择报告章节、绑定输入文件与展示参数，组合 Quarto 文档后生成交互式 HTML 或适合打印归档的 PDF；AI 解读为可选分支，在渲染前生成辅助解释内容。
 
 ```{=typst}
-#block(breakable: false)[
-  #align(center)[
-    #let node(label) = block(width: 75%, inset: 3mm, fill: rgb("#eaf0f7"), radius: 2mm)[#text(size: 12pt, weight: "bold", fill: rgb("#24476a"), label)]
-    #node("Configuration")
-    ↓
-    #node("Report Composition")
-    ↓
-    #node("Analysis Results")
-    ↓
-    #node("Renderer")
-    ↓
-    #grid(columns: (1fr, 1fr), gutter: 4mm, node("HTML"), node("PDF"))
-    #v(3mm)
-    #text(size: 10pt)[Optional AI · Provenance · Validation]
-  ]
-  #v(3mm)
-  #text(size: 9pt, fill: rgb("#53636a"))[附图：配置驱动内容编排，读取分析产物，按输出格式渲染；辅助解释为可选内容，溯源与验证覆盖交付过程。]
-]
+#report-figure(
+  "assets/architecture.svg",
+  "BioReport 技术架构：配置、模块组合、分析结果与 HTML/PDF 交付链路。图源与 README 使用同一份 architecture.mmd。",
+  0.707,
+  id: "report-architecture",
+)
 ```
 
 ## 交付数据目录索引与映射说明
@@ -46,7 +34,7 @@ from pathlib import Path
 cfg = load_config()
 files = [{"输入类型": key, "数据目录内路径": display_path(value, cfg)} for key,value in cfg["input_files"].items() if key != "data_dir"]
 if files:
-    show_print_table(pd.DataFrame(files), limit=None, evidence={"kind":"input_paths"})
+    show_print_table(pd.DataFrame(files), limit=None, caption="报告输入文件与数据路径", evidence={"kind":"input_paths"})
 else:
     typst_note('当前配置未提供分析交付文件，不填充示例路径。')
 config_source = Path(cfg.get('_config_path','NA')).name if cfg.get('_config_path') else 'NA'
@@ -58,12 +46,11 @@ typst_note(f"报告生成器：BioReport v{__version__}。配置来源：{config
 **BioReport** 是 CygnusX BioOps 体系下的模块化多组学报告生成组件。工具基于 Python 与 Quarto 构建，以 JSON / YAML 统一配置驱动报告生成，无缝集成 Plotly 交互式图表与 Itables 动态表格，并支持 HTML 与 PDF 双格式输出，致力于将复杂的生信分析结果组织为结构清晰、证据可追溯、可复用分享的标准化科研交付物。
 
 ```{=typst}
-#block(breakable: false)[
-  #align(center)[
-    #image("assets/bioreport-vision.png", width: 100%)
-  ]
-  #v(2mm)
-  #text(size: 9pt, fill: rgb("#53636a"))[愿景：让每一次计算留下证据，让每一份报告承载发现。]
-]
+#report-figure(
+  "assets/bioreport-vision.png",
+  "BioReport 愿景：从分析结果到可验证、可追溯的科研报告。",
+  0.52,
+  id: "bioreport-vision",
+)
 ```
 

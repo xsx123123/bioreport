@@ -7,7 +7,7 @@ title: 项目概况与结果摘要
 import pandas as pd
 from IPython.display import display, Markdown
 from bioreport.config import load_config, display_path
-from bioreport.utils.pdf_results import summary_metrics, comparison_summaries, settings, ordered_samples
+from bioreport.utils.pdf_results import settings, ordered_samples
 from bioreport.utils.render_output import show_print_table, typst_note
 project_config = load_config()
 input_files = project_config['input_files']
@@ -25,10 +25,6 @@ display(Markdown(
     '- **平均 Q30**：全样本过滤后 Clean Reads 中 Phred 质量得分 $\\ge 30$（碱基识别准确率 $\\ge 99.9\\%$）的比例算术均值，用于评估测序底层碱基质量。\n'
     f'- **平均比对率**：全样本成功映射至参考基因组（`{reference_genome}`）的 Reads 占总有效 Clean Reads 比例的算术均值，反映文库序列与参考基因组的整体匹配效率及测序有效性。\n'
     '- **检出基因数**：全样本基因表达矩阵中，至少在 1 个样本中表达丰度满足 $\\text{TPM} > 1$ 的已注释基因总数，反映本次测序在转录组广度上的有效覆盖能力。'))
-labels = {'client':'委托客户', 'species':'物种', 'genome_version':'参考基因组', 'genome':'参考基因组', 'pipeline_version':'分析流程', 'project_id':'项目编号', 'report_date':'报告日期', 'run_id':'运行标识'}
-metadata = pd.DataFrame([{'项目':label, '内容':project[key]} for key,label in labels.items() if project.get(key)])
-if not metadata.empty: show_print_table(metadata, limit=None)
-show_print_table(summary_metrics(project_config), limit=None)
 typst_note('各比较组统计摘要见摘要章节；原始 P 值与 log2FC 的展示判定口径不等价于 FDR 控制。报告不依据汇总指标自动判定质控通过与否，也不自动推断生物学机制。')
 ```
 
@@ -43,6 +39,6 @@ group_col = next((c for c in samples if c.lower() == 'group'), None)
 if group_col:
     samples = samples.assign(**{group_col:samples[group_col].astype(str)}).sort_values(group_col, kind='stable')
 limit = pdf_settings.get('sample_rows',30)
-show_print_table(samples.iloc[:, :6], limit=limit, evidence={"kind":"samples","sample_count":len(samples)})
-typst_note(f"样本预览 {min(limit,len(samples))} / {len(samples)} 行，最多 6 列；按分组与组内输入顺序排列。sample 与 sample_name 保留原始对应关系。完整样本信息（数据目录内相对路径）：{display_path(input_files['sample_file'], project_config)}")
+show_print_table(samples.iloc[:, :6], limit=limit, caption="样本与实验分组信息", evidence={"kind":"samples","sample_count":len(samples)},
+                 note=f"样本预览 {min(limit,len(samples))} / {len(samples)} 行，最多 6 列；按分组与组内输入顺序排列。sample 与 sample_name 保留原始对应关系。完整样本信息（数据目录内相对路径）：{display_path(input_files['sample_file'], project_config)}")
 ```

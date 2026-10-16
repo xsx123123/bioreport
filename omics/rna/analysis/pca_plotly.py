@@ -7,6 +7,12 @@ from bioreport.utils.print_theme import group_palette
 from sklearn.decomposition import PCA
 import plotly.colors as pc
 
+
+def _pca_label_positions(count, phase=0):
+    """轮换标签锚点，降低重复样本坐标附近的文字重叠。"""
+    slots = ['top center', 'bottom center', 'middle right', 'middle left']
+    return [slots[(phase + i) % len(slots)] for i in range(count)]
+
 def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_num=4,
                     top_n=None, group_col=None, color_map=None):
     """
@@ -128,7 +134,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
             go.Scatter(
                 x=subset['PC1'], y=subset['PC2'],
                 mode='markers+text',
-                textposition='top center',
+                textposition=_pca_label_positions(len(subset), unique_groups.index(group)),
                 marker=dict(size=12, color=color, line=dict(width=1, color='DarkSlateGrey')),
                 name=str(group),
                 text=subset['Sample'], # 鼠标悬停显示样本名
@@ -143,7 +149,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
             go.Scatter(
                 x=subset['PC2'], y=subset['PC3'],
                 mode='markers+text',
-                textposition='top center',
+                textposition=_pca_label_positions(len(subset), unique_groups.index(group) + 1),
                 marker=dict(size=12, color=color, line=dict(width=1, color='DarkSlateGrey')),
                 name=str(group),
                 text=subset['Sample'],
@@ -157,8 +163,10 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
     fig.update_layout(
         template="simple_white", # 仿 R 的白色背景风格
         height=height_num,
-        legend=dict(title_text="Group", y=0.5), # 图例居中
-        margin=dict(t=50, b=50, l=50, r=50)
+        # 图例提取为左右两子图的顶部公共图例，避免压在左图点位上。
+        legend=dict(title_text="Group", orientation="h",
+                    yanchor="bottom", y=1.06, xanchor="center", x=0.5),
+        margin=dict(t=80, b=50, l=50, r=50)
     )
 
     # 更新坐标轴标签 (带方差百分比)

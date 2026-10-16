@@ -15,6 +15,7 @@
     "qc_file": "../data/index/multiqc_qc_general_stats.txt",
     "mapping_file": "../data/index/multiqc_mapping_general_stats.txt",
     "tpm_file": "../data/index/merge_rsem_tpm.tsv",
+    "gene_annotation_file": "../data/gene_annotation.tsv",
     "sample_file": "../data/index/sample.csv",
     "fastp_report_dir": "../data/fastp_trim_report/multiqc_short_read_trim_report_data",
     "fastp_stats_file": "../data/fastp_trim_report/multiqc_general_stats.txt",

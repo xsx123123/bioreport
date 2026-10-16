@@ -29,11 +29,11 @@ if sample_path:
     qc_frame['Sample'] = qc_frame['Sample'].astype(str).map(lambda value:name_map.get(value,value))
     qc_frame = qc_frame.assign(_order=qc_frame['Sample'].map({s:i for i,s in enumerate(ordered)})).sort_values('_order',kind='stable').drop(columns='_order')
 qc_limit = qc_config.get('report',{}).get('pdf',{}).get('qc_rows',30)
-show_print_table(qc_frame, limit=qc_limit)
+show_print_table(qc_frame, limit=qc_limit, caption="fastp 测序质量统计")
 typst_note(f"fastp 统计预览 {min(qc_limit,len(qc_frame))} / {len(qc_frame)} 行；单位为百分比，缺失值显示 NA。完整结果（数据目录内相对路径）：{display_path(data_path)}")
 ```
 
-**图表口径**：过滤分类图保留各类 Reads 计数；碱基质量曲线分别展示 R1/R2 的逐位置平均 Phred 得分。关键图模式使用 After filtering 阶段，完整模式保留全部阶段；图例与数据源见图注。
+**图表口径**：过滤分类图保留各类 Reads 计数；碱基质量曲线分别展示 R1/R2 的逐位置平均 Phred 得分。关键图模式使用过滤后（After filtering）阶段，完整模式保留全部阶段；图例与数据源见图注。
 
 ```{python}
 #| label: fastp-viz

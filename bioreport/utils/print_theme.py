@@ -83,6 +83,36 @@ def print_panels(figure):
     return [(figure, '')]
 
 
+def _annotate_points(axes, x, y, texts):
+    """Scatter labels with deterministic de-collision.
+
+    PCA replicates can land on nearly identical coordinates, which leaves their
+    text labels unreadable. Each label is tried at a fixed ladder of offsets and
+    the first non-overlapping one wins, so identical input always produces the
+    same layout (no random jitter).
+    """
+    offsets = [(0, 7), (0, -12), (12, 3), (-12, 3), (12, -10), (-12, -10),
+               (0, 17), (0, -22), (18, 8), (-18, 8)]
+    placed = []  # display-space boxes of already-placed labels
+    renderer = axes.figure.canvas.get_renderer()
+    for px, py, label_text in zip(x, y, texts):
+        label_text = str(label_text)
+        anchor = (float(px), float(py))
+        for dx, dy in offsets:
+            annotation = axes.annotate(label_text, anchor, xytext=(dx, dy),
+                                       textcoords='offset points', ha='center', fontsize=9)
+            box = annotation.get_window_extent(renderer=renderer).expanded(1.06, 1.12)
+            if not any(box.overlaps(other) for other in placed):
+                placed.append(box)
+                break
+            annotation.remove()
+        else:
+            # 全部槽位都被占用时保留第一条标签，绝不丢弃样本标注。
+            annotation = axes.annotate(label_text, anchor, xytext=offsets[0],
+                                       textcoords='offset points', ha='center', fontsize=9)
+            placed.append(annotation.get_window_extent(renderer=renderer))
+
+
 def export_vector(figure, path):
     """Export supported RNA/MultiQC traces to SVG, with text as embedded paths.
 
@@ -145,6 +175,7 @@ def export_vector(figure, path):
             axes[xkey, ykey] = (ax, xcfg, ycfg)
         stacked = {}
         heatmap = None
+        scatter_labels = {}  # (xkey, ykey) -> [(x, y, text), ...] placed after limits settle
         for i, trace in enumerate(figure.data):
             ax, xcfg, ycfg = axes[trace.xaxis or 'x', trace.yaxis or 'y']
             name = plain(trace.name); label = name if trace.showlegend is not False else '_nolegend_'
@@ -189,9 +220,10 @@ def export_vector(figure, path):
                                    color=color(c, PALETTE[i % len(PALETTE)]),
                                    alpha=trace.marker.opacity or .8, label=label, edgecolors='none')
                         if 'text' in mode and trace.text is not None:
-                            for px, py, label_text in zip(x, y, trace.text):
-                                ax.annotate(str(label_text), (px, py), xytext=(0, 6),
-                                            textcoords='offset points', ha='center', fontsize=9)
+                            # Labels are placed after every trace has set its limits,
+                            # so cross-group replicates also de-collide.
+                            scatter_labels.setdefault((trace.xaxis or 'x', trace.yaxis or 'y'), []).extend(
+                                (px, py, label_text) for px, py, label_text in zip(x, y, trace.text))
                             ax.margins(x=.12, y=.18)
 
             elif trace.type == 'bar':
@@ -267,6 +299,13 @@ def export_vector(figure, path):
                 ax.set_yticks(list(ycfg.tickvals))
                 if ycfg.ticktext is not None: ax.set_yticklabels(list(ycfg.ticktext))
             if ycfg.autorange=='reversed' and heatmap is None: ax.invert_yaxis()
+            # 点位标签在所有 trace 与坐标范围确定后统一避让，跨分组重复样本也能分开。
+            pending = scatter_labels.get((xkey, ykey))
+            if pending:
+                out.canvas.draw()
+                ax.autoscale_view()
+                _annotate_points(ax, [p[0] for p in pending], [p[1] for p in pending],
+                                 [p[2] for p in pending])
             for shape in layout.shapes or []:
                 if shape.xref not in [None,xkey,xkey+' domain','paper'] or shape.yref not in [None,ykey,ykey+' domain','paper']: continue
                 if shape.x0==shape.x1:ax.axvline(shape.x0,color='#8795a5',linewidth=.7,linestyle='--')
@@ -274,7 +313,17 @@ def export_vector(figure, path):
             handles,labels=ax.get_legend_handles_labels()
             if handles and not enrichment and heatmap is None:
                 dense_bar = any(t.type=='bar' and t.orientation=='h' and len(t.y)>8 for t in figure.data)
-                if len(handles)>8 or dense_bar:
+                stacked_bar = any(t.type=='bar' and t.orientation=='h' and layout.barmode in ['stack','relative']
+                                  for t in figure.data)
+                horizontal_legend = (getattr(layout.legend, 'orientation', None) == 'h')
+                multi_panel = len(axes) > 1
+                if horizontal_legend or stacked_bar:
+                    # Plotly 声明的水平公共图例或横向堆叠柱：图例移到轴外上方，避免叠压点位。
+                    title = plain(layout.legend.title.text) if getattr(layout.legend, 'title', None) and layout.legend.title.text else None
+                    ax.legend(handles, labels, loc='lower left', bbox_to_anchor=(0, 1.01),
+                              ncol=min(6, len(handles)), frameon=False, fontsize=8.5,
+                              handlelength=1.2, columnspacing=1.2, title=title)
+                elif len(handles)>8 or dense_bar:
                     wrapped = ['\n'.join(textwrap.wrap(v.replace('_',' '),26)) for v in labels]
                     ax.legend(handles, wrapped, loc='upper center',bbox_to_anchor=(.5,-.25),ncol=2,frameon=False,fontsize=9)
                 else:ax.legend(loc='best',frameon=False)

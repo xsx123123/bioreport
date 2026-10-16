@@ -6,7 +6,7 @@ csl: ../reference/china-national-standard-gb-t-7714-2015-numeric.csl
 
 本报告系统采用“计算与渲染解耦”架构，直接读取上游标准生信分析流水线已产出的统计矩阵与结果文件进行标准化重绘与排版，报告生成过程本身不重新执行序列比对、差异表达检验或功能富集计算。以下方法学说明仅对应当前配置所启用的报告模块，软件具体版本号以流程运行记录为准。
 
-## Analysis Workflow
+## 分析流程工作流
 
 ```{python}
 #| label: pdf-workflow-intro
@@ -79,7 +79,7 @@ if records is not None:
         if 'rna.results' in selected or 'rna.results.enrichment' in selected: wanted.add('clusterprofiler')
     shown_records = records[records['Software'].astype(str).str.casefold().str.replace(' ','').isin(wanted)] if 'Software' in records else records.iloc[:0]
     if not shown_records.empty:
-        show_print_table(shown_records.drop(columns=['Link'],errors='ignore'),limit=None, evidence={'kind':'software_versions'})
+        show_print_table(shown_records.drop(columns=['Link'],errors='ignore'),limit=None, caption="分析软件与版本信息", evidence={'kind':'software_versions'})
     else:
         typst_note('软件记录中没有与当前启用模块对应的版本，不填充示例版本。')
     typst_note(f'软件版本来源（数据目录内相对路径）：{display_path(path)}。正文仅列与当前模块对应的输入版本记录；完整原始版本表保留在该文件中，不据此断言可选分析已执行。')

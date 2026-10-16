@@ -208,7 +208,7 @@ def test_compose_report_footer_cover_and_provenance_page(tmp_path):
     assert "show_print_table" in pdf_doc
 
     cover = (staged / "pdf" / "rna-cover.typ").read_text(encoding="utf-8")
-    assert f"报告引擎：BioReport v{bioreport.__version__}" in cover
+    assert "报告引擎" in cover and f"BioReport v{bioreport.__version__}" in cover
 
 
 @pytest.mark.skipif(not RUN_INTEGRATION, reason="需要 Quarto + Jupyter 完整环境")

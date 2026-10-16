@@ -4,18 +4,29 @@ import pandas as pd
 from .render_output import show_print_table, typst_note
 
 
-def preview(frame, path, sort_by=None, limit=10, columns=None, *, evidence=None):
+def preview(frame, path, sort_by=None, limit=10, columns=None, *, evidence=None, caption=None):
     from decimal import Decimal
     from ..config import display_path
     total = len(frame)
     if sort_by in ['pvalue','padj','p.adjust','qvalue']:
-        ordered = frame.sort_values(sort_by, kind='stable', na_position='last',
-            key=lambda values: values.map(lambda value:Decimal('Infinity') if pd.isna(value) else Decimal(str(value))))
+        ordered = frame.copy()
+        ordered['_sort_probability'] = ordered[sort_by].map(
+            lambda value: Decimal('Infinity') if pd.isna(value) else Decimal(str(value)))
+        if 'log2FoldChange' in ordered:
+            ordered['_sort_abs_log2fc'] = pd.to_numeric(
+                ordered['log2FoldChange'], errors='coerce').abs().fillna(-float('inf'))
+            ordered = ordered.sort_values(
+                ['_sort_probability', '_sort_abs_log2fc'], ascending=[True, False],
+                kind='stable', na_position='last').drop(columns=['_sort_probability', '_sort_abs_log2fc'])
+        else:
+            ordered = ordered.sort_values('_sort_probability', kind='stable', na_position='last').drop(columns='_sort_probability')
     else:
         ordered = frame.sort_values(sort_by, kind='stable', na_position='last') if sort_by else frame
     if columns: ordered = ordered[[c for c in columns if c in ordered]]
-    show_print_table(ordered, limit=limit, evidence={"source":str(path), "indices":list(ordered.head(limit).index), **(evidence or {})})
-    typst_note(f"预览 {min(limit,total)} / {total} 行；排序：{sort_by or '输入顺序'}。完整结果（数据目录内相对路径）：{display_path(path)}")
+    show_print_table(ordered, limit=limit, caption=caption, evidence={"source":str(path), "indices":list(ordered.head(limit).index), **(evidence or {})})
+    order_note = (f'{sort_by} 升序、同值按 |log2FC| 降序' if sort_by in ['pvalue','padj','p.adjust','qvalue']
+                  else sort_by or '输入顺序')
+    typst_note(f"预览 {min(limit,total)} / {total} 行；排序：{order_note}。完整结果（数据目录内相对路径）：{display_path(path)}")
 
 
 def raw_probability_columns(path, frame):
@@ -48,6 +59,30 @@ def gene_columns(frame):
     return frame
 
 
+def apply_gene_annotation(frame, config, id_columns=None):
+    """Optionally add symbols from a declared two-column annotation file."""
+    from bioreport.config import resolve_path
+    annotation = config.get('input_files', {}).get('gene_annotation_file')
+    if not annotation:
+        return frame
+    path = resolve_path(config, annotation)
+    if path is None or not path.is_file():
+        raise FileNotFoundError(f'Gene annotation file not found: {annotation}')
+    mapping = pd.read_csv(path, sep=None, engine='python')
+    id_col = next((c for c in ('gene_id', 'Gene ID', 'ENSEMBL', 'gene') if c in mapping), None)
+    name_col = next((c for c in ('gene_name', 'gene_symbol', 'Symbol', 'symbol', 'MGI Symbol') if c in mapping), None)
+    if not id_col or not name_col:
+        raise ValueError('gene_annotation_file must contain gene_id and gene_name columns')
+    ids = id_columns or ('Gene ID', 'ENSEMBL', 'gene_id', 'Gene')
+    source = next((c for c in ids if c in frame), None)
+    if source is None:
+        return frame
+    result = frame.copy()
+    lookup = mapping.dropna(subset=[id_col, name_col]).drop_duplicates(id_col).set_index(id_col)[name_col]
+    result['Symbol'] = result[source].map(lookup)
+    return result
+
+
 def deg_counts(frame, fc, p):
     values = frame[['log2FoldChange','pvalue']].apply(pd.to_numeric,errors='coerce')
     return (int(((values.log2FoldChange > fc)&(values.pvalue < p)).sum()),
@@ -58,7 +93,8 @@ def settings(project):
     return project.get('report',{}).get('pdf',{})
 
 
-def enrichment_chunks(frame, max_rows=8, line_budget=18, wrap_width=28):
+def enrichment_chunks(frame, max_rows=15, line_budget=40, wrap_width=28):
+    """Top 12/15 常规情况合并为单张气泡图；仅极端长标签密度时分图。"""
     from omics.rna.analysis.enrichment_plotly import wrap_label
     start, lines = 0, 0
     for position, label in enumerate(frame['Description']):
@@ -101,7 +137,7 @@ def summary_metrics(config):
         values = pd.to_numeric(frame[column], errors='coerce').dropna() if column in frame else pd.Series(dtype=float)
         if values.empty: return {'项目':label, '数值':'NA', '统计口径':'未提供有效输入值，不按零处理'}
         if values.between(0, 1).all(): values = values * 100
-        return {'项目':label, '数值':f'{values.mean():.2f} %', '统计口径':f'{len(values)} 个有效样本的算术均值；比例输入转换为百分比'}
+        return {'项目':label, '数值':f'{values.mean():.2f}%', '统计口径':f'{len(values)} 个有效样本的算术均值；比例输入转换为百分比'}
     group_col = next((c for c in samples if c.lower() == 'group'), None)
     return pd.DataFrame([
         {'项目':'样本数', '数值':str(len(samples)), '统计口径':'样本表记录数'},

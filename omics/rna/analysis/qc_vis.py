@@ -8,6 +8,63 @@ from IPython.display import display, Markdown
 from bioreport.utils.render_output import show_figure, is_pdf
 from typing import Optional, List, Dict, Any
 
+def _percent_axis_enabled() -> bool:
+    """横轴口径开关：analysis.fastq_screen.axis = percent | reads（默认 reads）。"""
+    from bioreport.config import load_config
+    axis = load_config().get('analysis', {}).get('fastq_screen', {}).get('axis', 'reads')
+    if axis not in ('reads', 'percent'):
+        raise ValueError("analysis.fastq_screen.axis must be 'reads' or 'percent'")
+    return axis == 'percent'
+
+
+def _to_percent(fig):
+    """把横向堆叠柱的绝对 Reads 归一化为各样本 100% 占比（仅展示层换算）。"""
+    import numpy as np
+    totals = None
+    for trace in fig.data:
+        values = np.asarray(trace.x, dtype=float)
+        totals = values if totals is None else totals + np.nan_to_num(values)
+    if totals is None or not np.any(totals):
+        return fig
+    for trace in fig.data:
+        trace.x = (np.asarray(trace.x, dtype=float) / totals * 100).tolist()
+    fig.update_layout(barmode='stack')
+    fig.update_xaxes(range=[0, 100], ticksuffix='%', title_text='各物种比对占比（%，按样本归一化）')
+    return fig
+
+
+def _qualimap_coverage_options() -> Dict[str, Any]:
+    """QualiMap 覆盖度曲线展示选项：剔除 0X 无覆盖 bin 与纵轴刻度口径。"""
+    from bioreport.config import load_config
+    options = load_config().get('analysis', {}).get('qualimap', {}).get('coverage', {})
+    drop_zero = options.get('drop_zero', True)
+    yscale = options.get('yscale', 'linear')
+    if not isinstance(drop_zero, bool):
+        raise ValueError('analysis.qualimap.coverage.drop_zero must be a boolean')
+    if yscale not in ('linear', 'log'):
+        raise ValueError("analysis.qualimap.coverage.yscale must be 'linear' or 'log'")
+    return {'drop_zero': drop_zero, 'yscale': yscale}
+
+
+def _apply_coverage_options(identifier: str, fig):
+    """0X bin 计数可达 1e9，不剔除会把 1X–100X 的有效覆盖压死在轴底。"""
+    normalized = identifier.lower().replace('_', ' ').replace('-', ' ')
+    if not any(term in normalized for term in ('coverage histogram', 'genome fraction')):
+        return fig, ''
+    options = _qualimap_coverage_options()
+    note = ''
+    if options['drop_zero']:
+        for trace in fig.data:
+            pairs = [(x, y) for x, y in zip(trace.x, trace.y) if float(x) != 0]
+            trace.x = [pair[0] for pair in pairs]
+            trace.y = [pair[1] for pair in pairs]
+        note = '已剔除 0X 无覆盖 bin；'
+    if options['yscale'] == 'log':
+        fig.update_yaxes(type='log', title_text='Genome bin counts (log10)')
+        note += '纵轴为对数刻度；'
+    return fig, note
+
+
 def _dataset_figure(identifier, plot, dataset):
     """Read one saved MultiQC dataset without merging filtering/read stages."""
     from bioreport.utils.print_theme import plain
@@ -36,9 +93,19 @@ def _dataset_figure(identifier, plot, dataset):
         value = (layout.get(axis) or {}).get('title') or {}
         return value.get('text') if isinstance(value,dict) else value
     title = plain(config.get('title') or identifier)+(f'：{stage}' if stage else '')
+    is_screen = 'fastq screen' in (identifier + ' ' + title).lower() or 'fastq_screen' in identifier.lower()
+    if is_screen and horizontal and len(fig.data) and _percent_axis_enabled():
+        fig = _to_percent(fig)
+    x_title = axis_title('xaxis') or config.get('xlab') or ''
     fig.update_layout(title=title, template='simple_white', height=500,
-        xaxis_title=axis_title('xaxis') or config.get('xlab') or '',
+        xaxis_title=x_title,
         yaxis_title=axis_title('yaxis') or ('Sample' if plot.get('plot_type')=='bar plot' and horizontal else dconfig.get('ylab') or config.get('ylab') or ''))
+    if is_screen and horizontal and len(fig.data) and _percent_axis_enabled():
+        fig.update_xaxes(title_text='各物种比对占比（%，按样本归一化）', range=[0, 100], ticksuffix='%')
+    if len(fig.data) and all(t.type == 'bar' for t in fig.data):
+        # 图例移到图表上方外侧水平排列，避免叠压前两根柱子。
+        fig.update_layout(legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0,
+            bgcolor='rgba(0,0,0,0)', font=dict(size=9)))
     return fig, title
 
 
@@ -256,11 +323,66 @@ def _show_print_qc(fig, identifier, title):
         legend = config.get('analysis', {}).get('fastq_screen', {}).get('legend', {})
         fig = aggregate_bar_categories(fig, **{k: legend[k] for k in
             ('min_fraction','max_categories','aggregate_other') if k in legend})
+    coverage_note = ''
+    if 'coverage histogram' in key:
+        fig, coverage_note = _apply_coverage_options(identifier, fig)
     label = plain(title)
     x = plain(fig.layout.xaxis.title.text)
     y = plain(fig.layout.yaxis.title.text)
     aggregation_note = 'Other 为仅显示层聚合，原始类别完整保留在输入数据中。' if is_screen else ''
-    show_figure(fig, caption=f"{label}。横轴：{x or '输入图表坐标'}；纵轴：{y or '输入图表统计量'}。颜色与图例对应输入样本或统计类别。{aggregation_note}")
+    show_figure(fig, caption=f"{label}。{coverage_note}横轴：{x or '输入图表坐标'}；纵轴：{y or '输入图表统计量'}。颜色与图例对应输入样本或统计类别。{aggregation_note}")
+
+
+def _expected_samples() -> Optional[List[str]]:
+    """样本表声明的样本标识（含 sample/sample_name 两个别名），用于覆盖度核对。"""
+    from bioreport.config import load_config
+    path = load_config().get('input_files', {}).get('sample_file')
+    if not path or not os.path.isfile(path):
+        return None
+    import pandas as pd
+    metadata = pd.read_csv(path)
+    # sample_name is the report-facing canonical identifier. Including both
+    # columns would count every library twice (e.g. 1-1_raw and 1-1).
+    column = next((column for column in ('sample_name', 'sample', 'Sample') if column in metadata), None)
+    if column is None:
+        return []
+    return list(dict.fromkeys(str(value) for value in metadata[column].dropna()))
+
+
+def _sample_coverage(samples: List[str], expected: Optional[List[str]]) -> Dict[str, Any]:
+    """比对 MultiQC 汇总样本与样本表全集，返回未匹配的声明样本。"""
+    if not expected:
+        return {'expected': [], 'missing': [], 'found': list(samples)}
+    present = {str(value) for value in samples}
+    # MultiQC 的样本名带 _raw/_R1_screen 等后缀，按声明名做前缀匹配。
+    missing = [name for name in expected if not any(
+        present_value == name or present_value.startswith(name) for present_value in present)]
+    return {'expected': expected, 'missing': missing, 'found': list(samples)}
+
+
+def _assert_sample_coverage(identifier: str, samples: List[str], analysis_dir: str) -> None:
+    """缺样显性化：0 个样本直接失败；部分缺失按配置报错或写入正文提示。"""
+    from bioreport.config import load_config
+    from bioreport.utils.print_theme import plain
+    expected = _expected_samples()
+    if expected is None:
+        return
+    coverage = _sample_coverage(samples, expected)
+    if coverage['missing'] and not samples:
+        raise ValueError(f'{identifier}: MultiQC 汇总未包含任何样本，无法绘制 {analysis_dir}')
+    if not coverage['missing']:
+        return
+    report = load_config().get('report', {}).get('pdf', {})
+    strict = report.get('qc_sample_coverage', 'warn')
+    if strict not in ('warn', 'error'):
+        raise ValueError("report.pdf.qc_sample_coverage must be 'warn' or 'error'")
+    message = (f"{plain(identifier)}：MultiQC 实际汇总 {len(samples)} / {len(expected)} "
+               f"个样本，缺失 {', '.join(coverage['missing'])}。缺失样本不出现在图中，"
+               '请核对上游质控产物是否齐全。')
+    if strict == 'error':
+        raise ValueError(message)
+    from bioreport.utils.render_output import typst_note
+    typst_note(message)
 
 
 def _visualize_pdf_json(data, analysis_dir, targets):
@@ -281,6 +403,10 @@ def _visualize_pdf_json(data, analysis_dir, targets):
             continue
         matched += 1
         datasets = plot.get('datasets', [])
+        # 缺样仅在声明了样本轴的柱状数据集上判定：x/y 折线数据集不带 samples，跳过。
+        declared = next((ds.get('samples') for ds in datasets if ds.get('samples')), None)
+        if declared is not None:
+            _assert_sample_coverage(identifier, [str(s) for s in declared], analysis_dir)
         from contextlib import nullcontext
         from bioreport.utils.render_output import figure_group
         quality = any(term in (identifier+' '+title).lower() for term in ('sequence quality','seq-quality','sequence_quality'))

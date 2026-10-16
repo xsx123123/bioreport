@@ -166,7 +166,7 @@ def _breakable(text: str) -> str:
     return re.sub(r"[0-9A-Fa-f]{16,}", lambda m: breakable_hash(m.group()), value)
 
 
-def show_print_table(frame, limit=10, *, block_id="table", allow_split=False, evidence=None):
+def show_print_table(frame, limit=10, *, block_id="table", allow_split=False, evidence=None, note=None, caption=None):
     """Render a planned semantic table without changing input numeric values."""
     global _table_count
     _table_count += 1
@@ -193,12 +193,14 @@ def show_print_table(frame, limit=10, *, block_id="table", allow_split=False, ev
         rows.append(cells)
     numeric = [bool(pd.api.types.is_numeric_dtype(frame[c]) or str(c) == '数值' or str(c).lower() in ['pvalue','padj','p.adjust','qvalue']) for c in frame.columns]
     from bioreport.report import TableBlock, LayoutPlanner
-    block = LayoutPlanner().plan(TableBlock(id=block_id, headers=headers, rows=rows,
+    block = LayoutPlanner().plan(TableBlock(id=block_id, caption=caption or "数据概览", headers=headers, rows=rows,
                                             numeric=numeric, allow_split=allow_split, content=evidence))
     record_block(block)
     expression = ("#report-table(" + typst_literal(headers)
                   + ", " + typst_literal(rows) + ", " + typst_literal(numeric)
+                  + ", caption: " + typst_literal(caption or "数据概览")
                   + ", keep-together: " + typst_literal(block.keep_together)
+                  + (", note: " + typst_literal(note) if note else "")
                   + ", id: " + typst_literal(block.id) + ")")
     if _figure_group is not None:
         _figure_group.append((block, expression))

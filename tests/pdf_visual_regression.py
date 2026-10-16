@@ -18,8 +18,8 @@ NEEDLES = {
     # 摘要章标题过短（易与其他页「摘要」字样误匹配），改用该章导语定位。
     'overview':'本章节汇总了当前转录组', 'project':'样本预览',
     'qc':'Fastp: Filtered Reads', 'pca':'样本 PCA', 'hvg':'主图展示',
-    'volcano':'Values exceeding the display range', 'enrichment':'上调富集分析',
-    'provenance':'数据完整性校验', 'architecture':'Configuration',
+    'volcano':'超出展示上限的', 'enrichment':'上调富集分析',
+    'provenance':'数据完整性校验', 'architecture':'BioReport 技术架构',
 }
 
 

@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 import pytest
 
 from bioreport.config import load_config
-from bioreport.utils.pdf_results import comparison_summaries, deg_counts, enrichment_chunks, gene_columns, ordered_samples, raw_probability_columns, summary_metrics
+from bioreport.utils.pdf_results import apply_gene_annotation, comparison_summaries, deg_counts, enrichment_chunks, gene_columns, ordered_samples, raw_probability_columns, summary_metrics
 from bioreport.utils.print_theme import export_vector, group_palette, print_panels
 from bioreport.utils import render_output
 from omics.rna.analysis.enrichment_plotly import draw_fancy_dotplot, parse_gene_ratios
@@ -49,6 +49,14 @@ def test_gene_id_semantics_preserve_real_symbols():
     assert mixed.Symbol.iloc[1]=='Trp53'
 
 
+def test_optional_gene_annotation_maps_ids_without_relabeling_unknowns(tmp_path):
+    annotation = tmp_path / 'genes.tsv'
+    annotation.write_text('gene_id\tgene_name\nENSMUSG1\tGnai3\n', encoding='utf-8')
+    cfg = {'input_files': {'gene_annotation_file': str(annotation)}}
+    mapped = apply_gene_annotation(pd.DataFrame({'ENSEMBL': ['ENSMUSG1', 'ENSMUSG2']}), cfg)
+    assert mapped['Symbol'].iloc[0] == 'Gnai3' and pd.isna(mapped['Symbol'].iloc[1])
+
+
 def test_probability_preview_preserves_literals_below_float_range(tmp_path,monkeypatch):
     path=tmp_path/'tiny.csv'
     path.write_text('GeneID,pvalue,padj\nA,1e-400,1e-380\nB,0,0\nC,,\n')
@@ -68,8 +76,8 @@ def test_summary_excludes_extra_read_and_mapping_stages_and_missing_is_na(tmp_pa
     pd.DataFrame({'S1':[0,1,2],'S2':[0,2,1]}).to_csv(tmp_path/'tpm.tsv',sep='\t')
     cfg={'input_files':{'sample_file':str(tmp_path/'samples.csv'),'qc_file':str(tmp_path/'qc.tsv'),'mapping_file':str(tmp_path/'map.tsv'),'tpm_file':str(tmp_path/'tpm.tsv')}}
     metrics=summary_metrics(cfg).set_index('项目')
-    assert metrics.loc['平均 Q30','数值']=='94.00 %'
-    assert metrics.loc['平均比对率','数值']=='94.00 %'
+    assert metrics.loc['平均 Q30','数值']=='94.00%'
+    assert metrics.loc['平均比对率','数值']=='94.00%'
     assert metrics.loc['检出基因数','数值']=='2'
     pd.DataFrame({'Sample':['S1_raw','S2_raw']}).to_csv(tmp_path/'qc.tsv',sep='\t',index=False)
     assert summary_metrics(cfg).set_index('项目').loc['平均 Q30','数值']=='NA'

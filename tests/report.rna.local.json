@@ -26,6 +26,7 @@
     "qc_file": "index/multiqc_qc_general_stats.txt",
     "mapping_file": "index/multiqc_mapping_general_stats.txt",
     "tpm_file": "index/merge_rsem_tpm.tsv",
+    "gene_annotation_file": "gene_annotation.tsv",
     "sample_file": "index/sample.csv",
     "software_versions_file": "software_versions.yaml",
     "contrasts_file": "index/contrasts.csv",

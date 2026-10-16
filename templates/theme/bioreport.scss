@@ -79,6 +79,7 @@ table:not(.dataTable) th, table:not(.dataTable) td {
   padding: .65rem .8rem;
   border-bottom: 1px solid $border-color;
   vertical-align: top;
+  text-align: center;
 }
 table:not(.dataTable) tr:last-child td { border-bottom: 0; }
 table:not(.dataTable) tbody tr:hover { background: #f8fbff; }
@@ -89,11 +90,13 @@ table:not(.dataTable) tbody tr:hover { background: #f8fbff; }
   background: #f3f7fb !important;
   border-bottom: 1px solid #b9cbe0 !important;
   padding: .7rem .75rem !important;
+  text-align: center !important;
 }
 .dataTables_wrapper table.dataTable tbody td {
   color: $body-color !important;
   border-bottom: 1px solid #e6edf4 !important;
   padding: .65rem .75rem !important;
+  text-align: center !important;
 }
 .dataTables_wrapper table.dataTable tbody tr:hover td { background: #f8fbff !important; }
 

@@ -15,7 +15,7 @@ from omics.rna.analysis.distribution_plotly import draw_expression_distribution_
 from bioreport.utils.report_utils import load_analysis_config, get_file_path, find_comparisons, get_comparisons_from_csv
 from bioreport.config import load_project_metadata
 from bioreport.utils.render_output import show_figure, show_table, typst_note
-from bioreport.utils.pdf_results import preview, gene_columns, deg_counts, settings
+from bioreport.utils.pdf_results import preview, gene_columns, apply_gene_annotation, deg_counts, settings
 pdf_settings = settings(load_project_metadata())
 
 # 1. 加载项目配置

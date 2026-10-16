@@ -17,20 +17,25 @@ for comp in comparisons:
     if not path or not os.path.isfile(path):
         raise FileNotFoundError(f"Missing DEG result: {comp}")
     frame = pd.read_csv(path)
+    annotated_frame = apply_gene_annotation(frame, project_info)
     fc = deg_settings.get('log2fc_threshold', 1.0)
     p = deg_settings.get('pvalue_threshold', .05)
     up, down = deg_counts(frame, fc, p)
-    fig = plot_volcano_pvalue(frame, title='', col_logfc='log2FoldChange', col_pval='pvalue',
+    volcano_settings = project_info.get('analysis', {}).get('volcano', {})
+    cap = volcano_settings.get('y_axis', {}).get('display_cap', 50)
+    annotate_top = volcano_settings.get('annotate_top', 5)
+    fig = plot_volcano_pvalue(annotated_frame, title='', col_logfc='log2FoldChange', col_pval='pvalue',
         col_padj='padj', col_symbol='Symbol', fc_cutoff=fc, pval_cutoff=p,
-        display_cap=project_info.get('analysis', {}).get('volcano', {}).get('y_axis', {}).get('display_cap', 50))
-    show_figure(fig, evidence={"kind":"deg","comparison":comp,"up":up,"down":down}, caption=f"{comp} 差异表达火山图。方向为 Treat 相对 Control；右侧上调、左侧下调；原始 P < {p} 且 |Log2FC| > {fc}。上调 {up}、下调 {down}。Values exceeding the display range are clipped for visualization; original values are preserved in the result table.")
+        display_cap=cap, annotate_top=annotate_top)
+    show_figure(fig, evidence={"kind":"deg","comparison":comp,"up":up,"down":down}, caption=f"{comp} 差异表达火山图。方向为 Treat 相对 Control；右侧上调、左侧下调；原始 P < {p} 且 |Log2FC| > {fc}。上调 {up}、下调 {down}。超出展示上限的 -log10(P) 在绘图层裁剪至 {cap}（顶部标注为“{cap}+”），原始 pvalue/padj 与上游结果保持一致。图中为上调/下调各 Top {annotate_top} 显著基因添加基因名引线标注。")
     typst_note(f"{comp}：上调 {up}，下调 {down}；其余记录未同时满足上述阈值。")
-    frame = gene_columns(raw_probability_columns(path, frame))
+    frame = gene_columns(apply_gene_annotation(raw_probability_columns(path, frame), project_info))
     per_direction = max(1, pdf_settings.get('deg_rows',10) // 2)
     for direction, mask in [('Up', frame['log2FoldChange'].gt(fc)), ('Down', frame['log2FoldChange'].lt(-fc))]:
         selected = mask & pd.to_numeric(frame['pvalue'], errors='coerce').lt(p)
         display(Markdown(f"### {comp} Top {per_direction} {direction}\n"))
         preview(frame.loc[selected], path, sort_by='pvalue', limit=per_direction,
+            caption=f'{comp} {direction} 差异表达基因预览',
             columns=['Gene ID','Symbol','log2FoldChange','pvalue','padj'],
             evidence={'kind':'deg','comparison':comp,'direction':direction})
 ```
