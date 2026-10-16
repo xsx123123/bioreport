@@ -181,7 +181,7 @@ def check_input_files(config: dict, provenance: dict | None = None) -> None:
         show_header=True,
         header_style="bold magenta",
         box=ROUNDED,
-        expand=False,
+        expand=True,
     )
     table.add_column("Key", style="cyan", no_wrap=True)
     table.add_column("Relative Path", style="white")
@@ -296,6 +296,9 @@ def _stream_quarto_output(process: subprocess.Popen, output_format: str) -> tupl
     last_cell = None
     error_summary = None
     cells_completed = False
+    # Live 活动期间终端只允许进度条自刷新；否则 loguru 直写 stderr 会把
+    # transient 清屏打断，进度条残留并黏上日志行（截图问题 2 的根因）。
+    pending: list[tuple[str, str]] = []
     progress_columns = [
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -324,12 +327,16 @@ def _stream_quarto_output(process: subprocess.Popen, output_format: str) -> tupl
                 if index == total:
                     cells_completed = True
             elif line.startswith("Output created:"):
-                logger.info("[Quarto] {}", line)
+                pending.append(("info", f"[Quarto] {line}"))
             if re.match(r"^(?:ERROR|FATAL):\s+.+", line, re.IGNORECASE) or re.match(
                 r"^[A-Za-z_][\w.]*(?:Error|Exception):\s+.+", line
             ):
                 error_summary = line
-                logger.error("[Quarto] {}", line)
+                pending.append(("error", f"[Quarto] {line}"))
+
+    # 进度条已随 with 块消失，此刻再上屏缓冲的日志。
+    for level, message in pending:
+        logger.log(level.upper(), message)
 
     return last_cell, error_summary, cells_completed
 
