@@ -29,24 +29,7 @@ labels = {'client':'委托客户', 'species':'物种', 'genome_version':'参考�
 metadata = pd.DataFrame([{'项目':label, '内容':project[key]} for key,label in labels.items() if project.get(key)])
 if not metadata.empty: show_print_table(metadata, limit=None)
 show_print_table(summary_metrics(project_config), limit=None)
-summary = comparison_summaries(project_config)
-if not summary.empty:
-    display(Markdown('## 各比较组差异基因摘要\n\n'
-        '差异表达分析旨在识别不同实验处理组（Treat）与对照组（Control）之间转录水平发生显著变化的基因。'
-        '下表汇总了各设定比较组（Contrast）在预设统计学阈值下的显著上调（Up-regulated）、'
-        '显著下调（Down-regulated）基因数量及参与检验的基因总记录数。'))
-    show_print_table(summary, limit=None)
-    thresholds = project_config.get('analysis', {}).get('deg', {})
-    p_cut = thresholds.get('pvalue_threshold', .05)
-    fc_cut = thresholds.get('log2fc_threshold', 1.)
-    display(Markdown(
-        f'**统计口径说明**：默认显著性判定阈值为原始检验 $P < {p_cut}$ 且表达变化倍数满足 '
-        f'$\\vert\\log_2\\text{{FC}}\\vert > {fc_cut}$（其中 $\\log_2\\text{{FC}} > {fc_cut}$ 定义为上调，'
-        f'$\\log_2\\text{{FC}} < -{fc_cut}$ 定义为下调）。比较方向严格由输入 `contrasts` 表中的处理组（Treat）'
-        '相对于对照组（Control）定义，各比较组独立统计，不作跨组合并计数。\n\n'
-        '> **报告声明**：本报告忠实展示配置文件中选定模块的实际输入分析结果，'
-        '仅提供客观统计汇总与可视化图表，不依据上述汇总指标自动判定质控通过与否，'
-        '亦不对下游生物学机制做主观推断。'))
+typst_note('各比较组统计摘要见 Executive Summary；原始 P 值与 log2FC 的展示判定口径不等价于 FDR 控制。报告不依据汇总指标自动判定质控通过与否，也不自动推断生物学机制。')
 ```
 
 ## 样本信息
@@ -60,6 +43,6 @@ group_col = next((c for c in samples if c.lower() == 'group'), None)
 if group_col:
     samples = samples.assign(**{group_col:samples[group_col].astype(str)}).sort_values(group_col, kind='stable')
 limit = pdf_settings.get('sample_rows',30)
-show_print_table(samples.iloc[:, :6], limit=limit)
+show_print_table(samples.iloc[:, :6], limit=limit, evidence={"kind":"samples","sample_count":len(samples)})
 typst_note(f"样本预览 {min(limit,len(samples))} / {len(samples)} 行，最多 6 列；按分组与组内输入顺序排列。sample 与 sample_name 保留原始对应关系。完整样本信息（数据目录内相对路径）：{display_path(input_files['sample_file'], project_config)}")
 ```

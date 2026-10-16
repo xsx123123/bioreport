@@ -27,19 +27,34 @@ def render(config_path: Path, output: Path, output_format: str):
     output.mkdir(parents=True, exist_ok=True)
     os.environ['REPORT_CONFIG'] = str(config_path)
     os.environ['BIOREPORT_OUTPUT_FORMAT'] = output_format
+    os.environ['BIOREPORT_DELIVERY_DIR'] = str(output)
+    block_manifest = output / f'report-blocks-{output_format}.jsonl'
+    block_manifest.unlink(missing_ok=True)
+    os.environ['BIOREPORT_BLOCK_MANIFEST'] = str(block_manifest)
     os.environ.setdefault('MPLCONFIGDIR', str(output / 'cache' / 'matplotlib'))
     os.environ['XDG_CACHE_HOME'] = str(output / 'cache')
     os.environ['XDG_DATA_HOME'] = str(output / 'share')
+    from bioreport.utils.fonts import typst_font_paths
+    os.environ['TYPST_FONT_PATHS'] = typst_font_paths()
     from bioreport.config import load_config
     from bioreport.renderer import render_templates
     config = load_config(config_path)
+    # The in-process utility renders one format at a time; align the composer's
+    # format selection with the requested output even for configs pinned to pdf.
+    config['report']['output_format'] = output_format
     if config.get('report', {}).get('layout', 'single') != 'single':
         raise ValueError('The verification utility supports single documents')
     staged = output / 'templates'
     shutil.copytree(ROOT / 'templates', staged, dirs_exist_ok=True)
     shutil.copytree(ROOT / 'templates/shared', staged / 'qmd', dirs_exist_ok=True)
     shutil.copytree(ROOT / 'omics/rna/qmd', staged / 'qmd', dirs_exist_ok=True)
+    from bioreport.utils.provenance import build_provenance, write_provenance
+    from bioreport.modules import selected_modules
+    provenance = build_provenance(config, selected_modules(config))
+    write_provenance(provenance, staged / 'qmd')
     render_templates(config, str(output / 'rendered'), str(staged))
+    if output_format == 'pdf':
+        shutil.copyfile(staged / 'qmd/report-plan.json', output / 'report-plan.json')
     source = staged / 'qmd' / ('report_pdf.qmd' if output_format == 'pdf' else 'report.qmd')
     original = source.read_text()
     source.with_suffix('.source.qmd').write_text(original)
@@ -60,7 +75,7 @@ def render(config_path: Path, output: Path, output_format: str):
     from bioreport.utils import render_output
     render_output.display = display
     render_output._plotly_loaded = render_output._itables_loaded = False
-    render_output._figure_count = 0
+    render_output._figure_count = render_output._table_count = 0
     namespace = {}
     cell_count = 0
     execution_log = []
@@ -98,6 +113,15 @@ def render(config_path: Path, output: Path, output_format: str):
     artifact = output / 'rendered' / 'qmd' / f'{source.stem}.{output_format}'
     final = output / f'report.{output_format}'
     shutil.copyfile(artifact, final)
+    if output_format == 'pdf':
+        from bioreport.utils.pdf_metadata import set_pdf_metadata
+        set_pdf_metadata(final, config)
+        from bioreport.report.validation import write_validation
+        write_validation(final, source.with_suffix(".typ"), config)
+    from bioreport.utils.provenance import write_delivery_manifests
+    write_delivery_manifests(config, provenance, output)
+    from bioreport.utils.provenance import validate_delivery_manifests
+    validate_delivery_manifests(config, output)
     print(final)
     return final
 

@@ -7,6 +7,7 @@ Quarto 模板渲染模块。
 """
 
 from pathlib import Path
+import shutil
 from typing import Any, Dict
 
 from jinja2 import Environment, FileSystemLoader
@@ -22,6 +23,7 @@ def render_templates(
 ) -> None:
     """Render Quarto project settings and compose the selected modules."""
     logger.info("正在渲染 Quarto 模板...")
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     env = Environment(
         loader=FileSystemLoader(template_dir),
@@ -42,10 +44,10 @@ def render_templates(
     staged_fonts = None
     try:
         from .utils.font_stage import stage_fonts
-        staged_fonts = stage_fonts(output_dir)
+        staged_fonts = stage_fonts(output_dir) if "html" in requested_formats else None
         if staged_fonts:
             logger.debug(f"报告字体已随报告输出: {staged_fonts}")
-        else:
+        elif "html" in requested_formats:
             logger.warning("内置字体文件缺失,HTML 将回退到系统字体")
     except Exception as e:
         logger.warning(f"字体随报告输出失败(不影响渲染): {e}")
@@ -72,4 +74,5 @@ def render_templates(
             logger.debug(f"已生成 {report_qmd_path}")
         if "pdf" in requested_formats:
             pdf_qmd_path = compose_report(config, Path(template_dir), pdf=True)
+            shutil.copyfile(Path(template_dir) / "qmd/report-plan.json", Path(output_dir) / "report-plan.json")
             logger.debug(f"已生成 {pdf_qmd_path}")

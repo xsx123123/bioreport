@@ -8,184 +8,59 @@ from IPython.display import display, Markdown
 from bioreport.utils.render_output import show_figure, is_pdf
 from typing import Optional, List, Dict, Any
 
+def _dataset_figure(identifier, plot, dataset):
+    """Read one saved MultiQC dataset without merging filtering/read stages."""
+    from bioreport.utils.print_theme import plain
+    config = plot.get('pconfig', {})
+    layout = dataset.get('layout', {})
+    dconfig = dataset.get('dconfig', {})
+    stage = dconfig.get('name', '')
+    fig = go.Figure()
+    horizontal = dataset.get('trace_params', {}).get('orientation') == 'h'
+    if plot.get('plot_type') == 'x/y line':
+        for line in dataset.get('lines', []):
+            pairs = line.get('pairs', [])
+            if pairs:
+                fig.add_trace(go.Scatter(x=[v[0] for v in pairs], y=[v[1] for v in pairs],
+                    mode='lines', name=line.get('name', 'Sample')))
+    elif plot.get('plot_type') == 'bar plot':
+        for category in dataset.get('cats', []):
+            values = category.get('data', [])
+            if not any(v is not None for v in values): continue
+            samples = dataset.get('samples', [])
+            fig.add_trace(go.Bar(x=values if horizontal else samples,
+                y=samples if horizontal else values, orientation='h' if horizontal else 'v',
+                name=category['name'], marker_color=category.get('color')))
+        fig.update_layout(barmode='stack')
+    def axis_title(axis):
+        value = (layout.get(axis) or {}).get('title') or {}
+        return value.get('text') if isinstance(value,dict) else value
+    title = plain(config.get('title') or identifier)+(f'：{stage}' if stage else '')
+    fig.update_layout(title=title, template='simple_white', height=500,
+        xaxis_title=axis_title('xaxis') or config.get('xlab') or '',
+        yaxis_title=axis_title('yaxis') or ('Sample' if plot.get('plot_type')=='bar plot' and horizontal else dconfig.get('ylab') or config.get('ylab') or ''))
+    return fig, title
+
+
 def _visualize_from_json(analysis_dir: str, target_modules: Optional[List[str]] = None) -> None:
-    """
-    Fallback method: Visualize plots directly from multiqc_data.json
-    when standard MultiQC log parsing fails (e.g. only aggregated data available).
-    """
-    json_path = os.path.join(analysis_dir, "multiqc_data.json")
-    if not os.path.exists(json_path):
-        if is_pdf():
-            raise FileNotFoundError(f'No MultiQC plot data found in {analysis_dir}')
-        print(f"❌ Error: No MultiQC modules found via parsing, and no multiqc_data.json found in {analysis_dir}")
-        return
-
-    try:
-        with open(json_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-    except Exception as e:
-        if is_pdf():
-            raise ValueError(f'Invalid MultiQC data: {json_path}') from e
-        print(f"❌ Failed to load multiqc_data.json: {e}")
-        return
-
-    plot_data = data.get("report_plot_data", {})
-    if not plot_data:
-        if is_pdf():
-            raise ValueError(f'MultiQC file contains no plot datasets: {json_path}')
-        print("⚠️ multiqc_data.json contains no plot data.")
-        return
-
-    # Filter plots based on target_modules (case-insensitive substring match in title/id)
-    # If target_modules is None, show all.
-    plots_to_show = []
-    
-    for plot_id, plot_info in plot_data.items():
-        # Identify module from plot info
-        # Usually title is "Module: Chart Name"
-        # We try to extract module name or check against targets
-        
-        should_show = False
-        title = ""
-        
-        # Try to get title from dconfig or pconfig
-        if "datasets" in plot_info and len(plot_info["datasets"]) > 0:
-            title = plot_info["datasets"][0].get("dconfig", {}).get("title", "")
-        
-        if not title and "pconfig" in plot_info:
-            title = plot_info["pconfig"].get("title", "")
-
-        if not title:
-            title = plot_id # Fallback
-
-        if target_modules:
-            for mod in target_modules:
-                # Check if module name is in the title or ID
-                # e.g. mod="QualiMap", title="QualiMap: Coverage"
-                if mod.lower() in title.lower() or mod.lower() in plot_id.lower():
-                    should_show = True
-                    break
-        else:
-            should_show = True
-
-        if should_show:
-            plots_to_show.append((plot_id, title, plot_info))
-
-    if not plots_to_show:
-        if is_pdf():
-            raise ValueError(f'No QC plots for {target_modules} in {analysis_dir}')
-        print(f"⚠️ No plots found matching modules: {target_modules}")
-        return
-
-    # Render plots
-    for plot_id, title, plot_info in plots_to_show:
-        try:
-            plot_type = plot_info.get("plot_type")
-            fig = go.Figure()
-            
-            # --- X/Y Line Charts ---
-            if plot_type == "x/y line":
-                datasets = plot_info.get("datasets", [])
-                for dataset in datasets:
-                    for line in dataset.get("lines", []):
-                        name = line.get("name", "Unknown")
-                        pairs = line.get("pairs", [])
-                        if not pairs: continue
-                        
-                        # Unzip pairs
-                        x_vals = [p[0] for p in pairs]
-                        y_vals = [p[1] for p in pairs]
-                        
-                        fig.add_trace(go.Scatter(
-                            x=x_vals, 
-                            y=y_vals, 
-                            mode='lines', 
-                            name=name
-                        ))
-                        
-            # --- Bar Charts ---
-            elif plot_type == "bar plot":
-                datasets = plot_info.get("datasets", [])
-                for dataset in datasets:
-                    cats = dataset.get("cats", []) # Categories/Series
-                    samples = dataset.get("samples", []) # X/Y axis labels
-                    
-                    # Check orientation
-                    is_horizontal = False
-                    trace_params = dataset.get("trace_params", {})
-                    if trace_params.get("orientation") == "h":
-                        is_horizontal = True
-                        
-                    for cat in cats:
-                        name = cat.get("name", "Unknown")
-                        data_vals = cat.get("data", [])
-                        color = cat.get("color")
-                        
-                        if is_horizontal:
-                            fig.add_trace(go.Bar(
-                                x=data_vals,
-                                y=samples,
-                                orientation='h',
-                                name=name,
-                                marker_color=color
-                            ))
-                        else:
-                            fig.add_trace(go.Bar(
-                                x=samples,
-                                y=data_vals,
-                                name=name,
-                                marker_color=color
-                            ))
-                            
-                    # Handle stacking if needed
-                    layout_cfg = plot_info.get("layout", {})
-                    if layout_cfg.get("barmode") == "stack" or layout_cfg.get("barmode") == "relative":
-                        fig.update_layout(barmode='stack') # 'relative' in plotly is usually stack for pos/neg
-
-            else:
-                # Unsupported plot type for this simple fallback
-                # print(f"Skipping unsupported plot type: {plot_type} for {plot_id}")
-                continue
-
-            # --- Common Layout ---
-            mqc_layout = plot_info.get("layout", {})
-            
-            # Extract axis titles
-            xaxis_title = mqc_layout.get("xaxis", {}).get("title", {}).get("text", "")
-            yaxis_title = mqc_layout.get("yaxis", {}).get("title", {}).get("text", "")
-            
-            fig.update_layout(
-                title=title,
-                xaxis_title=xaxis_title,
-                yaxis_title=yaxis_title,
-                template="simple_white",
-                height=500,
-                margin=dict(l=50, r=50, t=80, b=50)
-            )
-
-            # High-res download config
-            my_config = {
-                'toImageButtonOptions': {
-                    'format': 'png',
-                    'filename': f'{plot_id}',
-                    'height': 600,
-                    'width': 1200,
-                    'scale': 4 
-                },
-                'displaylogo': False
-            }
-
-            if is_pdf():
-                _show_print_qc(fig, plot_id, title)
-            else:
-                display(Markdown(f"**{title}** Visualization"))
-                show_figure(fig, config=my_config)
-            # display(Markdown("\n---\n"))
-
-        except Exception as e:
-            if is_pdf():
-                raise RuntimeError(f'PDF QC plot failed: {plot_id}') from e
-            print(f"❌ Failed to render plot {plot_id}: {e}")
+    """Render interactive plots from a saved MultiQC report, including all stages."""
+    path = os.path.join(analysis_dir, 'multiqc_data.json')
+    with open(path, encoding='utf-8') as handle:
+        plots = json.load(handle).get('report_plot_data', {})
+    rendered = 0
+    for identifier, plot in plots.items():
+        title = plot.get('pconfig', {}).get('title') or identifier
+        if target_modules and not any(t.lower() in (identifier+' '+title).lower() for t in target_modules):
+            continue
+        for dataset in plot.get('datasets', []):
+            fig, title = _dataset_figure(identifier, plot, dataset)
+            if not fig.data: continue
+            rendered += 1
+            display(Markdown(f'**{title}**'))
+            show_figure(fig, config={'displaylogo':False,'toImageButtonOptions':{
+                'format':'png','filename':identifier,'height':600,'width':1200,'scale':4}})
+    if not rendered:
+        raise ValueError(f'No supported QC datasets for {target_modules} in {path}')
 
 
 def visualize_multiqc_logs(analysis_dir: str, target_modules: Optional[List[str]] = None, plot_captions: Optional[Dict[str, str]] = None) -> None:
@@ -201,9 +76,12 @@ def visualize_multiqc_logs(analysis_dir: str, target_modules: Optional[List[str]
     """
     
     json_path = os.path.join(analysis_dir, 'multiqc_data.json')
-    if is_pdf() and os.path.isfile(json_path):
-        with open(json_path, encoding='utf-8') as source:
-            _visualize_pdf_json(json.load(source), analysis_dir, target_modules)
+    if os.path.isfile(json_path):
+        if is_pdf():
+            with open(json_path, encoding='utf-8') as source:
+                _visualize_pdf_json(json.load(source), analysis_dir, target_modules)
+        else:
+            _visualize_from_json(analysis_dir, target_modules)
         return
     try:
         import multiqc
@@ -372,10 +250,17 @@ def _show_print_qc(fig, identifier, title):
                     else:
                         trace.x, trace.y = labels, [numbers[i] for i in positions]
                 if horizontal: fig.update_layout(yaxis_autorange='reversed')
+    is_screen = 'fastq screen' in key or 'fastq_screen' in key
+    if is_screen:
+        from bioreport.utils.print_theme import aggregate_bar_categories
+        legend = config.get('analysis', {}).get('fastq_screen', {}).get('legend', {})
+        fig = aggregate_bar_categories(fig, **{k: legend[k] for k in
+            ('min_fraction','max_categories','aggregate_other') if k in legend})
     label = plain(title)
     x = plain(fig.layout.xaxis.title.text)
     y = plain(fig.layout.yaxis.title.text)
-    show_figure(fig, caption=f"{label}。横轴：{x or '输入图表坐标'}；纵轴：{y or '输入图表统计量'}。颜色与图例对应输入样本或统计类别。")
+    aggregation_note = 'Other 为仅显示层聚合，原始类别完整保留在输入数据中。' if is_screen else ''
+    show_figure(fig, caption=f"{label}。横轴：{x or '输入图表坐标'}；纵轴：{y or '输入图表统计量'}。颜色与图例对应输入样本或统计类别。{aggregation_note}")
 
 
 def _visualize_pdf_json(data, analysis_dir, targets):
@@ -396,40 +281,18 @@ def _visualize_pdf_json(data, analysis_dir, targets):
             continue
         matched += 1
         datasets = plot.get('datasets', [])
-        for dataset in datasets:
-            dconfig = dataset.get('dconfig', {})
-            stage = dconfig.get('name', '')
-            if detail == 'key' and len(datasets)>1 and 'Before filtering' in stage:
-                continue
-            layout = dataset.get('layout', {})
-            fig = go.Figure()
-            if plot['plot_type'] == 'x/y line':
-                for line in dataset.get('lines', []):
-                    pairs = line.get('pairs', [])
-                    if pairs:
-                        fig.add_trace(go.Scatter(x=[v[0] for v in pairs], y=[v[1] for v in pairs],
-                                                 mode='lines', name=line.get('name','Sample')))
-            else:
-                horizontal = dataset.get('trace_params', {}).get('orientation') == 'h'
-                for category in dataset.get('cats', []):
-                    values = category.get('data', [])
-                    if not any(v is not None for v in values):
-                        continue
-                    samples = dataset.get('samples', [])
-                    fig.add_trace(go.Bar(x=values if horizontal else samples,
-                                         y=samples if horizontal else values,
-                                         orientation='h' if horizontal else 'v',
-                                         name=category['name'], marker_color=category.get('color')))
-                fig.update_layout(barmode='stack')
-            if not fig.data: continue
-            def axis_title(axis):
-                value = (layout.get(axis) or {}).get('title') or {}
-                return value.get('text') if isinstance(value,dict) else value
-            x = axis_title('xaxis') or config.get('xlab') or ''
-            y = axis_title('yaxis') or ('Sample' if plot['plot_type']=='bar plot' and horizontal else dconfig.get('ylab') or config.get('ylab') or '')
-            caption = plain(title)+(f'：{stage}' if stage else '')
-            fig.update_layout(title=caption, xaxis_title=x, yaxis_title=y)
-            _show_print_qc(fig, identifier, caption)
+        from contextlib import nullcontext
+        from bioreport.utils.render_output import figure_group
+        quality = any(term in (identifier+' '+title).lower() for term in ('sequence quality','seq-quality','sequence_quality'))
+        with figure_group('qc-'+identifier) if quality else nullcontext():
+            for dataset in datasets:
+                dconfig = dataset.get('dconfig', {})
+                stage = dconfig.get('name', '')
+                if detail == 'key' and len(datasets)>1 and 'Before filtering' in stage:
+                    continue
+                fig, caption = _dataset_figure(identifier, plot, dataset)
+                if not fig.data: continue
+                _show_print_qc(fig, identifier, caption)
     if not matched:
         raise ValueError(f'No QC plot datasets for {targets} in {analysis_dir}')
     # 底部数据源说明按模块区分：只有 fastp 存在 Before/After filtering 过滤阶段，

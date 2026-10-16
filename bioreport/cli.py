@@ -354,6 +354,7 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
     package_root = str(Path(__file__).resolve().parents[1])
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [package_root, env.get("PYTHONPATH")]))
     abs_output_dir = str(Path(output_dir).resolve())
+    env["BIOREPORT_DELIVERY_DIR"] = abs_output_dir
     for output_format in output_formats(config):
         logger.info("启动 Quarto 渲染引擎 ({})...", output_format.upper())
         if layout == "website" and output_format != "html":
@@ -362,6 +363,9 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
         source = f"qmd/report{'_pdf' if output_format == 'pdf' else ''}.qmd" if layout == "single" else "."
         cmd = ["quarto", "render", source, "--output-dir", abs_output_dir, "--to", quarto_format]
         env["BIOREPORT_OUTPUT_FORMAT"] = output_format
+        block_manifest = Path(abs_output_dir) / f'report-blocks-{output_format}.jsonl'
+        block_manifest.unlink(missing_ok=True)
+        env['BIOREPORT_BLOCK_MANIFEST'] = str(block_manifest)
         process = subprocess.Popen(
             cmd, cwd=template_dir, env=env, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, text=True,
@@ -391,6 +395,12 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
         if not expected.exists():
             raise RuntimeError(f"Quarto finished but expected artifact is missing: {expected}")
         if output_format == "pdf" and expected.suffix == ".pdf":
+            from .utils.pdf_metadata import set_pdf_metadata
+            set_pdf_metadata(expected, config)
+            from .report.validation import write_validation
+            validation = write_validation(expected, template_dir / 'qmd/report_pdf.typ', config, env)
+            if validation['errors']:
+                raise RuntimeError(f"PDF layout validation failed; see {Path(output_dir) / 'pdf-validation.json'}")
             # 交付加固:按配置给 PDF 注入 AES-256 只读权限锁(免密阅读+打印,禁止编辑)。
             from .utils.pdf_security import protect_report_pdf
             if protect_report_pdf(expected, config):
@@ -517,6 +527,13 @@ def main():
             raise SystemExit(1) from None
 
     backup_config(config["_config_path"], args.output)
+    if not args.dry_run:
+        from .utils.provenance import write_delivery_manifests
+        write_delivery_manifests(config, provenance, args.output)
+        from .utils.provenance import validate_delivery_manifests
+        if validate_delivery_manifests(config, args.output)['errors']:
+            _record_run('failed')
+            raise RuntimeError('Delivery manifest integrity validation failed')
     _record_run("success")
     print_success_summary(config, args.output, log_file, time.perf_counter() - start_time)
 

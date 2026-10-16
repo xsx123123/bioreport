@@ -254,6 +254,8 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         "execute": {"echo": False, "warning": False},
     }
     sections = []
+    from .report.composition import ReportComposition
+    composition = ReportComposition()
     pages = []
     website_pages = []
     module_ids = selected_modules(config)
@@ -261,6 +263,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
     registered = get_registry().modules
     has_rna = any(_canonical(module).startswith("rna.") for module in module_ids)
     if pdf:
+        metadata["filters"] = ["../pdf/layout.lua"]
         from .utils.fonts import MONO_STACK, font_families
         fonts = tuple(report.get('pdf', {}).get('fonts') or font_families())
         style_dir = template_dir / "pdf"
@@ -275,10 +278,12 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         context += '#let report-project = ' + json.dumps(str(short_name), ensure_ascii=False) + '\n'
         (style_dir / 'print-context.typ').write_text(context, encoding='utf-8')
         metadata['format'] = {'typst': {
+            'keep-typ': True,
             'papersize': 'a4', 'fontsize': '10.5pt', 'mainfont': fonts[0],
             'margin': {'x': '20mm', 'y': '22mm'},
             'include-in-header': ['../pdf/print-context.typ', '../pdf/print-style.typ'],
             'include-before-body': '../pdf/print-body.typ',
+            'include-after-body': '../pdf/print-observations.typ',
         }}
     if pdf and has_rna:
         metadata["format"]["typst"].update({
@@ -317,8 +322,17 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         metadata.pop("title", None)
         metadata.pop("date", None)
         (style_dir / "rna-cover.typ").write_text(cover, encoding="utf-8")
+    if pdf and has_rna and any(_canonical(m) == 'rna.index' for m in module_ids):
+        summary = (template_dir / 'qmd/pdf/summary.qmd').read_text(encoding='utf-8')
+        sections.append(composition.section('executive-summary', 'Executive Summary', summary, pdf=True))
+    methods_appendix_added = False
     for position, module_id in enumerate(module_ids, start=1):
         canonical = _canonical(module_id)
+        if (pdf and canonical in ('provenance','about') and not methods_appendix_added
+                and any(_canonical(m)=='rna.workflow' for m in module_ids[:position-1])):
+            appendix = '```{python}\n#| label: detailed-methods-appendix\n#| output: asis\nfor detail in method_details:\n    display(Markdown(detail))\n```'
+            sections.append(composition.section('methods-appendix','详细分析方法（附录）',appendix,pdf=True,page_break=True))
+            methods_appendix_added = True
         if module_id in MODULES:
             filename, heading = MODULES[module_id]
             if pdf and has_rna and module_id in ("about", "provenance"):
@@ -432,7 +446,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                 )
                 website_pages.append({"href": f"qmd/{page_path.name}", "title": title, "icon": _page_icon(chapter_id, registered)})
             elif pdf:
-                sections.append(('```{=typst}\n#pagebreak(weak: true)\n```\n\n' if has_rna else "") + f"# {content_heading}\n\n{content.strip()}\n")
+                sections.append(composition.section(chapter_id, content_heading, content, pdf=True, page_break=has_rna))
             else:
                 page_id = f"report-page-{len(pages) + 1}"
                 pages.append((page_id, title))
@@ -441,6 +455,9 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                     f"# {content_heading}\n\n{content.strip()}\n\n:::\n"
                 )
 
+    if pdf and not methods_appendix_added and any(_canonical(m)=='rna.workflow' for m in module_ids):
+        appendix = '```{python}\n#| label: detailed-methods-appendix\n#| output: asis\nfor detail in method_details:\n    display(Markdown(detail))\n```'
+        sections.append(composition.section('methods-appendix','详细分析方法（附录）',appendix,pdf=True,page_break=True))
     if website:
         return website_pages
 
@@ -456,6 +473,8 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             aliases.append(str(Path(source).with_name(alias_path.name)))
         metadata["bibliography"] = aliases if isinstance(bibliography, list) else aliases[0]
 
+    if pdf:
+        composition.write(template_dir / "qmd/report-plan.json")
     target = template_dir / "qmd" / ("report_pdf.qmd" if pdf else "report.qmd")
     navigation = ""
     if not pdf:

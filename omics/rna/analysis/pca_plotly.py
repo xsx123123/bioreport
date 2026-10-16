@@ -127,7 +127,8 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
         fig.add_trace(
             go.Scatter(
                 x=subset['PC1'], y=subset['PC2'],
-                mode='markers',
+                mode='markers+text',
+                textposition='top center',
                 marker=dict(size=12, color=color, line=dict(width=1, color='DarkSlateGrey')),
                 name=str(group),
                 text=subset['Sample'], # 鼠标悬停显示样本名
@@ -141,7 +142,8 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
         fig.add_trace(
             go.Scatter(
                 x=subset['PC2'], y=subset['PC3'],
-                mode='markers',
+                mode='markers+text',
+                textposition='top center',
                 marker=dict(size=12, color=color, line=dict(width=1, color='DarkSlateGrey')),
                 name=str(group),
                 text=subset['Sample'],

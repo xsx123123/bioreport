@@ -154,13 +154,16 @@ def plot_volcano_pvalue(
     col_status: str = 'Status',
     fc_cutoff: float = 1.0,
     pval_cutoff: float = 0.05,     # 现在的含义是 P-value < 0.05
-    palette: Optional[dict] = None
+    palette: Optional[dict] = None,
+    display_cap: Optional[float] = None
 ) -> go.Figure:
     """
     绘制交互式火山图 (使用 Raw P-value 进行筛选).
     """
     
     df = df.copy()
+    if display_cap is not None and (not np.isfinite(display_cap) or display_cap <= 0):
+        raise ValueError('display_cap must be a finite positive number')
 
     # --- 1. 列名映射 ---
     col_mappings = {
@@ -206,10 +209,10 @@ def plot_volcano_pvalue(
         
         fig.add_trace(go.Scatter(
             x=sub_df[c_logfc], 
-            y=-np.log10(sub_df[c_pval] + 1e-300), 
+            y=np.minimum(-np.log10(sub_df[c_pval] + 1e-300), display_cap) if display_cap is not None else -np.log10(sub_df[c_pval] + 1e-300),
             mode='markers', name=status,
             marker=dict(color=colors.get(status, 'grey'), size=size, opacity=opacity),
-            text=sub_df[c_symbol],
+            text=sub_df[c_symbol] if c_symbol in sub_df else sub_df.index.astype(str),
             # 悬停显示详细信息
             hovertemplate=(
                 "<b>%{text}</b><br>" +
@@ -233,6 +236,11 @@ def plot_volcano_pvalue(
         height=600
     )
 
+    if display_cap is not None:
+        fig.update_yaxes(range=[0, display_cap * 1.04],
+                         tickvals=list(np.linspace(0, display_cap, 6)),
+                         ticktext=[f'{v:g}' for v in np.linspace(0, display_cap, 6)[:-1]] + [f'{display_cap:g}+'])
+        fig.update_layout(meta={'display_cap': display_cap})
     return fig
 
 # --- 新增功能 ---

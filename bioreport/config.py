@@ -166,6 +166,13 @@ def load_config(
     validate_config(data, path)
     data["_legacy_format"] = legacy_format
 
+    # One display count for both renderers. Legacy PDF knobs are accepted only
+    # as a fallback when the canonical analysis setting is absent.
+    enrichment = data['analysis'].setdefault('enrichment', {})
+    pdf_options = data['report'].get('pdf', {})
+    enrichment.setdefault('top_n', pdf_options.get('enrichment_top_n',
+                                                 pdf_options.get('enrichment_rows', 12)))
+
     for key in ("report", "project", "stats", "input_files", "analysis", "ai"):
         if not isinstance(data[key], dict):
             raise ValueError(f"{key} must be an object in {path}")

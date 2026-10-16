@@ -4,7 +4,7 @@ import pandas as pd
 from .render_output import show_print_table, typst_note
 
 
-def preview(frame, path, sort_by=None, limit=10, columns=None):
+def preview(frame, path, sort_by=None, limit=10, columns=None, *, evidence=None):
     from decimal import Decimal
     from ..config import display_path
     total = len(frame)
@@ -14,7 +14,7 @@ def preview(frame, path, sort_by=None, limit=10, columns=None):
     else:
         ordered = frame.sort_values(sort_by, kind='stable', na_position='last') if sort_by else frame
     if columns: ordered = ordered[[c for c in columns if c in ordered]]
-    show_print_table(ordered, limit=limit)
+    show_print_table(ordered, limit=limit, evidence={"source":str(path), "indices":list(ordered.head(limit).index), **(evidence or {})})
     typst_note(f"预览 {min(limit,total)} / {total} 行；排序：{sort_by or '输入顺序'}。完整结果（数据目录内相对路径）：{display_path(path)}")
 
 

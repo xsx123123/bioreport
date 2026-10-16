@@ -4,8 +4,65 @@
   "title": "RNA-seq analysis parameters",
   "type": "object",
   "properties": {
-    "deg": {"type": "object", "properties": {"log2fc_threshold": {"type": "number"}, "pvalue_threshold": {"type": "number"}}},
-    "enrichment": {"type": "object", "properties": {"p_cutoff": {"type": "number"}, "top_n": {"type": "integer", "minimum": 1}}}
+    "deg": {
+      "type": "object",
+      "properties": {
+        "log2fc_threshold": {
+          "type": "number"
+        },
+        "pvalue_threshold": {
+          "type": "number"
+        }
+      }
+    },
+    "enrichment": {
+      "type": "object",
+      "properties": {
+        "p_cutoff": {
+          "type": "number"
+        },
+        "top_n": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "volcano": {
+      "type": "object",
+      "properties": {
+        "y_axis": {
+          "type": "object",
+          "properties": {
+            "display_cap": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      }
+    },
+    "fastq_screen": {
+      "type": "object",
+      "properties": {
+        "legend": {
+          "type": "object",
+          "properties": {
+            "min_fraction": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "max_categories": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "aggregate_other": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    }
   },
   "additionalProperties": true
 }

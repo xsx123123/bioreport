@@ -22,10 +22,10 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
-dependencies = ["pyyaml", "jinja2", "jsonschema>=4.26", "loguru", "rich", "rich-argparse"]
+dependencies = ["pyyaml", "jinja2", "jsonschema>=4.26", "loguru", "rich", "rich-argparse", "pypdf>=5"]
 
 [project.optional-dependencies]
-rna = ["pandas", "numpy", "scipy", "scikit-learn", "plotly", "matplotlib", "plotnine", "kaleido", "itables", "tabulate>=0.9", "python-dateutil", "pytz", "requests", "beautifulsoup4", "lxml", "ipython", "ipykernel", "jupyter", "jupyterlab", "nbconvert", "nbformat", "multiqc", "openai", "tiktoken", "tenacity"]
+rna = ["pandas", "numpy", "scipy", "scikit-learn", "plotly", "matplotlib", "plotnine", "kaleido", "itables>=2.8.2,<2.9", "tabulate>=0.9", "python-dateutil", "pytz", "requests", "beautifulsoup4", "lxml", "ipython", "ipykernel", "jupyter", "jupyterlab", "nbconvert", "nbformat", "multiqc", "openai", "tiktoken", "tenacity"]
 ai = [
     "volcenginesdkarkruntime",
     "openai",
@@ -34,6 +34,7 @@ ai = [
     "pydantic",
 ]
 security = ["pikepdf"]
+validation = ["pypdfium2", "Pillow", "numpy"]
 dev = [
     "pytest",
     "black",
@@ -65,4 +66,4 @@ bioreport = ["utils/prompt.txt", "report.schema.json", "assets/fonts/**/*"]
 "share/bioreport/templates/theme" = ["templates/theme/*"]
 "share/bioreport/templates/reference" = ["templates/reference/*"]
 "share/bioreport/templates/logo" = ["templates/logo/*"]
-"share/bioreport/templates/pdf" = ["templates/pdf/*.typ", "templates/pdf/*.typ.j2"]
+"share/bioreport/templates/pdf" = ["templates/pdf/*.typ", "templates/pdf/*.typ.j2", "templates/pdf/*.lua"]

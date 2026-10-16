@@ -47,10 +47,13 @@ show_print_table(pd.DataFrame(rows), limit=None)
 
 checksums = prov.get("input_checksums") or {}
 if checksums:
-    display(Markdown("**数据完整性校验说明**：下表记录了本次报告渲染所读取的全部核心输入文件及其对应的 **SHA-256 密码学哈希指纹（Cryptographic Hash Fingerprint）**。在进行科研数据归档、论文发表补充材料核验或第三方审计时，可通过在终端对交付数据目录中的对应文件执行 `sha256sum <filepath>`，比对输出哈希值是否与下表完全一致，从而精确核验上游分析结果文件在交付流转过程中是否发生任何字节级的修改、损坏或篡改。"))
-    fingerprints = [{"输入文件": key, "SHA256": digest} for key, digest in checksums.items()]
-    show_print_table(pd.DataFrame(fingerprints), limit=None)
-    typst_note("指纹用于核验数据是否被篡改。")
+    display(Markdown("**数据完整性校验说明**：下表记录配置中直接声明的核心输入文件及其对应的 **SHA-256 密码学哈希指纹（Cryptographic Hash Fingerprint）**。在进行科研数据归档、论文发表补充材料核验或第三方审计时，可通过在终端对交付数据目录中的对应文件执行 `sha256sum <filepath>`，比对输出哈希值是否与下表完全一致，从而精确核验上游分析结果文件在交付流转过程中是否发生任何字节级的修改、损坏或篡改。"))
+    from bioreport.config import load_config, display_path
+    cfg = load_config()
+    fingerprints = [{"输入文件": key, "数据目录内路径": display_path(cfg['input_files'].get(key,''), cfg),
+                     "SHA256": digest} for key, digest in checksums.items()]
+    show_print_table(pd.DataFrame(fingerprints), limit=None, evidence={"kind":"sha256"})
+    typst_note(f"指纹用于核验文件完整性。完整 Input Manifest 覆盖 {len(prov.get('input_manifest', []))} 个唯一文件（包括声明的结果目录）；完整路径、角色、SHA256 和大小保存在 input-manifest.json。Report / Artifact / Reproduction Manifest 随正常 CLI 输出交付。")
 else:
     typst_note("未采集到输入文件指纹（本报告可能由旧版本引擎生成）。")
 ```

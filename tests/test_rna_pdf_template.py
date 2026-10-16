@@ -44,10 +44,11 @@ def test_pdf_cells_read_rna_example_and_produce_tables_and_figures(tmp_path, mon
 
     monkeypatch.setenv("REPORT_CONFIG", str(ROOT / "tests/report.rna.local.json"))
     monkeypatch.setenv("BIOREPORT_OUTPUT_FORMAT", "pdf")
+    monkeypatch.setenv("BIOREPORT_DELIVERY_DIR", str(tmp_path))
     tables, figures = [], []
     monkeypatch.setattr(render_output, "display", tables.append)
-    monkeypatch.setattr(render_output, "show_figure", lambda figure, config=None, caption=None: figures.append(figure))
-    monkeypatch.setattr(qc_vis, "show_figure", lambda figure, config=None, caption=None: figures.append(figure))
+    monkeypatch.setattr(render_output, "show_figure", lambda figure, config=None, caption=None, **kwargs: figures.append(figure))
+    monkeypatch.setattr(qc_vis, "show_figure", lambda figure, config=None, caption=None, **kwargs: figures.append(figure))
     pdf = compose_report(load_config(ROOT / "tests/report.rna.local.json"), stage(tmp_path), pdf=True).read_text()
     namespace = {}
     for cell in re.findall(r"```\{python\}\n(.*?)\n```", pdf, re.DOTALL):

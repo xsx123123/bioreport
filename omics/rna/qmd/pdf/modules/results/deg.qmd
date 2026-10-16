@@ -1,9 +1,10 @@
+::: {.report-lead}
+
 ## 差异表达分析
 
-本模块读取 `DESeq2` 差异表达检验结果，依据输入比较组（`contrasts`）定义的比较方向（`Treat` 相对于 `Control`）及显著性阈值筛选差异表达基因（DEGs），并通过火山图（图 10）与 Top 显著基因预览表进行展示：
+读取上游 DESeq2 结果，方向为 Treat 相对 Control。图中横轴为 log2FoldChange，纵轴为原始 P 值的负对数；红色表示上调，蓝色表示下调，灰色表示未同时满足当前展示阈值。虚线标出阈值；顶部“上限+”表示仅在绘图层裁剪。此处原始 P 值判定不等价于多重检验后的 FDR 控制，原始 pvalue/padj 和上游结果保持不变。
 
-- **差异表达火山图（图 10）**：横轴为差异表达倍数的对数值（`log2FoldChange`），散点偏离中心 `0.0` 越远代表基因表达上调或下调的幅度越大；纵轴为统计学显著性的负对数（`-log10(pvalue)`），散点位置越高代表差异检验越显著。图中垂直与水平虚线标识预设阈值边界，右侧红色点代表显著上调基因（`Up`），左侧蓝色点代表显著下调基因（`Down`），中间及下方灰色点代表未同时满足双重阈值的非显著基因（`NS`）。
-- **极小 $P$ 值数值处理说明**：当部分基因在两组间存在极强烈的表达差异时，其统计检验得到的原始 `pvalue` 及多重检验校正后的 `padj` 可能小于计算机双精度浮点数的表示下限（约 $2.2 \times 10^{-308}$），在原始结果文件及下方预览表中显示为 `0(输入)`。为避免绘图时计算 $-\log_{10}(0)$ 发生数学无穷大溢出，火山图绘制逻辑统一对原始 $P$ 值加上极小平滑常数 $1 \times 10^{-300}$，因此该类极显著基因在火山图顶部纵坐标 `300` 处呈现水平排列分布，该平滑操作不影响阈值判定与原始结果表数据。
+:::
 
 ```{python}
 #| label: pdf-deg
@@ -20,10 +21,16 @@ for comp in comparisons:
     p = deg_settings.get('pvalue_threshold', .05)
     up, down = deg_counts(frame, fc, p)
     fig = plot_volcano_pvalue(frame, title='', col_logfc='log2FoldChange', col_pval='pvalue',
-        col_padj='padj', col_symbol='Symbol', fc_cutoff=fc, pval_cutoff=p)
-    show_figure(fig, caption=f"{comp} 差异表达火山图。方向为 Treat 相对 Control；右侧上调、左侧下调；原始 P < {p} 且 |Log2FC| > {fc}。上调 {up}、下调 {down}。仅绘图时 P 加 1e-300 以稳定极小值与零值；阈值判定和原始结果保持不变。")
+        col_padj='padj', col_symbol='Symbol', fc_cutoff=fc, pval_cutoff=p,
+        display_cap=project_info.get('analysis', {}).get('volcano', {}).get('y_axis', {}).get('display_cap', 50))
+    show_figure(fig, evidence={"kind":"deg","comparison":comp,"up":up,"down":down}, caption=f"{comp} 差异表达火山图。方向为 Treat 相对 Control；右侧上调、左侧下调；原始 P < {p} 且 |Log2FC| > {fc}。上调 {up}、下调 {down}。Values exceeding the display range are clipped for visualization; original values are preserved in the result table.")
     typst_note(f"{comp}：上调 {up}，下调 {down}；其余记录未同时满足上述阈值。")
     frame = gene_columns(raw_probability_columns(path, frame))
-    preview(frame, path, sort_by='pvalue', limit=pdf_settings.get('deg_rows',10),
-        columns=['Gene ID','Symbol','log2FoldChange','pvalue','padj'])
+    per_direction = max(1, pdf_settings.get('deg_rows',10) // 2)
+    for direction, mask in [('Up', frame['log2FoldChange'].gt(fc)), ('Down', frame['log2FoldChange'].lt(-fc))]:
+        selected = mask & pd.to_numeric(frame['pvalue'], errors='coerce').lt(p)
+        display(Markdown(f"### {comp} Top {per_direction} {direction}\n"))
+        preview(frame.loc[selected], path, sort_by='pvalue', limit=per_direction,
+            columns=['Gene ID','Symbol','log2FoldChange','pvalue','padj'],
+            evidence={'kind':'deg','comparison':comp,'direction':direction})
 ```

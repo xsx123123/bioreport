@@ -119,7 +119,7 @@ def export_vector(figure, path):
     width = 6.45
     height = max(2.7, min(7.0, float(meta.get('print_height', 4.0))))
     if figure.data and all(t.type=='bar' and t.orientation=='h' for t in figure.data):
-        height = max(height, min(7., 1.4 + .4*len(figure.data[0].y)))
+        height = max(2.7, min(7., 1.4 + .3*len(figure.data[0].y)))
     # Built-in fonts (Source Sans 3 + CJK) registered first, DejaVu kept as last resort.
     plot_fonts = init_bioreport_plot_style()
     with plt.rc_context({'font.family': [*plot_fonts, 'DejaVu Sans'], 'font.size': 10,
@@ -188,6 +188,12 @@ def export_vector(figure, path):
                         ax.scatter(x, y, s=float(sizes or 6)**2/2,
                                    color=color(c, PALETTE[i % len(PALETTE)]),
                                    alpha=trace.marker.opacity or .8, label=label, edgecolors='none')
+                        if 'text' in mode and trace.text is not None:
+                            for px, py, label_text in zip(x, y, trace.text):
+                                ax.annotate(str(label_text), (px, py), xytext=(0, 6),
+                                            textcoords='offset points', ha='center', fontsize=9)
+                            ax.margins(x=.12, y=.18)
+
             elif trace.type == 'bar':
                 horizontal = trace.orientation == 'h'
                 categories = y if horizontal else x
@@ -257,6 +263,9 @@ def export_vector(figure, path):
                     (ax.set_xscale if cfg is xcfg else ax.set_yscale)('log')
             if xcfg.range and xcfg.type!='log': ax.set_xlim(xcfg.range)
             if ycfg.range and ycfg.type!='log': ax.set_ylim(ycfg.range)
+            if ycfg.tickvals is not None:
+                ax.set_yticks(list(ycfg.tickvals))
+                if ycfg.ticktext is not None: ax.set_yticklabels(list(ycfg.ticktext))
             if ycfg.autorange=='reversed' and heatmap is None: ax.invert_yaxis()
             for shape in layout.shapes or []:
                 if shape.xref not in [None,xkey,xkey+' domain','paper'] or shape.yref not in [None,ykey,ykey+' domain','paper']: continue
@@ -278,3 +287,34 @@ def export_vector(figure, path):
         out.savefig(path,format='svg',dpi=400,bbox_inches='tight',pad_inches=.06)
         plt.close(out)
     return width,height
+
+
+def aggregate_bar_categories(figure, min_fraction=.01, max_categories=5, aggregate_other=True):
+    """Display-only reduction; sum discarded categories into Other per sample."""
+    import numpy as np
+    import plotly.graph_objects as go
+    if not 0 <= min_fraction <= 1 or max_categories < 2:
+        raise ValueError('Legend requires a fraction in [0,1] and at least two categories')
+    result = go.Figure(figure)
+    traces = list(result.data)
+    if not aggregate_other or not traces or any(t.type != 'bar' for t in traces):
+        return result
+    horizontal = traces[0].orientation == 'h'
+    labels = list(traces[0].y if horizontal else traces[0].x)
+    if any(list(t.y if horizontal else t.x) != labels for t in traces):
+        raise ValueError('Cannot aggregate bar categories with different sample axes')
+    values = [np.asarray(t.x if horizontal else t.y, dtype=float) for t in traces]
+    totals = np.asarray([np.nansum(v) for v in values])
+    total = totals.sum()
+    ranked = np.argsort(-totals, kind='stable')
+    keep = [int(i) for i in ranked if total > 0 and totals[i]/total >= min_fraction][:max_categories-1]
+    rest = [i for i in range(len(traces)) if i not in keep]
+    if not rest: return result
+    result.data = tuple(traces[i] for i in keep)
+    other = np.sum([np.nan_to_num(values[i]) for i in rest], axis=0)
+    result.add_trace(go.Bar(name='Other', orientation='h' if horizontal else 'v',
+                           x=other if horizontal else labels,
+                           y=labels if horizontal else other, marker_color='#9aa5b1'))
+    result.update_layout(meta={**(result.layout.meta or {}),
+        'aggregated_categories':[str(traces[i].name) for i in rest]})
+    return result

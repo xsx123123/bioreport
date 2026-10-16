@@ -1,6 +1,6 @@
 ## 功能富集分析
 
-在获取差异表达基因列表后，为进一步揭示差异基因显著聚集的生物学过程、细胞组分或分子功能通路，本模块按比较组及表达变化方向（上调基因集与下调基因集分别独立富集）依次展示 `clusterProfiler` 富集分析结果。气泡图（图 11 – 图 14）与预览表均严格按多重假设检验校正后 $P$ 值（`p.adjust`）升序排列，优先展示富集显著性最高的前 12 个功能条目（分为条目 1–8 与条目 9–12 两图展示，共用同一色标与气泡比例尺）：
+在获取差异表达基因列表后，为进一步揭示差异基因显著聚集的生物学过程、细胞组分或分子功能通路，本模块按比较组及表达变化方向（上调基因集与下调基因集分别独立富集）依次展示 `clusterProfiler` 富集分析结果。气泡图与预览表使用同一阈值、有效条目集合及 Top N 配置，按 `p.adjust` 稳定升序排列；长标签过多时分图展示，并保持同一方向色标与气泡比例尺。原始完整结果保留在交付数据目录中。
 
 - **Description**：富集命中的功能条目或信号通路标准名称。
 - **GeneRatio（横轴）**：富集到该特定功能条目的差异基因数量占参与该数据库注释的背景差异基因总数的比例（表格中以分数形式如 `56/1977` 呈现，图中转换为小数比例），比值越大说明差异基因在该通路中的富集浓度越高。
@@ -11,6 +11,8 @@
 #| label: pdf-enrichment
 #| output: asis
 from bioreport.utils.pdf_results import enrichment_chunks, raw_probability_columns
+from bioreport.utils.render_output import figure_group
+from contextlib import nullcontext
 from bioreport.config import display_path
 from omics.rna.analysis.enrichment_plotly import parse_gene_ratios
 if not comparisons:
@@ -30,23 +32,28 @@ for comp in comparisons:
         if filtered.empty:
             typst_note(f"{comp} {label}：没有校正后 P < {cutoff} 的富集条目。完整输入结果（数据目录内相对路径）：{display_path(path)}")
             continue
-        count = pdf_settings.get('enrichment_top_n', 12)
+        count = enrichment_settings['top_n']
         valid = parse_gene_ratios(filtered['GeneRatio']).notna() & pd.to_numeric(filtered['Count'],errors='coerce').ge(0)
         if not valid.all():
-            typst_note(f'{comp} {label}：{int((~valid).sum())} 个满足阈值的条目因 GeneRatio / Count 缺失或无效而不绘图；预览表保留原始记录。')
+            typst_note(f'{comp} {label}：{int((~valid).sum())} 个满足阈值的条目因 GeneRatio / Count 缺失或无效而不进入图表预览；完整原始记录保留在输入文件。')
         chosen = filtered[valid].head(count)
         chosen = chosen.assign(Count=pd.to_numeric(chosen['Count']))
         # Split high label densities instead of shrinking font size.
-        for start, chunk in enrichment_chunks(chosen):
-            fig, conf = draw_fancy_dotplot(chunk, top_n=None, p_cutoff=None,
-                height_num=450, width_num=1000, wrap_width=28)
-            fig.update_layout(coloraxis_cmin=float(chosen['p.adjust'].min()), coloraxis_cmax=float(chosen['p.adjust'].max()),
-                              meta={**fig.layout.meta,'count_max':int(chosen['Count'].max())})
-            databases = sorted({str(v).split(':')[0] for v in chunk.get('ID',[]) if str(v).startswith(('GO:','KEGG:'))})
-            category = '/'.join(databases) if databases else '输入结果条目'
-            if 'ONTOLOGY' in chunk: category += ' / ' + '/'.join(sorted(chunk['ONTOLOGY'].dropna().unique()))
-            show_figure(fig, caption=f"{comp} {label}富集分析（{category}），条目 {start+1}–{start+len(chunk)}。基因比例为输入 GeneRatio；气泡面积对应 Count，颜色对应校正后 P 值。同一方向各分图共用色标和气泡大小比例。")
+        chunks = list(enrichment_chunks(chosen))
+        for part, (start, chunk) in enumerate(chunks):
+            with figure_group(f"enrichment-{comp}-{direction}") if part == len(chunks)-1 else nullcontext():
+                fig, conf = draw_fancy_dotplot(chunk, top_n=None, p_cutoff=None,
+                    height_num=450, width_num=1000, wrap_width=28)
+                fig.update_layout(coloraxis_cmin=float(chosen['p.adjust'].min()), coloraxis_cmax=float(chosen['p.adjust'].max()),
+                                  meta={**fig.layout.meta,'count_max':int(chosen['Count'].max())})
+                databases = sorted({str(v).split(':')[0] for v in chunk.get('ID',[]) if str(v).startswith(('GO:','KEGG:'))})
+                category = '/'.join(databases) if databases else '输入结果条目'
+                if 'ONTOLOGY' in chunk: category += ' / ' + '/'.join(sorted(chunk['ONTOLOGY'].dropna().unique()))
+                show_figure(fig, evidence={"kind":"enrichment","comparison":comp,"direction":direction,"top_n":count,"indices":list(chunk.index)}, caption=f"{comp} {label}富集分析（{category}），Top {count} 中条目 {start+1}–{start+len(chunk)}（实际展示 {len(chosen)}）。基因比例为输入 GeneRatio；气泡面积对应 Count，颜色对应校正后 P 值。同一方向各分图共用色标和气泡大小比例。")
+                if part == len(chunks)-1:
+                    preview(raw_probability_columns(path,frame).loc[chosen.index], path, sort_by='p.adjust', limit=count,
+                        columns=['Description','GeneRatio','Count','p.adjust'],
+                        evidence={'kind':'enrichment','comparison':comp,'direction':direction,'top_n':count})
         typst_note(f"{comp} {label}：{len(filtered)} / {len(frame)} 个条目满足校正后 P < {cutoff}；正文展示前 {len(chosen)} 个。")
-        preview(raw_probability_columns(path,frame), path, sort_by='p.adjust', limit=pdf_settings.get('enrichment_rows',10),
-            columns=['Description','GeneRatio','Count','p.adjust'])
+
 ```

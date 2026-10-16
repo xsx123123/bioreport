@@ -32,7 +32,7 @@ def test_qc_visualization_uses_exported_json_when_multiqc_is_missing(tmp_path, m
             "fastp_reads": {
                 "plot_type": "bar plot",
                 "pconfig": {"title": "fastp reads"},
-                "datasets": [{"data": {"sample": 10}}],
+                "datasets": [{"samples":["sample"],"cats":[{"name":"reads","data":[10]}]}],
             }
         }
     }
@@ -50,3 +50,5 @@ def test_qc_visualization_uses_exported_json_when_multiqc_is_missing(tmp_path, m
     qc_vis.visualize_multiqc_logs(str(tmp_path), ["fastp"])
 
     assert len(figures) == 1
+    assert list(figures[0].data[0].x) == ["sample"]
+    assert list(figures[0].data[0].y) == [10]

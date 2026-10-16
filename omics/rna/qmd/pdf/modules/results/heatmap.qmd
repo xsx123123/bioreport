@@ -1,18 +1,31 @@
+::: {.report-lead}
+
 ## 高变异基因表达模式
 
-高变异基因（Highly Variable Genes, HVGs）是指在跨样本间表达丰度波动最为剧烈的基因集合，通常富集了响应实验处理或决定样本表型分化的核心转录调控特征。本模块在满足全样本平均 $\text{TPM} > 1$ 且方差非零的基因中，按 $\log_2(\text{TPM}+1)$ 的跨样本方差降序选取前 1,000 个高变异基因，按基因行进行 Z-score 标准化后绘制双向层次聚类热图（图 9）。
+高变异基因（Highly Variable Genes, HVGs）是指在跨样本间表达丰度波动最为剧烈的基因集合，通常富集了响应实验处理或决定样本表型分化的核心转录调控特征。本模块在满足全样本平均 $\text{TPM} > 1$ 且方差非零的基因中，按 $\log_2(\text{TPM}+1)$ 的跨样本方差降序选取高变异基因。主报告默认展示 Top 50，完整配置数量的热图作为 supplementary SVG 交付；两者均按基因行进行 Z-score 标准化。实际基因数与聚类参数见图注。
 
 **读图指南**：热图每一行代表一个基因，每一列代表一个样本（列顺序按 Euclidean 距离与 Ward 聚类算法自动重排，顶部色条标识样本原始分组）。右侧色标 Z-score 反映基因在特定样本中的相对表达高低：暖色调（红色，Z-score > 0）表示该基因在对应样本中的表达量高于全样本平均水平，冷色调（蓝色，Z-score < 0）表示低于平均水平。同组样本在列聚类中自然聚为一簇且呈现出清晰的红蓝对角模块分块，直观反映了不同实验分组间特异激活或抑制的基因表达模块。
+
+:::
 
 ```{python}
 #| label: pdf-heatmap
 #| output: asis
 from bioreport.config import display_path
-fig, conf = draw_interactive_heatmap(tpm_file, meta_file, top_n=heatmap_settings.get('top_n',1000), do_cluster=True)
+from pathlib import Path
+from bioreport.utils.print_theme import export_vector
+full_n = heatmap_settings.get('top_n',1000)
+main_n = min(pdf_settings.get('hvg_top_n',50), full_n)
+full_fig, _ = draw_interactive_heatmap(tpm_file, meta_file, top_n=full_n, do_cluster=True)
+supplementary = Path(os.environ.get('BIOREPORT_DELIVERY_DIR', '.')) / 'supplementary'
+supplementary.mkdir(parents=True, exist_ok=True)
+supplement_path = supplementary / f'hvg-top-{full_fig.layout.meta["heatmap_genes"]}.svg'
+export_vector(full_fig, supplement_path)
+fig, conf = draw_interactive_heatmap(tpm_file, meta_file, top_n=main_n, do_cluster=True)
 count = fig.layout.meta['heatmap_genes']
 cluster = fig.layout.meta['clustering']
 cluster_note = f"行距离 correlation（{'已聚类' if cluster['rows'] else '未聚类'}），列距离 Euclidean（{'已聚类' if cluster['columns'] else '未聚类'}），使用原有 Ward linkage。"
 if cluster['error']: cluster_note += f"聚类提示：{cluster['error']}。"
 show_figure(fig, caption=f"高变异基因热图：{count} 个基因。筛选平均 TPM > 1 和非零方差基因，对 Log2(TPM+1) 的方差排序选取；按基因行进行 Z-score。分组注释条位于图上方；色标范围 -2 到 2，超出范围按端点颜色显示。{cluster_note}基因数 > 40 时静态图隐藏行名。")
-typst_note(f"热图展示 {count} 个基因；样本顺序沿用实际聚类结果。完整表达矩阵（数据目录内相对路径）：{display_path(tpm_file)}")
+typst_note(f"主图展示 {count} 个基因；完整热图：supplementary/{supplement_path.name}（{full_fig.layout.meta['heatmap_genes']} 个基因）。样本顺序沿用实际聚类结果。完整表达矩阵（数据目录内相对路径）：{display_path(tpm_file)}")
 ```

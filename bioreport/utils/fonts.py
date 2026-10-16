@@ -13,7 +13,7 @@ from pathlib import Path
 # Latin-first stack gives English and digits the Latin design while CJK
 # glyphs fall through to the Chinese family seamlessly.
 FONT_STACK = ('Source Sans 3', 'Source Han Sans SC', 'HarmonyOS Sans SC', 'DejaVu Sans')
-MONO_STACK = ('JetBrains Mono', 'Source Sans 3', 'DejaVu Sans Mono')
+MONO_STACK = ('DejaVu Sans Mono', 'Source Han Sans SC')
 
 
 def font_dir() -> Path:

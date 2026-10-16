@@ -1,0 +1,19 @@
+{
+  "page_count": 22,
+  "pages": {
+    "cover": 1,
+    "toc": 2,
+    "overview": 3,
+    "project": 4,
+    "qc": 6,
+    "pca": 10,
+    "hvg": 12,
+    "volcano": 13,
+    "enrichment": 14,
+    "provenance": 19,
+    "architecture": 20
+  },
+  "pdf_sha256": "a0b78cbc3d580a19c886dc7c2a9090d62589dcdd5a36452d59efd03eadf6e8ef",
+  "source_config": "tests/report.rna.pdf.json",
+  "renderer": "Quarto 1.8.26 / Typst 0.13.0; bundled fonts; inprocess trusted QMD verification"
+}

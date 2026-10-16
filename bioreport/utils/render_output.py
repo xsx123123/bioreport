@@ -4,6 +4,8 @@ import os
 import re
 import json
 from pathlib import Path
+from contextlib import contextmanager
+from bioreport.report.recording import record_block
 
 from IPython.display import HTML, Image, Markdown, display
 from itables import init_notebook_mode, show as show_interactive_table
@@ -13,13 +15,15 @@ from plotly.offline import get_plotlyjs
 _plotly_loaded = False
 _itables_loaded = False
 _figure_count = 0
+_table_count = 0
+_figure_group = None
 
 
 def is_pdf() -> bool:
     return os.environ.get("BIOREPORT_OUTPUT_FORMAT") == "pdf"
 
 
-def show_figure(figure, config=None, caption=None) -> None:
+def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
     global _plotly_loaded, _figure_count
     if is_pdf():
         if figure is None:
@@ -43,9 +47,19 @@ def show_figure(figure, config=None, caption=None) -> None:
             viewbox = root.attrib["viewBox"].split()
             ratio = float(viewbox[3]) / float(viewbox[2])
             label = text + (' '+detail+'。' if detail else '')
+            from bioreport.report import FigureBlock, LayoutPlanner
+            block = LayoutPlanner().plan(FigureBlock(id=f"figure-{_figure_count:03}",
+                path=str(path), caption=label, ratio=ratio, content=evidence))
+            record_block(block)
             # Typst owns the complete image/caption block and figure numbering.
-            display(Markdown("```{=typst}\n#report-figure(" + json.dumps(str(path), ensure_ascii=False)
-                             + ", " + json.dumps(label, ensure_ascii=False) + f", {ratio:.5f})\n```"))
+            expression = ("#report-figure(" + json.dumps(str(path), ensure_ascii=False)
+                          + ", " + json.dumps(label, ensure_ascii=False)
+                          + f", {ratio:.5f}, preferred-height: {block.preferred_height:.2f}mm, id: " + typst_literal(block.id) + ")")
+            if _figure_group is not None:
+                _figure_group.append((block, expression))
+            else:
+                display(Markdown("```{=typst}\n" + expression + "\n```"))
+
     else:
         if not _plotly_loaded:
             # Quarto promotes the output containing plotly.js to a dependency.
@@ -53,6 +67,39 @@ def show_figure(figure, config=None, caption=None) -> None:
             display(HTML(f'<script data-bioreport-dependency="plotly">{get_plotlyjs()}</script>'))
             _plotly_loaded = True
         display(HTML(_responsive_figure_html(figure, config)))
+
+
+@contextmanager
+def figure_group(block_id, columns=1):
+    """Keep related PDF figures together; HTML keeps its interactive flow."""
+    global _figure_group
+    if not is_pdf():
+        yield
+        return
+    if _figure_group is not None:
+        raise ValueError('Nested figure groups are not supported')
+    from bioreport.report import FigureGroup, LayoutPlanner
+    collected = []
+    _figure_group = collected
+    try:
+        yield
+    except BaseException:
+        raise
+    else:
+        if collected:
+            if all(block.type == 'paragraph' for block, _ in collected):
+                for _, expression in collected:
+                    display(Markdown('```{=typst}\n' + expression + '\n```'))
+                return
+            group = LayoutPlanner().plan(FigureGroup(id=block_id,
+                figures=[block for block, _ in collected if block.type == "figure"],
+                tables=[block for block, _ in collected if block.type == "table"], columns=columns))
+            record_block(group)
+            expressions = ','.join('['+expression+']' for _, expression in collected)
+            display(Markdown('```{=typst}\n#report-figure-group(('
+                             + expressions + ',), columns: ' + str(group.columns) + ')\n```'))
+    finally:
+        _figure_group = None
 
 
 def _responsive_figure_html(figure, config):
@@ -102,8 +149,13 @@ def show_table(table, **kwargs) -> None:
 
 
 def typst_note(text):
-    display(Markdown('```{=typst}\n#text(size: 9pt, fill: rgb("#53636a"), '
-                     + json.dumps(str(text), ensure_ascii=False) + ")\n```"))
+    expression = ('#text(size: 9pt, fill: rgb("#53636a"), '
+                  + json.dumps(str(text), ensure_ascii=False) + ')')
+    if _figure_group is not None:
+        from bioreport.report import Paragraph
+        _figure_group.append((Paragraph(id='group-note', content=str(text)), expression))
+    else:
+        display(Markdown('```{=typst}\n' + expression + '\n```'))
 
 
 def _breakable(text: str) -> str:
@@ -114,8 +166,11 @@ def _breakable(text: str) -> str:
     return re.sub(r"[0-9A-Fa-f]{16,}", lambda m: breakable_hash(m.group()), value)
 
 
-def show_print_table(frame, limit=10):
-    """Splittable Typst table with repeated headers; no HTML or numeric coercion."""
+def show_print_table(frame, limit=10, *, block_id="table", allow_split=False, evidence=None):
+    """Render a planned semantic table without changing input numeric values."""
+    global _table_count
+    _table_count += 1
+    block_id = f"{block_id}-{_table_count}"
     import pandas as pd
     import numpy as np
     from decimal import Decimal
@@ -137,9 +192,18 @@ def show_print_table(frame, limit=10):
             cells.append(_breakable(text))
         rows.append(cells)
     numeric = [bool(pd.api.types.is_numeric_dtype(frame[c]) or str(c) == '数值' or str(c).lower() in ['pvalue','padj','p.adjust','qvalue']) for c in frame.columns]
-    display(Markdown("```{=typst}\n#report-table(" + typst_literal(headers)
-                     + ", " + typst_literal(rows) + ", "
-                     + typst_literal(numeric) + ")\n```"))
+    from bioreport.report import TableBlock, LayoutPlanner
+    block = LayoutPlanner().plan(TableBlock(id=block_id, headers=headers, rows=rows,
+                                            numeric=numeric, allow_split=allow_split, content=evidence))
+    record_block(block)
+    expression = ("#report-table(" + typst_literal(headers)
+                  + ", " + typst_literal(rows) + ", " + typst_literal(numeric)
+                  + ", keep-together: " + typst_literal(block.keep_together)
+                  + ", id: " + typst_literal(block.id) + ")")
+    if _figure_group is not None:
+        _figure_group.append((block, expression))
+    else:
+        display(Markdown("```{=typst}\n" + expression + "\n```"))
 
 
 def typst_literal(value):
@@ -147,3 +211,17 @@ def typst_literal(value):
         return "(" + "".join(typst_literal(item) + "," for item in value) + ")"
     if isinstance(value, bool): return "true" if value else "false"
     return json.dumps(value, ensure_ascii=False)
+
+
+def show_metric_grid(metrics, *, block_id='metrics'):
+    from bioreport.report import MetricGrid, LayoutPlanner
+    block = LayoutPlanner().plan(MetricGrid(id=block_id, content=list(metrics)))
+    record_block(block)
+    if is_pdf():
+        display(Markdown('```{=typst}\n#report-metrics('
+                         + typst_literal(block.content) + ')\n```'))
+    else:
+        import html
+        display(HTML('<dl class="report-metrics">' + ''.join(
+            f'<div><dt>{html.escape(str(label))}</dt><dd>{html.escape(str(value))}</dd></div>'
+            for label, value in block.content) + '</dl>'))

@@ -17,8 +17,6 @@
       "matrix_rows": 8,
       "matrix_columns": 6,
       "deg_rows": 10,
-      "enrichment_rows": 10,
-      "enrichment_top_n": 12,
       "qc_detail": "key"
     }
   },
@@ -52,7 +50,7 @@
     },
     "enrichment": {
       "p_cutoff": 0.1,
-      "top_n": 20
+      "top_n": 12
     },
     "heatmap": {
       "top_n": 1000
