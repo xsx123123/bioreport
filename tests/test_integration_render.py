@@ -10,6 +10,8 @@ from pathlib import Path
 import pytest
 from bs4 import BeautifulSoup
 
+from bioreport.config import report_artifact_name
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RNA_ROOT = REPO_ROOT
@@ -24,8 +26,9 @@ def render_and_check(config_path: Path, output_dir: Path) -> str:
         check=True, env=env, timeout=900,
     )
 
-    html_path = output_dir / "report.html"
-    pdf_path = output_dir / "report.pdf"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    html_path = output_dir / report_artifact_name(config, "html")
+    pdf_path = output_dir / report_artifact_name(config, "pdf")
     assert html_path.is_file() and pdf_path.is_file()
     assert pdf_path.read_bytes().startswith(b"%PDF-")
     html = html_path.read_text(encoding="utf-8")

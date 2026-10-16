@@ -20,6 +20,7 @@ variable, falling back to ``/app/configs/report_config.yaml``,
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
@@ -308,6 +309,34 @@ def display_path(path_str: Optional[str], config: Optional[Dict[str, Any]] = Non
     except (ValueError, OSError):
         return path_str
     return relative.as_posix()
+
+
+def project_file_stem(config: Dict[str, Any]) -> str:
+    """
+    报告交付文件的命名前缀：project_id 经文件名安全清洗后的形式。
+
+    project_id 是必填项，贯穿日志、离线数据库与报告溯源；这里只做
+    交付文件命名的安全化，不改变溯源与数据库中记录的原始值。
+    空白与跨平台文件名非法字符折叠为连字符，例如
+    ``PRJ-2026-001`` -> ``PRJ-2026-001``、``demo/样本 A`` -> ``demo-样本-A``。
+    """
+    project_id = str(config.get("project", {}).get("project_id", "")).strip()
+    cleaned = re.sub(r'[\\/:*?"<>|\s]+', "-", project_id).strip("-.")
+    return cleaned or "bioreport-report"
+
+
+def report_artifact_name(config: Dict[str, Any], output_format: str) -> str:
+    """报告交付文件名：<project_id>_report.<format>，如 PRJ-2026-001_report.pdf。"""
+    return f"{project_file_stem(config)}_report.{output_format}"
+
+
+def run_log_name(config: Dict[str, Any], timestamp: str) -> str:
+    """
+    运行日志文件名：<project_id>_<time>_bioreport.log。
+
+    timestamp 为 time.strftime("%Y%m%d-%H%M%S") 形式的本地时间。
+    """
+    return f"{project_file_stem(config)}_{timestamp}_bioreport.log"
 
 
 def load_project_metadata(

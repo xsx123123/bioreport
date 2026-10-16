@@ -1,6 +1,6 @@
 """Create a reviewed PDF baseline or compare ten semantic pages against it.
 
-Usage: python tests/pdf_visual_regression.py report.pdf --golden tests/golden/rna
+Usage: python tests/pdf_visual_regression.py PRJ-RNA-PDF-001_report.pdf --golden tests/golden/rna
 The --update option deliberately replaces the baseline; review pages first.
 """
 from pathlib import Path
@@ -18,7 +18,7 @@ NEEDLES = {
     'overview':'Executive Summary', 'project':'样本预览',
     'qc':'Fastp: Filtered Reads', 'pca':'样本 PCA', 'hvg':'主图展示',
     'volcano':'Values exceeding the display range', 'enrichment':'上调富集分析',
-    'provenance':'数据完整性校验说明', 'architecture':'Configuration',
+    'provenance':'数据完整性校验', 'architecture':'Configuration',
 }
 
 
@@ -95,7 +95,7 @@ if __name__=='__main__':
     args=parser.parse_args()
     if args.update:
         baseline=snapshots(args.pdf,args.golden)
-        shutil.copyfile(args.pdf,args.golden/'report.pdf')
+        shutil.copyfile(args.pdf,args.golden/'PRJ-RNA-PDF-001_report.pdf')
         baseline['pdf_sha256']=hashlib.sha256(args.pdf.read_bytes()).hexdigest()
         baseline['source_config']='tests/report.rna.pdf.json'
         baseline['renderer']='Quarto 1.8.26 / Typst 0.13.0; bundled fonts; inprocess trusted QMD verification'

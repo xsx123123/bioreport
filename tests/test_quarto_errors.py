@@ -19,14 +19,15 @@ def test_mermaid_failure_includes_quarto_error_and_rendering_phase(monkeypatch, 
 
     monkeypatch.setattr("bioreport.cli.subprocess.Popen", lambda *args, **kwargs: Process())
 
+    log_file = tmp_path / "PRJ-TEST-001_20261016-143000_bioreport.log"
     with pytest.raises(RuntimeError) as error:
         render_report(
             {"report": {"layout": "single", "output_format": "pdf"}},
-            "config.json", str(tmp_path), tmp_path,
+            "config.json", str(tmp_path), tmp_path, str(log_file),
         )
 
     message = str(error.value)
     assert "Couldn't find an svg element" in message
     assert "代码执行后的图表转换或文档渲染阶段" in message
     assert "Cell 20/20" not in message
-    assert str(tmp_path / "pipeline.log") in message
+    assert str(log_file) in message

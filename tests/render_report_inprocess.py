@@ -36,7 +36,7 @@ def render(config_path: Path, output: Path, output_format: str):
     os.environ['XDG_DATA_HOME'] = str(output / 'share')
     from bioreport.utils.fonts import typst_font_paths
     os.environ['TYPST_FONT_PATHS'] = typst_font_paths()
-    from bioreport.config import load_config
+    from bioreport.config import load_config, report_artifact_name
     from bioreport.renderer import render_templates
     config = load_config(config_path)
     # The in-process utility renders one format at a time; align the composer's
@@ -111,7 +111,7 @@ def render(config_path: Path, output: Path, output_format: str):
         print((output / 'render.log').read_text(), file=sys.stderr)
         raise RuntimeError(f'Quarto failed: {output / "render.log"}')
     artifact = output / 'rendered' / 'qmd' / f'{source.stem}.{output_format}'
-    final = output / f'report.{output_format}'
+    final = output / report_artifact_name(config, output_format)
     shutil.copyfile(artifact, final)
     if output_format == 'pdf':
         from bioreport.utils.pdf_metadata import set_pdf_metadata

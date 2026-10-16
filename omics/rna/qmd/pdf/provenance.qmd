@@ -2,7 +2,7 @@
 title: "报告溯源信息"
 ---
 
-本页由 **BioReport** 引擎在报告构建与编译阶段自动生成并锚定，旨在遵循生物信息学可重复性研究（Reproducible Research）规范，提供从上游原始产出文件到最终交付文档的完整数据血缘（Data Lineage）记录与合规审计凭据。
+本页由 **BioReport** 报告引擎在编译阶段自动捕获并锚定，遵循生物信息学可重复性研究（Reproducible Research）规范，提供从上游原始产出、流程版本到最终交付文档的完整数据血缘（Data Lineage）记录与审计依据。
 
 ```{python}
 #| label: pdf-provenance
@@ -37,7 +37,7 @@ rows = [
     {"项目": "项目 ID", "内容": prov.get("project_id", "N/A")},
     {"项目": "生成引擎", "内容": f"BioReport v{prov.get('bioreport_version') or bioreport.__version__}"},
     {"项目": "生成时间", "内容": prov.get("generated_at", "N/A")},
-    {"项目": "报告模块", "内容": "、".join(_module_title(m) for m in prov.get("rendered_modules") or []) or "N/A"},
+    {"项目": "报告模块", "内容": " 、 ".join(_module_title(m) for m in prov.get("rendered_modules") or []) or "N/A"},
     {"项目": "输出布局", "内容": prov.get("layout", "N/A")},
     {"项目": "输出格式", "内容": "、".join(_FORMAT_NAMES.get(f, f) for f in prov.get("output_format") or []) or "N/A"},
 ]
@@ -47,7 +47,7 @@ show_print_table(pd.DataFrame(rows), limit=None)
 
 checksums = prov.get("input_checksums") or {}
 if checksums:
-    display(Markdown("**数据完整性校验说明**：下表记录配置中直接声明的核心输入文件及其对应的 **SHA-256 密码学哈希指纹（Cryptographic Hash Fingerprint）**。在进行科研数据归档、论文发表补充材料核验或第三方审计时，可通过在终端对交付数据目录中的对应文件执行 `sha256sum <filepath>`，比对输出哈希值是否与下表完全一致，从而精确核验上游分析结果文件在交付流转过程中是否发生任何字节级的修改、损坏或篡改。"))
+    display(Markdown("**数据完整性校验（Data Integrity Verification）**\n\n下表记录了当前分析任务所引用的核心输入文件及其对应的 **SHA-256 密码学哈希指纹（Cryptographic Hash Fingerprint）**。在科研数据归档、论文补充材料核验或第三方审计时，可随时在终端执行校验命令验证文件的一致性：`sha256sum <filepath>`。若计算输出的哈希值与下表记录完全一致，即可确证上游分析产出在交付与流转过程中未发生任何字节级篡改、损坏或意外修改。"))
     from bioreport.config import load_config, display_path
     cfg = load_config()
     fingerprints = [{"输入文件": key, "数据目录内路径": display_path(cfg['input_files'].get(key,''), cfg),

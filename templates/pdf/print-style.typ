@@ -13,7 +13,17 @@
 )
 #set text(font: report-fonts, size: 10.5pt, lang: "zh", region: "cn")
 // CJK glyphs need visibly more leading than Typst's Latin-tuned default.
-#set par(justify: true, leading: 0.85em, spacing: 1.1em, linebreaks: "optimized")
+// 正文整体居中对齐；标题、列表、代码保持各自对齐。
+// 用 set align 而非 show par: set align —— 后者会关闭 all:true 的
+// 标题后首段缩进（Typst 0.14 的 first-line-indent 判定依赖段落样式）。
+#set align(center)
+#show heading: set align(left)
+#show list: set align(left)
+#show enum: set align(left)
+// 仅块级代码保持左对齐；行内代码参与段落流，避免被拆成独立行。
+#show raw.where(block: true): set align(left)
+#set par(justify: false, leading: 0.85em, spacing: 1.1em, linebreaks: "optimized",
+  first-line-indent: (amount: 2em, all: true))
 #set heading(numbering: "1.1")
 #show heading.where(level: 1): it => block(sticky: true, above: 6mm, below: 4mm)[#text(size: 19pt, fill: rgb("#24476a"), weight: "bold")[#it]]
 #show heading.where(level: 2): it => block(sticky: true, above: 5mm, below: 3mm)[#text(size: 14pt, fill: rgb("#24476a"), weight: "bold")[#it]]

@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 import bioreport
-from bioreport.config import load_config
+from bioreport.config import load_config, report_artifact_name
 from bioreport.modules import selected_modules
 from bioreport.utils.provenance import build_provenance, input_checksums, write_provenance
 from bioreport.utils.report_utils import load_provenance
@@ -223,7 +223,8 @@ def test_integration_provenance_json_written(tmp_path):
         check=True, env=env, timeout=900,
     )
 
-    html = (output_dir / "report.html").read_text(encoding="utf-8")
+    html = (output_dir / report_artifact_name(
+        load_config(config_path), "html")).read_text(encoding="utf-8")
     assert f"BioReport v{bioreport.__version__}" in html
     assert "报告溯源信息" in html
     assert "prov-card" in html

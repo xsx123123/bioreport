@@ -13,18 +13,18 @@ project_config = load_config()
 input_files = project_config['input_files']
 pdf_settings = settings(project_config)
 project = project_config.get('project', {})
-pipeline_name = project.get('pipeline_version') or project.get('software') or 'RNA-seq Pipeline'
 reference_genome = project.get('genome_version') or project.get('genome') or '参考基因组'
 display(Markdown(
-    f'本报告由 **BioReport** 自动化报告引擎基于上游转录组分析流程（`{pipeline_name}`）的产出结果构建。'
-    f'报告涵盖测序原始数据质量控制、外源污染筛查、参考基因组（`{reference_genome}`）比对统计、'
-    '样本间表达谱关系评估、差异表达基因筛查及功能富集分析等模块，'
-    '旨在为下游实验验证与课题研究提供标准化的数据概览与可复现溯源记录。\n\n'
-    '**核心汇总指标说明：**\n'
-    '- **样本数与分组数**：依据输入样本元数据表（Sample Sheet）解析的有效样本总数及实验设计分组数。\n'
-    '- **平均 Q30**：全样本过滤后 Clean Reads 中 Phred 质量得分 $\\ge 30$（碱基识别准确率 $\\ge 99.9\\%$）的碱基比例算术均值，用于衡量整体测序碱基质量。\n'
-    '- **平均比对率**：全样本成功比对至参考基因组的 Reads 占总有效 Reads 比例的算术均值，反映测序序列与参考基因组的整体匹配度。\n'
-    '- **检出基因数**：全样本表达量矩阵中，满足至少在 1 个样本中表达丰度 $\\text{TPM} > 1$ 的注释基因总数，反映本次测序的转录本有效检出广度。'))
+    '本报告由 CygnusX BioOps 生态 **BioReport** 自动化报告引擎生成，'
+    '系统性汇总并解析了 RNAFlow 转录组上游分析流程的产出结果。'
+    f'报告涵盖原始数据质控、外源污染筛查、参考基因组（`{reference_genome}`）比对评估、'
+    '样本间表达谱聚类、差异表达基因（DEG）筛选及功能富集分析等核心模块，'
+    '旨在为下游实验验证与生物学机制探索提供规范化的数据概览与全流程可复现记录。\n\n'
+    '**核心指标说明**\n'
+    '- **样本数与分组数**：依据实验设计元数据表（Sample Sheet）解析的有效样本总量及对比组设置。\n'
+    '- **平均 Q30**：全样本过滤后 Clean Reads 中 Phred 质量得分 $\\ge 30$（碱基识别准确率 $\\ge 99.9\\%$）的比例算术均值，用于评估测序底层碱基质量。\n'
+    f'- **平均比对率**：全样本成功映射至参考基因组（`{reference_genome}`）的 Reads 占总有效 Clean Reads 比例的算术均值，反映文库序列与参考基因组的整体匹配效率及测序有效性。\n'
+    '- **检出基因数**：全样本基因表达矩阵中，至少在 1 个样本中表达丰度满足 $\\text{TPM} > 1$ 的已注释基因总数，反映本次测序在转录组广度上的有效覆盖能力。'))
 labels = {'client':'委托客户', 'species':'物种', 'genome_version':'参考基因组', 'genome':'参考基因组', 'pipeline_version':'分析流程', 'project_id':'项目编号', 'report_date':'报告日期', 'run_id':'运行标识'}
 metadata = pd.DataFrame([{'项目':label, '内容':project[key]} for key,label in labels.items() if project.get(key)])
 if not metadata.empty: show_print_table(metadata, limit=None)

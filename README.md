@@ -48,7 +48,7 @@ python -m bioreport run -c tests/report.rna.html.json -o output/rna-report
 python -m bioreport run -c tests/report.rna.pdf.json -o output/rna-report-pdf
 ```
 
-示例数据位于 `examples/rna-seq/data/`，本地配置在 `tests/report.rna.local.json`，默认使用 `single` 模式，生成 `output/rna-report/report.html`，样式、脚本及图片资源嵌入 HTML。报告内通过顶部导航切换六个章节视图。页面使用 `templates/theme/New_Brutalism.scss`、`styles.css` 和 `itables_saas.css`；修改模板或 Logo 后重新生成即可更新。若需要六份独立 HTML，可将 `report.layout` 改为 `website`，从 `output/rna-report/index.html` 打开。先用 `--dry-run` 可检查配置和模板组合，此模式不生成 HTML。`configs/report.example.json` 的数据根目录为容器内 `/data`，本地直接运行前须修改路径。
+示例数据位于 `examples/rna-seq/data/`，本地配置在 `tests/report.rna.local.json`，默认使用 `single` 模式，生成 `output/rna-report/PRJ-RNA-LOCAL-001_report.html`（报告文件名以配置中的 `project.project_id` 为前缀），样式、脚本及图片资源嵌入 HTML。报告内通过顶部导航切换六个章节视图。页面使用 `templates/theme/New_Brutalism.scss`、`styles.css` 和 `itables_saas.css`；修改模板或 Logo 后重新生成即可更新。若需要六份独立 HTML，可将 `report.layout` 改为 `website`，从 `output/rna-report/index.html` 打开。先用 `--dry-run` 可检查配置和模板组合，此模式不生成 HTML。`configs/report.example.json` 的数据根目录为容器内 `/data`，本地直接运行前须修改路径。
 
 需要单文件 HTML/PDF 时，将 `report.layout` 设为 `"single"`，并按需设置 `report.output_format`。修改 RNA 报告章节请编辑 `omics/rna/qmd/`，修改各类型共用的内置页面（关于/常见问题/许可/商标/AI 解读）请编辑 `templates/shared/`，调整共享样式请编辑 `templates/theme/`；报告默认使用其中的白色背景亮色主题和 CSS。报告标题、模块顺序、分析阈值等由配置文件控制。
 
@@ -93,7 +93,7 @@ docker run --rm \
   bioreport:latest -c /app/configs/report.generic.json -o /workspace
 ```
 
-RNA-seq 报告为 `/workspace/report.html` 和 `/workspace/report.pdf`。分享 HTML 时只需要一个文件，导航在文件内切换页面。HTML 会内嵌 Quarto、Plotly 和 ITables 的运行资源；普通超链接仍可指向外部文献或网站。若只要一种格式，将 `output_format` 设为 `"html"` 或 `"pdf"`。`report.layout: website` 保留多页 HTML，不能与 PDF 同时使用。
+RNA-seq 报告为 `/workspace/<project_id>_report.html` 和 `/workspace/<project_id>_report.pdf`（以配置中的 `project.project_id` 为前缀）。分享 HTML 时只需要一个文件，导航在文件内切换页面。HTML 会内嵌 Quarto、Plotly 和 ITables 的运行资源；普通超链接仍可指向外部文献或网站。若只要一种格式，将 `output_format` 设为 `"html"` 或 `"pdf"`。`report.layout: website` 保留多页 HTML，不能与 PDF 同时使用。
 
 #### 4. 干运行（仅渲染模板，不执行 Quarto）
 用于快速检查配置和模板渲染是否正确；此模式不检查输入文件是否存在：
@@ -112,7 +112,7 @@ PDF 使用独立的正文与打印排版，HTML 继续使用现有交互式模�
 bioreport run -c tests/report.rna.pdf.json -o output/rna-pdf-report
 ```
 
-输出为 `output/rna-pdf-report/report.pdf`。模板分工：
+输出为 `output/rna-pdf-report/PRJ-RNA-PDF-001_report.pdf`。模板分工：
 
 - `omics/rna/qmd/pdf/`：PDF 专用章节、图表顺序和精简说明。
 - `templates/pdf/print-style.typ`：可复用的 A4 排版、字号、页眉页码、图块和跨页表格；`rna-style.typ` 提供 RNA 专用覆盖。
@@ -175,7 +175,7 @@ flowchart TB
   Control --> Compose --> Stage --> Execute["Quarto / Jupyter · 执行所选模块"]
   Execute --> Analysis["读取结果 · 统计汇总与绘图函数"]
   Data["已有分析结果与项目元数据"] --> Analysis
-  Control --> Records["运行记录 pipeline.log<br/>成功后配置备份"]
+  Control --> Records["运行日志 &lt;project_id&gt;_&lt;time&gt;_bioreport.log<br/>成功后配置备份"]
   Analysis --> HTMLView["HTML · Plotly / ITables"] --> HTML["单文件 HTML / 多页 HTML"]
   Analysis --> PDFView["PDF 专用章节 · 静态图表与 Typst"] --> PDF["PDF 报告"]
   Data -.-> AI["可选 AI 分支 · 结果整合与模型解读"]
@@ -398,7 +398,7 @@ python -m pytest -q tests -k "not integration"
 RUN_REPORT_INTEGRATION=1 python -m pytest -q tests/test_integration_render.py
 ```
 
-完整测试用通用分析及 RNA 示例生成 HTML 和 PDF，检查内嵌资源、章节结构与文件输出；导航脚本另由常规测试验证。详细日志保存在输出目录的 `pipeline.log`，成功生成后会保存 `run_config_backup.json` 或对应 YAML 扩展名的配置备份。
+完整测试用通用分析及 RNA 示例生成 HTML 和 PDF，检查内嵌资源、章节结构与文件输出；导航脚本另由常规测试验证。详细日志保存在输出目录的 `<project_id>_<time>_bioreport.log`（以配置中的项目标识和运行时间为前缀），成功生成后会保存 `run_config_backup.json` 或对应 YAML 扩展名的配置备份。
 
 ## ❓ 常见问题
 

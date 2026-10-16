@@ -5,7 +5,8 @@
 报告命令的日志由 `bioreport/cli.py` 的 `setup_logging` 统一配置：
 
 - 控制台日志使用 Loguru，输出时间、级别和消息；Rich 用于帮助页与输入文件清单。
-- 文件日志写入输出目录下的 `pipeline.log`，级别为 `DEBUG`。
+- 文件日志写入输出目录下的 `<project_id>_<time>_bioreport.log`（如 `PRJ-2026-001_20261016-143005_bioreport.log`），级别为 `DEBUG`；文件名由 `bioreport/config.py::run_log_name` 以项目标识和运行时间生成。
+- 报告交付文件名同理以 `<project_id>_report.<format>` 命名，由 `bioreport/config.py::report_artifact_name` 生成。
 - AI 流程和组学分析模块通过 Loguru 复用 CLI 配置，不再维护独立的日志入口。
 
 ## 后续扩展位置

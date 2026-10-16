@@ -8,8 +8,6 @@ title: 交付文件与报告说明
 
 ## 报告生成架构
 
-BioReport 采用配置驱动的模块化报告架构：系统读取已有分析结果，根据 JSON / YAML 配置选择报告章节、绑定输入文件与展示参数，组合 Quarto 文档后生成交互式 HTML 或适合打印归档的 PDF；AI 解读为可选分支，在渲染前生成辅助解释内容。
-
 ```{=typst}
 #block(breakable: false)[
   #align(center)[
@@ -53,8 +51,9 @@ config_source = Path(cfg.get('_config_path','NA')).name if cfg.get('_config_path
 typst_note(f"报告生成器：BioReport v{__version__}。配置来源：{config_source}。数据目录（交付目录，配置值 {cfg.get('_data_dir', cfg['input_files'].get('data_dir',''))}）内的文件按相对路径描述；配置备份随正常 CLI 输出保存。")
 ```
 
+## 开发者与项目信息
+
 - 软件作者：JZHANG
 - 项目仓库：[BioReport](https://github.com/xsx123123/bioreport)
-- 华中农业大学：[学校官网](https://www.hzau.edu.cn/)
+- 单位/机构：[华中农业大学园艺林学学院](https://chfs.hzau.edu.cn/)
 
-质控评价、统计显著性和功能富集需要结合实验设计与原始结果解读。启用 AI 时，AI 解读仅作为辅助分析内容。

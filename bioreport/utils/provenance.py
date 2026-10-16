@@ -116,7 +116,7 @@ def write_delivery_manifests(config, provenance, output_dir):
     import subprocess
     directory = Path(output_dir)
     directory.mkdir(parents=True, exist_ok=True)
-    reports = [artifact_record(p, 'report', p.name) for p in sorted(directory.glob('report.*'))
+    reports = [artifact_record(p, 'report', p.name) for p in sorted(directory.glob('*_report.*'))
                if p.suffix in ('.pdf','.html')]
     artifacts = [artifact_record(p, 'supplementary', str(p.relative_to(directory)))
                  for p in sorted((directory/'supplementary').rglob('*')) if p.is_file()]

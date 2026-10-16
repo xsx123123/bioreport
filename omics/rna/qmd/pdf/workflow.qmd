@@ -8,6 +8,17 @@ csl: ../reference/china-national-standard-gb-t-7714-2015-numeric.csl
 
 ## Analysis Workflow
 
+```{python}
+#| label: pdf-workflow-intro
+from bioreport.config import load_config
+from IPython.display import display, Markdown
+project = load_config().get('project', {})
+pipeline_version = project.get('pipeline_version') or project.get('software') or 'RNA-seq Pipeline'
+display(Markdown(
+    f'本项目基于 RNAFlow (版本: {pipeline_version}) 标化分析流水线执行，'
+    '核心分析节点及依赖的关键工具链如下所示：'))
+```
+
 ```{=typst}
 #block(breakable: false)[
   #grid(columns: (1fr, 1fr, 1fr, 1fr), gutter: 3mm,

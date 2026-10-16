@@ -25,7 +25,7 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn
 from rich.table import Table
 from rich.text import Text
 
-from .config import load_config
+from .config import load_config, report_artifact_name, run_log_name
 from .pipeline import run_ai_pipeline
 from .renderer import render_templates
 from .modules import output_formats, selected_modules
@@ -87,7 +87,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--verbose",
         action="store_true",
-        help="在终端显示调试日志（临时文件路径等内部细节，默认仅写入 pipeline.log）",
+        help="在终端显示调试日志（临时文件路径等内部细节，默认仅写入运行日志文件）",
     )
 
     arguments = sys.argv[1:] if argv is None else argv
@@ -98,7 +98,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return args
 
 
-def setup_logging(output_dir: str | None = None, verbose: bool = False) -> str | None:
+def setup_logging(output_dir: str | None = None, verbose: bool = False,
+                  log_file_name: str = "pipeline.log") -> str | None:
     """Configure concise console logs and a DEBUG-level file log."""
     logger.remove()
 
@@ -112,7 +113,7 @@ def setup_logging(output_dir: str | None = None, verbose: bool = False) -> str |
 
     if output_dir is None:
         return None
-    log_file = os.path.join(output_dir, "pipeline.log")
+    log_file = os.path.join(output_dir, log_file_name)
     # 文件日志完整记录 DEBUG 及以上（含 /tmp 路径与完整 64 位 SHA256）。
     logger.add(
         log_file,
@@ -289,7 +290,7 @@ _CELL_PATTERN = re.compile(r"Cell (\d+)/(\d+):\s*'([^']*)'")
 
 
 def _stream_quarto_output(process: subprocess.Popen, output_format: str) -> tuple[str, str, bool]:
-    """读取 Quarto stdout：原始行全部写入 pipeline.log，终端仅显示单行动态进度条。
+    """读取 Quarto stdout：原始行全部写入运行日志，终端仅显示单行动态进度条。
 
     返回 (last_cell, error_summary, cells_completed)。
     """
@@ -341,7 +342,8 @@ def _stream_quarto_output(process: subprocess.Popen, output_format: str) -> tupl
     return last_cell, error_summary, cells_completed
 
 
-def render_report(config: dict, config_path: str, output_dir: str, template_dir: Path) -> None:
+def render_report(config: dict, config_path: str, output_dir: str, template_dir: Path,
+                  log_file: str | None = None) -> None:
     layout = config.get("report", {}).get("layout", "single")
     env = os.environ.copy()
     env["REPORT_CONFIG"] = config_path
@@ -379,13 +381,14 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
                 f" ({last_cell})" if last_cell else ""
             )
             cause = f": {error_summary}" if error_summary else ""
+            log_hint = log_file or Path(output_dir) / "pipeline.log"
             raise RuntimeError(
-                f"Quarto {output_format} 渲染失败{detail}{cause}；完整输出见 {Path(output_dir) / 'pipeline.log'}"
+                f"Quarto {output_format} 渲染失败{detail}{cause}；完整输出见 {log_hint}"
             )
         if layout == "single":
             stem = "report_pdf" if output_format == "pdf" else "report"
             rendered = Path(abs_output_dir) / "qmd" / f"{stem}.{output_format}"
-            expected = Path(abs_output_dir) / f"report.{output_format}"
+            expected = Path(abs_output_dir) / report_artifact_name(config, output_format)
             if rendered.exists():
                 shutil.move(str(rendered), str(expected))
                 if not any(rendered.parent.iterdir()):
@@ -422,7 +425,7 @@ def print_success_summary(config: dict, output_dir: str, log_file: str | None, e
     primary = formats[0] if formats else "html"
     layout = config.get("report", {}).get("layout", "single")
     if layout == "single":
-        report_path = Path(output_dir).resolve() / f"report.{primary}"
+        report_path = Path(output_dir).resolve() / report_artifact_name(config, primary)
     else:
         report_path = Path(output_dir).resolve() / "index.html"
 
@@ -432,7 +435,7 @@ def print_success_summary(config: dict, output_dir: str, log_file: str | None, e
     grid.add_row(f"✨ 报告生成完成！总耗时 {elapsed:.1f}s", "")
     grid.add_row("📄 报告路径", str(report_path))
     if log_file:
-        grid.add_row("📋 日志文件", str(Path(output_dir) / "pipeline.log"))
+        grid.add_row("📋 日志文件", str(log_file))
     console.print(Panel(grid, border_style="green", padding=(0, 1)))
 
 
@@ -456,7 +459,8 @@ def main():
     if not os.path.exists(args.output):
         os.makedirs(args.output, exist_ok=True)
 
-    log_file = setup_logging(args.output, verbose=args.verbose)
+    log_file = setup_logging(args.output, verbose=args.verbose,
+                             log_file_name=run_log_name(config, time.strftime("%Y%m%d-%H%M%S")))
     logger.debug(f"日志文件已创建: {log_file}")
     selected = selected_modules(config)
     formats = output_formats(config)
@@ -506,7 +510,7 @@ def main():
 
         # 先读取配置并检查输入文件完整性（含计算 SHA256），再渲染 Quarto 模板。
         check_input_files(config, provenance)
-        # 完整 SHA256 指纹同步写入运行日志（pipeline.log），终端只展示前 12 位。
+        # 完整 SHA256 指纹同步写入运行日志，终端只展示前 12 位。
         for key, digest in provenance["input_checksums"].items():
             logger.debug("输入指纹(完整): {} = SHA256:{}", key, digest)
         print_task_overview(config, provenance, args.output)
@@ -520,7 +524,7 @@ def main():
         if "ai" in selected:
             run_ai_pipeline(config, config["_config_path"], args.output, template_dir)
         try:
-            render_report(config, config["_config_path"], args.output, template_dir)
+            render_report(config, config["_config_path"], args.output, template_dir, log_file)
         except (RuntimeError, FileNotFoundError) as exc:
             logger.error("{}", exc)
             _record_run("failed")

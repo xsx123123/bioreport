@@ -79,7 +79,9 @@ def test_manifest_covers_configured_directory_and_report_hashes(tmp_path):
     provenance=build_provenance(cfg,[])
     assert len(provenance['input_manifest']) == 1
     assert provenance['input_manifest'][0]['sha256'] == hashlib.sha256((data/'deg.csv').read_bytes()).hexdigest()
-    (tmp_path/'report.pdf').write_bytes(b'pdf contents')
+    from bioreport.config import report_artifact_name
+    report_path=tmp_path/report_artifact_name(cfg,'pdf')
+    report_path.write_bytes(b'pdf contents')
     write_delivery_manifests(cfg,provenance,tmp_path)
     report=json.loads((tmp_path/'report-manifest.json').read_text())
     assert report['artifacts'][0]['sha256'] == hashlib.sha256(b'pdf contents').hexdigest()
@@ -173,7 +175,7 @@ def test_real_pdf_toc_destinations_and_broken_target(tmp_path):
     from pypdf import PdfReader, PdfWriter
     from pypdf.generic import ArrayObject, NameObject, FloatObject
     from bioreport.report.validation import validate_navigation
-    golden=Path(__file__).parent/'golden/rna/report.pdf'
+    golden=Path(__file__).parent/'golden/rna/PRJ-RNA-PDF-001_report.pdf'
     result=validate_navigation(golden)
     assert result['errors']==[] and result['toc_status']=='PASS' and result['bookmarks']>20
     reader=PdfReader(golden);writer=PdfWriter(clone_from=reader)

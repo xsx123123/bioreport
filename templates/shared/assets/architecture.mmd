@@ -6,7 +6,7 @@ flowchart TB
   Control --> Compose --> Stage --> Execute["Quarto / Jupyter · 执行所选模块"]
   Execute --> Analysis["读取结果 · 统计汇总与绘图函数"]
   Data["已有分析结果与项目元数据"] --> Analysis
-  Control --> Records["运行记录 pipeline.log<br/>成功后配置备份"]
+  Control --> Records["运行日志 &lt;project_id&gt;_&lt;time&gt;_bioreport.log<br/>成功后配置备份"]
   Analysis --> HTMLView["HTML · Plotly / ITables"] --> HTML["单文件 HTML / 多页 HTML"]
   Analysis --> PDFView["PDF 专用章节 · 静态图表与 Typst"] --> PDF["PDF 报告"]
   Data -.-> AI["可选 AI 分支 · 结果整合与模型解读"]
