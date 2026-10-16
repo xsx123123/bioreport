@@ -324,7 +324,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         (style_dir / "rna-cover.typ").write_text(cover, encoding="utf-8")
     if pdf and has_rna and any(_canonical(m) == 'rna.index' for m in module_ids):
         summary = (template_dir / 'qmd/pdf/summary.qmd').read_text(encoding='utf-8')
-        sections.append(composition.section('executive-summary', 'Executive Summary', summary, pdf=True))
+        sections.append(composition.section('executive-summary', '摘要', summary, pdf=True))
     methods_appendix_added = False
     for position, module_id in enumerate(module_ids, start=1):
         canonical = _canonical(module_id)

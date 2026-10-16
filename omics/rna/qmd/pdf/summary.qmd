@@ -3,7 +3,7 @@
 #| output: asis
 from IPython.display import display, Markdown
 from bioreport.config import load_config
-from bioreport.utils.pdf_results import summary_metrics, comparison_summaries
+from bioreport.utils.pdf_results import summary_metrics, comparison_summaries, deg_metric_label
 from bioreport.utils.render_output import show_metric_grid, show_print_table
 summary_config = load_config()
 metrics = summary_metrics(summary_config)
@@ -11,12 +11,33 @@ comparisons_summary = comparison_summaries(summary_config)
 cards = [(row['项目'], row['数值']) for _, row in metrics.iterrows()]
 if not comparisons_summary.empty:
     for _, row in comparisons_summary.iterrows():
-        cards.append((f"{row['比较组']} DEGs", str(row['上调'] + row['下调'])))
+        cards.append((deg_metric_label(row['比较组']), str(row['上调'] + row['下调'])))
+values = {row['项目']: row['数值'] for _, row in metrics.iterrows()}
+def metric(name):
+    """指标数值；缺失回退 N/A，下划线转义避免 Typst 下标解析。"""
+    return str(values.get(name, 'N/A')).replace('_', r'\_')
+lead = (
+    '本章节汇总了当前转录组（RNA-seq）分析流程的核心质控与定量统计指标。'
+    f"本项目共纳入 #strong[{metric('样本数')}] 个测序样本"
+    f"（划分为 #strong[{metric('分组数')}] 个实验分组）。"
+    f"测序数据经质控后平均 Q30 达 #strong[{metric('平均 Q30')}]，"
+    f"平均参考基因组比对率为 #strong[{metric('平均比对率')}]，"
+    f"全样本共检出有效表达基因 #strong[{metric('检出基因数')}] 个。"
+)
+if not comparisons_summary.empty:
+    main = comparisons_summary.iloc[0]
+    deg_count = int(main['上调']) + int(main['下调'])
+    comparison = str(main['比较组']).replace('_', r'\_')
+    lead += (f"在差异表达分析中，核心比较组（#strong[{comparison}]）"
+             f"共鉴定出 #strong[{deg_count}] 个显著差异表达基因（DEGs）。")
+lead += '各环节关键指标概览如下：'
+# 以 typst 原文段落输出，保留全局首行缩进（勿用 block 包裹，block 会打断缩进判定）。
+display(Markdown('```{=typst}\n' + lead + '\n```'))
 show_metric_grid(cards, block_id='executive-metrics')
-display(Markdown('## Objective Statistical Summary\n\n以下为输入结果的客观统计汇总；各比较组独立计数，不合并去重，不由此推断生物学机制。'))
+display(Markdown('## 差异表达客观统计汇总\n\n以下为输入结果的客观统计汇总；各比较组独立计数，不合并去重，不由此推断生物学机制。'))
 if not comparisons_summary.empty:
     show_print_table(comparisons_summary, limit=None, block_id='executive-contrasts', evidence={'kind':'deg_summary'})
-display(Markdown('## Data Scope\n\n本报告读取上游分析产物，提供所选模块的统计汇总与可视化，不重新执行序列比对或差异检验。完整数据、文件路径与 SHA256 见溯源及交付章节。指标分母与阈值见项目概况及对应结果章节。'))
+display(Markdown('## 数据范围与溯源说明\n\n本报告直接读取上游分析产物以生成所选模块的统计汇总与可视化图表，不重新执行序列比对或差异统计检验。完整的原始数据、文件路径及 SHA256 校验值请参阅「溯源及交付」章节；各项统计指标的计算分母与筛选阈值详见「项目概况」及后续对应结果章节。'))
 if summary_config.get('ai', {}).get('enabled'):
     display(Markdown('**Evidence-grounded Interpretation**：可选辅助解释见 AI 章节。Auxiliary interpretation; not a replacement for statistical evidence.'))
 ```

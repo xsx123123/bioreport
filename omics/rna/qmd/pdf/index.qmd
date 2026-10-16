@@ -29,7 +29,7 @@ labels = {'client':'委托客户', 'species':'物种', 'genome_version':'参考�
 metadata = pd.DataFrame([{'项目':label, '内容':project[key]} for key,label in labels.items() if project.get(key)])
 if not metadata.empty: show_print_table(metadata, limit=None)
 show_print_table(summary_metrics(project_config), limit=None)
-typst_note('各比较组统计摘要见 Executive Summary；原始 P 值与 log2FC 的展示判定口径不等价于 FDR 控制。报告不依据汇总指标自动判定质控通过与否，也不自动推断生物学机制。')
+typst_note('各比较组统计摘要见摘要章节；原始 P 值与 log2FC 的展示判定口径不等价于 FDR 控制。报告不依据汇总指标自动判定质控通过与否，也不自动推断生物学机制。')
 ```
 
 ## 样本信息

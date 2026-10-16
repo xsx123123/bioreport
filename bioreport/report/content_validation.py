@@ -6,7 +6,7 @@ import pandas as pd
 
 
 def validate_content(config, manifest):
-    from bioreport.utils.pdf_results import summary_metrics, comparison_summaries, deg_counts
+    from bioreport.utils.pdf_results import summary_metrics, comparison_summaries, deg_counts, deg_metric_label
     from omics.rna.analysis.enrichment_plotly import parse_gene_ratios
     blocks = [json.loads(line) for line in Path(manifest).read_text().splitlines() if line.strip()]
     errors = []
@@ -21,7 +21,7 @@ def validate_content(config, manifest):
         actual = dict(metrics['content'])
         for label,value in expected.items(): check('metric:'+label,actual.get(label),value)
         for _,row in comparison_summaries(config).iterrows():
-            check('metric:DEG:'+row['比较组'],actual.get(row['比较组']+' DEGs'),str(row['上调']+row['下调']))
+            check('metric:DEG:'+row['比较组'],actual.get(deg_metric_label(row['比较组'])),str(row['上调']+row['下调']))
     deg = config.get('analysis',{}).get('deg',{})
     enriched = defaultdict(lambda: {'figures':[], 'tables':[]})
     for block in blocks:

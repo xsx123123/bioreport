@@ -112,6 +112,11 @@ def summary_metrics(config):
     ])
 
 
+def deg_metric_label(comparison):
+    """KPI 卡片中差异基因数的统一标签；摘要章与内容校验共用，避免标签漂移。"""
+    return f'{comparison} 差异基因数'
+
+
 def comparison_summaries(config):
     from bioreport.modules import selected_modules
     from bioreport.registry import get_registry

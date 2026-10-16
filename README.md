@@ -391,10 +391,12 @@ RUN_REPORT_INTEGRATION=1 python -m pytest -q tests/test_integration_render.py
 - **报告章节未按配置隐藏？** 请确认 `report.modules` 中已移除该章节，并重新运行 `python -m bioreport run`。
 
 ---
+ 
+## 版本信息
 
-**版本**: v2.0.0
-**作者**: Zhang Jian
-**最后更新**: 2026-10-17
+**版本**: v2.0.0 
+**作者**: Zhang Jian 
+**最后更新**: 2026-10-17 
 
 ## 🤝 开源协作与致谢
 
