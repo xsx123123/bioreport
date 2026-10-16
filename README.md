@@ -14,7 +14,7 @@
 
 - **统一配置**：JSON 或 YAML 驱动报告类型、标题、导航、章节、AI、分析参数等。
 - **JSON 输入**：`configs/report.example.json` 展示相同配置结构，`bioreport/report.schema.json` 定义字段类型与参数范围；`input_files` 中的相对路径以 `data_dir` 为根。
-- **模块组合**：`report.modules` 按顺序引用 `index`、`workflow`、`qc`、`results`、`ai`、`about` 等内容模块；单页模式可单独引用 `qc.fastp`、`qc.screen`、`qc.qualimap`、`qc.star` 和 `results.samples`、`results.matrix`、`results.heatmap`、`results.deg`、`results.enrichment`，也可通过 `report.module_definitions` 引用外部 QMD。
+- **模块组合**：`report.modules` 按顺序引用 `index`、`workflow`、`qc`、`results`、`provenance`、`ai`、`about` 等内容模块；单页模式可单独引用 `qc.fastp`、`qc.screen`、`qc.qualimap`、`qc.star` 和 `results.samples`、`results.matrix`、`results.heatmap`、`results.deg`、`results.enrichment`，也可通过 `report.module_definitions` 引用外部 QMD。
 - **双格式输出**：`report.output_format: [html, pdf]` 生成 HTML 和 PDF；RNA-seq 的 HTML 在一个文件内按导航切换六个页面，PDF 图表使用静态图。
 - **多报告变体**：同一套数据和代码，可输出完整版、精简版、无 AI 版等不同报告。
 - **自动化流程**：按配置执行数据检查、可选 AI 解读及 Quarto 渲染。
@@ -28,6 +28,7 @@
 - [Python 3.10+](https://www.python.org/)；本地运行需安装 [Quarto](https://quarto.org/)
 - RNA 报告依赖：`pip install -e '.[rna]'`
 - AI 解读需额外安装 AI 依赖：`pip install -e '.[rna,ai]'`
+- PDF 只读锁与版式校验为可选依赖：`pip install -e '.[rna,security,validation]'`
 - PDF 图表通过 Kaleido 导出为图片；所用 Kaleido 版本若依赖 Chrome / Chromium，需在运行环境提供浏览器
 - Docker 运行需 Docker；镜像内已安装 Python、Quarto 和报告依赖
 
@@ -38,13 +39,13 @@
 ```bash
 pip install -e '.[rna]'
 python -m bioreport validate -c tests/report.rna.local.json
-# 生成htmL 报告
+# 生成 HTML 报告
 python -m bioreport run -c tests/report.rna.html.json -o output/rna-report
 # 生成 pdf 报告
 python -m bioreport run -c tests/report.rna.pdf.json -o output/rna-report-pdf
 ```
 
-示例数据位于 `examples/rna-seq/data/`，本地配置在 `tests/report.rna.local.json`，默认使用 `single` 模式，生成 `output/rna-report/PRJ-RNA-HTML-001_report.html` 与 `output/rna-report-pdf/PRJ-RNA-PDF-001_report.pdf`（报告文件名以配置中的 `project.project_id` 为前缀，形如 `<project_id>_report.<格式>`），样式、脚本及图片资源嵌入 HTML。报告内通过顶部导航切换六个章节视图。页面使用 `templates/theme/New_Brutalism.scss`、`styles.css` 和 `itables_saas.css`；修改模板或 Logo 后重新生成即可更新。若需要六份独立 HTML，可将 `report.layout` 改为 `website`，从 `output/rna-report/index.html` 打开。先用 `--dry-run` 可检查配置和模板组合，此模式不生成 HTML。`configs/report.example.json` 的数据根目录为容器内 `/data`，本地直接运行前须修改路径。
+示例数据位于 `examples/rna-seq/data/`，本地配置在 `tests/report.rna.local.json`，默认使用 `single` 模式，生成 `output/rna-report/PRJ-RNA-HTML-001_report.html` 与 `output/rna-report-pdf/PRJ-RNA-PDF-001_report.pdf`（报告文件名以配置中的 `project.project_id` 为前缀，形如 `<project_id>_report.<格式>`），样式、脚本及图片资源嵌入 HTML。报告内通过顶部导航切换六个章节视图（示例配置为项目概况/分析流程/质量控制/分析结果/溯源信息/关于，`ai` 等为可选模块）。页面使用 `templates/theme/New_Brutalism.scss`、`styles.css` 和 `itables_saas.css`；修改模板或 Logo 后重新生成即可更新。若需要六份独立 HTML，可将 `report.layout` 改为 `website`，从 `output/rna-report/index.html` 打开。先用 `--dry-run` 可检查配置和模板组合，此模式不生成 HTML。`configs/report.example.json` 的数据根目录为容器内 `/data`，本地直接运行前须修改路径。
 
 需要单文件 HTML/PDF 时，将 `report.layout` 设为 `"single"`，并按需设置 `report.output_format`。修改 RNA 报告章节请编辑 `omics/rna/qmd/`，修改各类型共用的内置页面（关于/常见问题/许可/商标/AI 解读）请编辑 `templates/shared/`，调整共享样式请编辑 `templates/theme/`；报告默认使用其中的白色背景亮色主题和 CSS。报告标题、模块顺序、分析阈值等由配置文件控制。
 
@@ -91,8 +92,8 @@ docker run --rm \
 
 RNA-seq 报告为 `/workspace/<project_id>_report.html` 和 `/workspace/<project_id>_report.pdf`（以配置中的 `project.project_id` 为前缀）。分享 HTML 时只需要一个文件，导航在文件内切换页面。HTML 会内嵌 Quarto、Plotly 和 ITables 的运行资源；普通超链接仍可指向外部文献或网站。若只要一种格式，将 `output_format` 设为 `"html"` 或 `"pdf"`。`report.layout: website` 保留多页 HTML，不能与 PDF 同时使用。
 
-#### 4. 干运行（仅渲染模板，不执行 Quarto）
-用于快速检查配置和模板渲染是否正确；此模式不检查输入文件是否存在：
+#### 4. 干运行（跳过 AI 与 Quarto 渲染）
+用于快速检查配置、模块组合与输入文件；此模式仍会检查输入文件是否存在，仅跳过 AI 调用与 Quarto 渲染：
 
 ```bash
 docker run --rm \
@@ -123,6 +124,8 @@ PDF 表格提供结果预览，表达矩阵默认展示前 8 个基因和最多 
 ## 🏗️ 技术架构
 
 BioReport 采用配置驱动的模块化报告架构，将报告组织、领域内容、数据展示与文档渲染分别管理。系统读取已有分析结果，根据 JSON / YAML 配置选择报告章节、绑定输入文件与展示参数，再组合 Quarto 文档，生成交互式 HTML 或适合打印归档的 PDF，并支持按需加入 AI 辅助解读。
+
+> 本节是面向使用者的概览；实现细节（流水线步骤、模块注册机制、PDF 语义校验、扩展指南）见 **[docs/Architecture.md](docs/Architecture.md)**。
 
 下图表达组件依赖与产物流向（非逐行执行时序）：实线为主构建链路或数据输入，虚线为可选 AI 分支及解读内容回填，不代表异步服务。启用 AI 时，解读 Markdown 在 Quarto 渲染前生成；Docker 属于生成阶段的运行环境。
 
@@ -181,26 +184,43 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 │   ├── report.schema.json       # 报告配置字段与取值约束
 │   ├── registry.py              # 组学模块注册表与模块契约
 │   ├── modules.py               # 通用模块组合与兼容别名
-│   ├── renderer.py              # Jinja2 模板渲染
+│   ├── renderer.py              # Jinja2 模板渲染与字体 staging
 │   ├── pipeline.py              # AI 分析流程封装
+│   ├── assets/                  # 内置字体（PDF / 离线 HTML 使用）
 │   ├── ai/                      # AI 调用引擎
 │   │   ├── engine.py
 │   │   └── schemas.py
+│   ├── report/                  # PDF 语义文档模型与渲染后校验
+│   │   ├── model.py             #   语义块词汇表
+│   │   ├── planner.py           #   布局高度估算
+│   │   ├── composition.py       #   章节组合（report-plan.json）
+│   │   ├── recording.py         #   执行期语义块记录
+│   │   ├── validation.py        #   PDF 版式/内容校验
+│   │   └── content_validation.py#   渲染结果与原始输入比对
 │   └── utils/                   # 工具脚本
 │       ├── consolidate_rna_seq_data.py
-│       ├── setup_report.py
-│       ├── visualize_utils.py
-│       ├── report_utils.py
+│       ├── render_output.py / print_theme.py / pdf_results.py  # 格式感知展示与静态图导出
+│       ├── fonts.py / font_stage.py     # 字体发现与 staging
+│       ├── pdf_metadata.py / pdf_security.py  # PDF 元数据与只读锁
+│       ├── provenance.py        # 溯源与交付 manifests
+│       ├── run_db.py            # SQLite 运行记录
+│       ├── report_utils.py / visualize_utils.py / setup_report.py
 │       └── prompt.txt
-├── omics/rna/                   # RNA-seq 模块、QMD 与分析脚本
-│   ├── modules.py               # RNA 模块声明、输入契约与导航图标
-│   ├── qmd/                     # RNA 专属页面（index/workflow/qc/results 及 pdf/、modules/）
-│   └── analysis/
+├── omics/                       # 组学插件包（自动发现）
+│   ├── __init__.py              # load_all：遍历子包调用 register(registry)
+│   ├── base.py                  # OmicsPackage Protocol
+│   └── rna/                     # RNA-seq 模块、QMD 与分析脚本
+│       ├── modules.py           # RNA 模块声明、输入契约与导航图标
+│       ├── schema.json          # RNA 分析参数 schema
+│       ├── qmd/                 # RNA 专属页面（index/workflow/qc/results 及 pdf/、modules/）
+│       └── analysis/            # HTML 与 PDF 共用的绘图函数
 ├── templates/                   # 通用 Quarto 壳、主题与资源
 │   ├── _quarto.yml.j2           # Quarto 网站配置 Jinja2 模板
 │   ├── _quarto-single.yml.j2    # 单页 HTML/PDF 配置模板
 │   ├── shared/                  # 全类型共用内置页面（about/faq/license/trademark/AI）及其资产
-│   ├── theme/
+│   ├── theme/                   # HTML 主题与样式
+│   ├── pdf/                     # PDF Typst 样式（layout.lua、print-*.typ、封面模板）
+│   ├── reference/               # bibliography / csl 引用资源
 │   └── logo/
 ├── configs/                     # 报告配置文件
 │   ├── report.example.json
@@ -210,6 +230,7 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 ├── archive/                     # 旧版演示与运行产物归档，不参与运行
 ├── pyproject.toml               # Python 包配置
 ├── deploy/Dockerfile             # 唯一 Docker 交付定义
+├── docs/Architecture.md          # 架构详解
 └── README.md                    # 项目说明文档
 ```
 
@@ -230,11 +251,14 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 | `layout` | `single`（默认）或 `website`（多页 HTML） |
 | `modules` | 内容模块 ID 列表，决定单页中的内容与顺序；`qc`、`results` 可分别替换为对应的子模块；旧 `sections` 字段仍可使用 |
 | `module_definitions` | 自定义模块 ID 到 QMD 路径、标题、`params` 和必需输入的映射；路径相对配置文件所在目录 |
-| `theme` | HTML 报告的亮色主题路径；省略时使用 `templates/theme/` 中的默认主题，路径相对临时 Quarto 项目根目录 |
+| `theme` | HTML 报告主题，形如 `{"light": "...", "dark": "..."}`；省略时使用 `templates/theme/` 中的默认主题，路径相对临时 Quarto 项目根目录 |
 | `css` | HTML 报告的 CSS 文件列表；省略时使用 `templates/theme/styles.css` 和 `itables_saas.css`，路径相对临时 Quarto 项目根目录 |
 | `logo` | 网站模式中的 Logo 图片路径 |
 | `logo_href` | 网站模式中的 Logo 点击链接 |
 | `announcement` | 网站模式中的顶部公告，设为 `null` 可关闭 |
+| `pdf` | PDF 预览行数、富集 Top N、`qc_detail: key / all`、字体等打印参数，见下文「RNA-seq PDF 专用模板」 |
+| `security` | PDF 只读锁（`enable_read_only_lock`、`allow_copy_text`、`allow_print`、`owner_password(_env)`）；需安装 `'.[security]'` |
+| `navbar_right` | 单文件 HTML 顶部导航栏右侧内容 |
 
 单文件 HTML 的两个 Logo 在组合模板中定义，分别链接到 [BioReport 仓库](https://github.com/xsx123123/bioreport) 和 [华中农业大学官网](https://www.hzau.edu.cn/)。
 
@@ -324,7 +348,7 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 通过设置 `ai.enabled: false`，可完全跳过 AI 流程并隐藏 AI 章节。
 容器镜像包含 AI 可选依赖；在本地以 Python 包运行且需要 AI 功能时，使用 `pip install -e '.[rna,ai]'`。数据整合会逐个纳入 DEG 与富集结果文件，并按 `deg_limit`、`enrichment_limit` 限制每个文件的行数；如需优先解读显著性最高的结果，请先对输入文件排序。
 
-调用前设置对应服务商的环境变量：`ARK_API_KEY`（`volcengine`）或 `DASHSCOPE_API_KEY`（`aliyun`），并在 `ai.model` 中填写可调用的模型标识。
+调用前设置对应服务商的环境变量：`ARK_API_KEY`（`volcengine`）或 `DASHSCOPE_API_KEY`（`aliyun`），并在 `ai.model` 中填写可调用的模型标识。引擎还支持 `fallback_providers`（主模型失败时自动降级）、`ai.max_input_tokens`（输入截断）与 `ai.pricing`（成本估算）等可选配置，详见 [docs/Architecture.md](docs/Architecture.md) §7。
 
 ## 🔄 向后兼容
 
@@ -342,7 +366,7 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 ## 验证与测试
 
 - `bioreport validate -c <配置文件>`：检查配置结构与字段取值，不检查模块是否可用或输入文件是否存在。
-- `bioreport run -c <配置文件> -o <输出目录> --dry-run`：进一步检查模块选择和模板组合，不调用 AI 或执行 Quarto。
+- `bioreport run -c <配置文件> -o <输出目录> --dry-run`：进一步检查模块选择、模板组合与输入文件，不调用 AI 或执行 Quarto。
 - `bioreport init`：显示初始配置位置，不会自动创建配置文件。
 
 在仓库根目录安装测试依赖并运行常规测试：
@@ -370,7 +394,7 @@ RUN_REPORT_INTEGRATION=1 python -m pytest -q tests/test_integration_render.py
 
 **版本**: v2.0.0
 **作者**: Zhang Jian
-**最后更新**: 2026-10-13
+**最后更新**: 2026-10-17
 
 ## 🤝 开源协作与致谢
 
