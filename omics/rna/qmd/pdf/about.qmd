@@ -55,7 +55,15 @@ typst_note(f"报告生成器：BioReport v{__version__}。配置来源：{config
 
 ## 开发者与项目信息
 
-- 软件作者：JZHANG
-- 项目仓库：[BioReport](https://github.com/xsx123123/bioreport)
-- 单位/机构：[华中农业大学园艺林学学院](https://chfs.hzau.edu.cn/)
+**BioReport** 是 CygnusX BioOps 体系下的模块化多组学报告生成组件。工具基于 Python 与 Quarto 构建，以 JSON / YAML 统一配置驱动报告生成，无缝集成 Plotly 交互式图表与 Itables 动态表格，并支持 HTML 与 PDF 双格式输出，致力于将复杂的生信分析结果组织为结构清晰、证据可追溯、可复用分享的标准化科研交付物。
+
+```{=typst}
+#block(breakable: false)[
+  #align(center)[
+    #image("assets/bioreport-vision.png", width: 100%)
+  ]
+  #v(2mm)
+  #text(size: 9pt, fill: rgb("#53636a"))[愿景：让每一次计算留下证据，让每一份报告承载发现。]
+]
+```
 
