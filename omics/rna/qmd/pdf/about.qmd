@@ -8,6 +8,8 @@ title: 交付文件与报告说明
 
 ## 报告生成架构
 
+BioReport 采用配置驱动的模块化报告架构：系统读取已有分析结果，根据 JSON / YAML 配置选择报告章节、绑定输入文件与展示参数，组合 Quarto 文档后生成交互式 HTML 或适合打印归档的 PDF；AI 解读为可选分支，在渲染前生成辅助解释内容。
+
 ```{=typst}
 #block(breakable: false)[
   #align(center)[
