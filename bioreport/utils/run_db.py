@@ -102,3 +102,50 @@ def fetch_runs(db_path: Path, project_id: Optional[str] = None) -> list:
         return [dict(row) for row in cursor.fetchall()]
     finally:
         connection.close()
+
+
+def search_runs(
+    db_path: Path,
+    *,
+    project: Optional[str] = None,
+    status: Optional[str] = None,
+    since: Optional[str] = None,
+    until: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list:
+    """查询运行记录，供 CLI/TUI 使用。"""
+    db_path = Path(db_path)
+    if not db_path.is_file():
+        return []
+    clauses = []
+    parameters: list[Any] = []
+    if project:
+        clauses.append("project_id LIKE ?")
+        parameters.append(f"%{project}%")
+    if status:
+        clauses.append("status = ?")
+        parameters.append(status)
+    if since:
+        # 日期筛选包含当天；完整 ISO 时间则保持调用方给出的边界。
+        if len(since) == 10:
+            since = f"{since}T00:00:00"
+        clauses.append("run_at >= ?")
+        parameters.append(since)
+    if until:
+        if len(until) == 10:
+            until = f"{until}T23:59:59"
+        clauses.append("run_at <= ?")
+        parameters.append(until)
+    query = "SELECT * FROM runs"
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+    query += " ORDER BY id DESC"
+    if limit is not None:
+        query += " LIMIT ?"
+        parameters.append(max(1, int(limit)))
+    connection = sqlite3.connect(str(db_path))
+    connection.row_factory = sqlite3.Row
+    try:
+        return [dict(row) for row in connection.execute(query, parameters).fetchall()]
+    finally:
+        connection.close()

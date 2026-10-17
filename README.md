@@ -45,6 +45,19 @@ python -m bioreport run -c tests/report.rna.html.json -o output/rna-report
 python -m bioreport run -c tests/report.rna.pdf.json -o output/rna-report-pdf
 ```
 
+### 查询运行记录
+
+报告运行记录默认保存在 `~/.bioreport/runs.db`。可以按项目、状态和日期筛选，并以 Rich 终端表格查看：
+
+```bash
+bioreport runs
+bioreport runs --project PRJ-RNA --status success --since 2026-01-01 --limit 20
+bioreport runs --json
+bioreport runs --tui
+```
+
+使用 `--db /path/to/runs.db` 或环境变量 `BIOREPORT_DB` 可以查看指定数据库。`--tui` 启动后默认显示运行仪表盘：总运行数、成功/失败数、成功率、项目数和最近运行。随后按 `s` 搜索、`r` 刷新、`c` 清除筛选、`q` 退出。
+
 示例数据位于 `examples/rna-seq/data/`，本地配置在 `tests/report.rna.local.json`，默认使用 `single` 模式，生成 `output/rna-report/PRJ-RNA-HTML-001_report.html` 与 `output/rna-report-pdf/PRJ-RNA-PDF-001_report.pdf`（报告文件名以配置中的 `project.project_id` 为前缀，形如 `<project_id>_report.<格式>`），样式、脚本及图片资源嵌入 HTML。报告内通过顶部导航切换六个章节视图（示例配置为项目概况/分析流程/质量控制/分析结果/溯源信息/关于，`ai` 等为可选模块）。页面使用 `templates/theme/New_Brutalism.scss`、`styles.css` 和 `itables_saas.css`；修改模板或 Logo 后重新生成即可更新。若需要六份独立 HTML，可将 `report.layout` 改为 `website`，从 `output/rna-report/index.html` 打开。先用 `--dry-run` 可检查配置和模板组合，此模式不生成 HTML。`configs/report.example.json` 的数据根目录为容器内 `/data`，本地直接运行前须修改路径。
 
 需要单文件 HTML/PDF 时，将 `report.layout` 设为 `"single"`，并按需设置 `report.output_format`。修改 RNA 报告章节请编辑 `omics/rna/qmd/`，修改各类型共用的内置页面（关于/常见问题/许可/商标/AI 解读）请编辑 `templates/shared/`，调整共享样式请编辑 `templates/theme/`；报告默认使用其中的白色背景亮色主题和 CSS。报告标题、模块顺序、分析阈值等由配置文件控制。
@@ -130,31 +143,228 @@ BioReport 采用配置驱动的模块化报告架构，将报告组织、领域�
 下图表达组件依赖与产物流向（非逐行执行时序）：实线为主构建链路或数据输入，虚线为可选 AI 分支及解读内容回填，不代表异步服务。启用 AI 时，解读 Markdown 在 Quarto 渲染前生成；Docker 属于生成阶段的运行环境。
 
 ```mermaid
-flowchart TB
-  Config["JSON / YAML 配置<br/>（JSON Schema 校验）"] --> Control["CLI · 配置校验与流程编排"]
-  RNA["RNA-seq 模块 · omics/rna"] --> Compose["模块注册、选择与内容组合"]
-  Custom["自定义 QMD 模块"] --> Compose
-  Theme["Jinja2 模板与共享主题"] --> Stage["临时 Quarto 项目<br/>QMD / 配置 / 资源"]
-  Control --> Compose --> Stage --> Execute["Quarto / Jupyter · 执行所选模块"]
-  Execute --> Analysis["读取结果 · 统计汇总与绘图函数"]
-  Data["已有分析结果与项目元数据"] --> Analysis
-  Control --> Records["运行日志 &lt;project_id&gt;_&lt;time&gt;_bioreport.log<br/>成功后配置备份"]
-  Analysis --> HTMLView["HTML · Plotly / ITables"] --> HTML["单文件 HTML / 多页 HTML"]
-  Analysis --> PDFView["PDF 专用章节 · 静态图表与 Typst"] --> PDF["PDF 报告"]
-  Data -.-> AI["可选 AI 分支 · 结果整合与模型解读"]
-  Control -.-> AI
-  AI -.-> Markdown["解读 Markdown · 渲染前就绪"]
-  Markdown -.-> Execute
+flowchart LR
+
+  %% ==========================================
+  %% 01 输入与配置
+  %% ==========================================
+  subgraph INPUT["01 · 输入与配置"]
+    direction TB
+
+    Config["JSON / YAML 配置<br/>JSON Schema 校验"]
+
+    Data["多组学分析结果<br/>DEG / Enrichment / QC"]
+
+    Meta["项目与实验元数据<br/>Sample / Comparison"]
+
+    RNA["RNA-seq 模块<br/>omics/rna"]
+
+    Custom["自定义 QMD 模块"]
+  end
+
+
+  %% ==========================================
+  %% 02 BioReport 核心
+  %% ==========================================
+  subgraph CORE["02 · BioReport Core"]
+    direction TB
+
+    Control["CLI / Pipeline<br/>配置校验与流程编排"]
+
+    Registry["Module Registry<br/>模块注册 · 选择 · 排序"]
+
+    Compose["Module Composer<br/>模块组合与模板装配"]
+
+    Theme["Jinja2 Templates<br/>共享主题与样式"]
+
+    Stage["Quarto Project<br/>QMD / Config / Assets"]
+
+    Control --> Registry
+    Registry --> Compose
+    Compose --> Stage
+    Theme --> Stage
+  end
+
+
+  %% ==========================================
+  %% 03 科学分析与证据构建
+  %% ==========================================
+  subgraph EVIDENCE["03 · Scientific Evidence Layer"]
+    direction TB
+
+    Analysis["Analysis Functions<br/>现有统计计算与绘图函数"]
+
+    Builder["Module Evidence Builder<br/>模块级证据构建 · 拟新增"]
+
+    Metrics["Structured Evidence<br/>统计指标 · 阈值 · 比较组"]
+
+    Figures["Figure Assets<br/>PNG / SVG / 图表元数据"]
+
+    Tables["Result Tables<br/>DEG / Enrichment / QC"]
+
+    Package[("Module Evidence Package<br/>模块证据包与缓存")]
+
+    Analysis --> Builder
+
+    Builder --> Metrics
+    Builder --> Figures
+    Builder --> Tables
+
+    Metrics --> Package
+    Figures --> Package
+    Tables --> Package
+  end
+
+
+  %% ==========================================
+  %% 04 AI 科学解读
+  %% ==========================================
+  subgraph AGENT["04 · Interpretation Agent · 可选"]
+    direction TB
+
+    Agent["Interpretation Agent<br/>轻量级模块解读编排"]
+
+    Prompts["Prompt Registry<br/>通用规则 + 模块专属提示词"]
+
+    Tools["Controlled Tools<br/>get_module_evidence<br/>read_result_table<br/>get_figure"]
+
+    Engine["AI Engine<br/>多模态模型 · Provider Fallback"]
+
+    Validate["Scientific Validation<br/>统计核验 · 证据检查 · 安全约束"]
+
+    Markdown["Module Interpretation<br/>模块解读 Markdown"]
+
+    Prompts --> Agent
+    Tools -.-> Agent
+
+    Agent --> Engine
+    Engine --> Validate
+    Validate --> Markdown
+  end
+
+
+  %% ==========================================
+  %% 05 报告生成
+  %% ==========================================
+  subgraph REPORT["05 · Quarto Report Engine"]
+    direction TB
+
+    Slots["Interpretation Slots<br/>模块级 AI 解读插槽 · 拟新增"]
+
+    Execute["Quarto / Jupyter<br/>执行所选报告模块"]
+
+    Render["Report Rendering<br/>结果解析 · 图表与表格渲染"]
+
+    HTMLView["HTML Renderer<br/>Plotly / ITables"]
+
+    PDFView["PDF Renderer<br/>静态图表 / Typst"]
+
+    Slots --> Execute
+    Execute --> Render
+
+    Render --> HTMLView
+    Render --> PDFView
+  end
+
+
+  %% ==========================================
+  %% 06 最终输出
+  %% ==========================================
+  subgraph OUTPUT["06 · Report Delivery"]
+    direction TB
+
+    HTML["Interactive HTML<br/>单文件 / 多页面"]
+
+    PDF["Scientific PDF<br/>标准科研报告"]
+
+    Audit["Provenance & Manifest<br/>Input / Artifact / Report<br/>AI Trace / SHA-256"]
+
+    Records["Runtime Logs<br/>运行日志 · 配置备份"]
+  end
+
+
+  %% ==========================================
+  %% 主流程
+  %% ==========================================
+
+  Config --> Control
+
+  RNA --> Registry
+  Custom --> Registry
+
+  Data --> Analysis
+  Meta --> Builder
+
+  Control -.-> Builder
+
+  Stage --> Slots
+
+  HTMLView --> HTML
+  PDFView --> PDF
+
+  Control --> Records
+
+
+  %% ==========================================
+  %% Agent 可选分支
+  %% ==========================================
+
+  Package -.->|"AI Enabled"| Agent
+
+  Markdown -.->|"模块级原位回填"| Slots
+
+  Data --> Render
+
+  Package -.->|"图表缓存与证据复用"| Render
+
+
+  %% ==========================================
+  %% 科研溯源
+  %% ==========================================
+
+  Package -.-> Audit
+  Validate -.-> Audit
+  HTML -.-> Audit
+  PDF -.-> Audit
+
+
+  %% ==========================================
+  %% 样式
+  %% ==========================================
 
   classDef plain fill:#ffffff,stroke:#94a3b8,color:#334155;
-  classDef blue fill:#eff6ff,stroke:#3b82f6,color:#173258;
-  classDef green fill:#f0fdf4,stroke:#22a06b,color:#14532d;
-  classDef optional fill:#faf5ff,stroke:#a78bfa,color:#553285;
 
-  class Config,Data,RNA,Custom,Theme,HTMLView,PDFView plain;
-  class Control,Compose,Stage,Execute,Analysis blue;
-  class HTML,PDF,Records green;
-  class AI,Markdown optional;
+  classDef blue fill:#eff6ff,stroke:#3b82f6,color:#173258;
+
+  classDef cyan fill:#ecfeff,stroke:#0891b2,color:#164e63;
+
+  classDef purple fill:#faf5ff,stroke:#a78bfa,color:#553285;
+
+  classDef green fill:#f0fdf4,stroke:#22a06b,color:#14532d;
+
+  classDef gray fill:#f8fafc,stroke:#64748b,color:#334155;
+
+
+  class Config,Data,Meta,RNA,Custom plain;
+
+  class Control,Registry,Compose,Theme,Stage blue;
+
+  class Analysis,Builder,Metrics,Figures,Tables,Package cyan;
+
+  class Agent,Prompts,Tools,Engine,Validate,Markdown purple;
+
+  class Slots,Execute,Render,HTMLView,PDFView blue;
+
+  class HTML,PDF green;
+
+  class Audit,Records gray;
+
+  style INPUT fill:#f8fafc,stroke:#cbd5e1
+  style CORE fill:#eff6ff,stroke:#93c5fd
+  style EVIDENCE fill:#ecfeff,stroke:#67e8f9
+  style AGENT fill:#faf5ff,stroke:#d8b4fe
+  style REPORT fill:#eff6ff,stroke:#93c5fd
+  style OUTPUT fill:#f0fdf4,stroke:#86efac
 ```
 
 BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶段读取分析结果并生成图表，分别适配交互式 HTML 与打印 PDF。AI 解读作为可选分支，在渲染前生成辅助解释内容。
@@ -338,6 +548,10 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 | `deg_limit` / `enrichment_limit` | 提交给 AI 的差异基因与通路数量 |
 
 ## 🤖 AI 分析流程
+
+### 待办（2026-10-17 下午）
+
+- [ ] 排查并解决 AI 解读问题，验证数据整合、模型调用、解读 Markdown 生成及报告嵌入流程。
 
 选择 `ai` 模块且启用 AI 时，生成报告前会执行以下步骤：
 

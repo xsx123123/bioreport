@@ -165,6 +165,23 @@ def test_run_db_records_and_fetches_runs(tmp_path):
     assert fetch_runs(tmp_path / "missing.db") == []
 
 
+def test_run_db_search_filters_and_includes_date_boundaries(tmp_path):
+    from bioreport.utils.run_db import record_run, search_runs
+
+    db = tmp_path / "runs.db"
+    provenance = {"generated_at": "2026-10-17T10:00:00+08:00", "output_format": ["html"],
+                  "rendered_modules": [], "input_checksums": {}, "layout": "single"}
+    record_run(db, project_id="RNA-A", provenance=provenance, config_path="a",
+               output_dir="a", status="success")
+    provenance["generated_at"] = "2026-10-18T10:00:00+08:00"
+    record_run(db, project_id="RNA-B", provenance=provenance, config_path="b",
+               output_dir="b", status="failed")
+
+    rows = search_runs(db, project="RNA-A", status="success", since="2026-10-17", until="2026-10-17")
+    assert [row["project_id"] for row in rows] == ["RNA-A"]
+    assert search_runs(db, status="failed", limit=1)[0]["project_id"] == "RNA-B"
+
+
 def test_compose_report_footer_cover_and_provenance_page(tmp_path):
     """组装阶段：页脚含引擎版本、封面自动注入、溯源为独立导航页面且 PDF 用简洁表格。"""
     from bioreport.modules import compose_report

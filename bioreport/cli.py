@@ -32,6 +32,7 @@ from .modules import output_formats, selected_modules
 from .registry import get_registry
 from .utils.provenance import build_provenance, write_provenance
 from .utils.run_db import default_db_path, record_run
+from .utils.run_browser import browse_runs, render_runs
 
 
 console = Console()
@@ -44,12 +45,15 @@ def show_help() -> None:
     commands.add_column(style="bold cyan", no_wrap=True)
     commands.add_column()
     commands.add_row("run", "生成 HTML / PDF 报告")
+    commands.add_row("runs", "搜索和浏览本地运行记录")
     commands.add_row("validate", "检查配置格式")
     commands.add_row("init", "查看初始配置位置")
     console.print(commands)
     console.print("\n[dim]选项[/dim]  -c, --config 配置路径    -o, --output 输出目录")
     console.print("[dim]      [/dim]  --dry-run 仅检查模板       --data-prefix 数据挂载前缀")
     console.print("[dim]      [/dim]  --verbose 显示调试日志    -h, --help 显示帮助")
+    console.print("[dim]runs 选项[/dim]  --project 项目关键词  --status success|failed  --since/--until 日期")
+    console.print("[dim]      [/dim]  --tui 交互式浏览      --json 输出 JSON      --db 指定数据库")
     console.print("\n[dim]本地示例[/dim]  bioreport run -c tests/report.rna.local.json -o output/rna-report")
     console.print("[dim]Docker 示例[/dim]  bioreport run -c configs/report.example.json -o output/rna-report")
 
@@ -60,7 +64,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         add_help=False,
     )
     parser.add_argument("-h", "--help", action="store_true")
-    parser.add_argument("command", nargs="?", choices=("run", "validate", "init"), default="run")
+    parser.add_argument("command", nargs="?", choices=("run", "runs", "validate", "init"), default="run")
 
     parser.add_argument(
         "-c",
@@ -89,6 +93,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="在终端显示调试日志（临时文件路径等内部细节，默认仅写入运行日志文件）",
     )
+    parser.add_argument("--db", default=None, help="运行数据库路径（默认 ~/.bioreport/runs.db）")
+    parser.add_argument("--project", default=None, help="按项目 ID 关键词筛选运行记录")
+    parser.add_argument("--status", choices=("success", "failed"), default=None)
+    parser.add_argument("--since", default=None, help="起始时间（ISO 日期或时间）")
+    parser.add_argument("--until", default=None, help="结束时间（ISO 日期或时间）")
+    parser.add_argument("--limit", type=int, default=50, help="最多显示记录数（默认 50）")
+    parser.add_argument("--tui", action="store_true", help="进入交互式运行记录浏览器")
+    parser.add_argument("--json", action="store_true", help="以 JSON 输出运行记录")
 
     arguments = sys.argv[1:] if argv is None else argv
     args = parser.parse_args(arguments)
@@ -444,6 +456,19 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     args = parse_args()
+    if args.command == "runs":
+        from .utils.run_db import search_runs
+        db_path = Path(args.db).expanduser() if args.db else default_db_path()
+        if args.tui:
+            browse_runs(console, db_path)
+            return
+        rows = search_runs(db_path, project=args.project, status=args.status,
+                           since=args.since, until=args.until, limit=args.limit)
+        if args.json:
+            console.print_json(data=rows)
+        else:
+            render_runs(console, rows, db_path)
+        return
     if args.command == "run":
         print_banner()
     setup_logging()
