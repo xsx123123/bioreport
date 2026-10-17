@@ -29,6 +29,7 @@ for comp in comparisons:
         display_cap=cap, annotate_top=annotate_top)
     show_figure(fig, evidence={"kind":"deg","comparison":comp,"up":up,"down":down}, caption=f"{comp} 差异表达火山图。方向为 Treat 相对 Control；右侧上调、左侧下调；原始 P < {p} 且 |Log2FC| > {fc}。上调 {up}、下调 {down}。超出展示上限的 -log10(P) 在绘图层裁剪至 {cap}（顶部标注为“{cap}+”），原始 pvalue/padj 与上游结果保持一致。图中为上调/下调各 Top {annotate_top} 显著基因添加基因名引线标注。")
     typst_note(f"{comp}：上调 {up}，下调 {down}；其余记录未同时满足上述阈值。")
+    display_result_ai(f"rna.results.deg__{comp}")
     frame = gene_columns(apply_gene_annotation(raw_probability_columns(path, frame), project_info))
     per_direction = max(1, pdf_settings.get('deg_rows',10) // 2)
     for direction, mask in [('Up', frame['log2FoldChange'].gt(fc)), ('Down', frame['log2FoldChange'].lt(-fc))]:

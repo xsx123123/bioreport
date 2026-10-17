@@ -338,7 +338,8 @@ def run_report(
     model: Optional[str],
     temperature: float,
     provider: str,
-    verbose: bool
+    verbose: bool,
+    config: Optional[Dict[str, Any]] = None,
 ):
     """
     Generate AI interpretation report from the consolidated text file.
@@ -361,7 +362,10 @@ def run_report(
     # 2. Initialize AI Interpreter (lazy import so `generate` works without AI deps)
     try:
         from bioreport.ai import AIInterpreter
-        interpreter = AIInterpreter(model=model, provider=provider) if model else AIInterpreter(provider=provider)
+        interpreter_kwargs = {"model": model, "provider": provider}
+        if config:
+            interpreter_kwargs["config"] = config
+        interpreter = AIInterpreter(**interpreter_kwargs) if model else AIInterpreter(provider=provider, **({"config": config} if config else {}))
     except Exception as e:
         logger.error(f"Error initializing AI Interpreter: {e}")
         return

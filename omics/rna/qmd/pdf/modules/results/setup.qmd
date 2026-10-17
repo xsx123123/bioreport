@@ -42,4 +42,12 @@ enrich_base_dir = input_files.get('enrichment_dir')
 # 初始化配置与比较组
 config = {'files': project_info.get('files', {})}
 comparisons = get_comparisons_from_csv(comparisons_file) if comparisons_file and os.path.exists(comparisons_file) else []
+
+def display_result_ai(result_id):
+    from pathlib import Path
+    import re
+    safe_id = re.sub(r"[^A-Za-z0-9_.-]", "-", result_id).strip(".")
+    note = Path("../data/ai_interpretations") / f"{safe_id}.md"
+    if note.is_file() and not note.is_symlink():
+        display(Markdown(note.read_text(encoding="utf-8")))
 ```

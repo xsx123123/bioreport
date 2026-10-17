@@ -385,11 +385,26 @@
         "enabled": {
           "type": "boolean"
         },
+        "scope": {
+          "type": "string",
+          "enum": ["results", "global", "module"]
+        },
+        "result_rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
         "provider": {
-          "enum": [
-            "volcengine",
-            "aliyun"
-          ]
+          "type": "string",
+          "minLength": 1
+        },
+        "base_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "api_key_env": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
         },
         "model": {
           "type": "string",
@@ -403,6 +418,11 @@
           "type": "number",
           "minimum": 0,
           "maximum": 2
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
         },
         "deg_limit": {
           "type": "integer",

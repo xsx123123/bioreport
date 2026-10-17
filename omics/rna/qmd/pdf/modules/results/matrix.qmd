@@ -15,6 +15,7 @@ shown = matrix[columns[:pdf_settings.get('matrix_columns',6)]].reset_index()
 shown = shown.rename(columns={shown.columns[0]:'Gene ID'})
 shown = gene_columns(apply_gene_annotation(shown, project_info))
 preview(shown, tpm_file, limit=pdf_settings.get('matrix_rows',8), caption='基因表达量矩阵（TPM）预览')
+display_result_ai('rna.results.matrix__table')
 typst_note(f'正文展示 {min(len(columns),pdf_settings.get("matrix_columns",6))} / {len(matrix.columns)} 个样本列。')
 if not project_info.get('input_files', {}).get('gene_annotation_file'):
     typst_note('输入未提供基因注释文件，表达矩阵不展示 Gene Symbol；Gene ID 保留原始 Ensembl 标识。')

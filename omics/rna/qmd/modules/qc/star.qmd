@@ -9,6 +9,7 @@ visualize_multiqc_logs(
     analysis_dir=input_files["qualimap_dir"],
     target_modules=['STAR']
 )
+display_result_ai("rna.qc.star__figure")
 ```
 
 ::: {.callout-note appearance="minimal" icon=false collapse="true"}

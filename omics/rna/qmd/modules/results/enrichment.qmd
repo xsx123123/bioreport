@@ -42,6 +42,8 @@ for comp in comparisons:
         except Exception as e:
             print(f"Error plotting enrichment dotplot: {e}")
 
+        display_result_ai(f"rna.results.enrichment__{comp}_UP")
+
     else:
         display(Markdown(f"### {comp} UP\n\n无可用的上调基因富集结果。"))
 display(Markdown(":::"))
@@ -82,6 +84,8 @@ for comp in comparisons:
             show_figure(fig, config=config_plot)
         except Exception as e:
             print(f"Error plotting enrichment dotplot: {e}")
+
+        display_result_ai(f"rna.results.enrichment__{comp}_DOWN")
 
     else:
         display(Markdown(f"### {comp} DOWN\n\n无可用的下调基因富集结果。"))

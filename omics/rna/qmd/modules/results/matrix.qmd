@@ -7,6 +7,7 @@
 #| output: asis
 if tpm_file and os.path.exists(tpm_file):
     display_gene_expression_table(tpm_file, top_n=analysis.get('expression', {}).get('preview_rows', 100))
+    display_result_ai("rna.results.matrix__table")
 else:
     raise FileNotFoundError(f"TPM matrix is missing: {tpm_file}")
 ```

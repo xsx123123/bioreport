@@ -18,6 +18,7 @@ if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
 
     # 在 Quarto 中显示
     show_figure(fig, config=config_plot)
+    display_result_ai("rna.results.heatmap__figure")
 else:
     raise FileNotFoundError(f"Heatmap requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}")
 ```

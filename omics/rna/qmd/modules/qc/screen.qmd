@@ -12,6 +12,7 @@ visualize_multiqc_logs(
     analysis_dir=input_files["fastq_screen_r1_dir"],
     target_modules=['fastq_screen']
 )
+display_result_ai("rna.qc.screen__R1")
 ```
 
 ### FastQ Screen R2
@@ -22,5 +23,6 @@ visualize_multiqc_logs(
     analysis_dir=input_files["fastq_screen_r2_dir"],
     target_modules=['fastq_screen']
 )
+display_result_ai("rna.qc.screen__R2")
 ```
 :::

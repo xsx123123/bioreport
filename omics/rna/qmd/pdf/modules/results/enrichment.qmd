@@ -56,4 +56,5 @@ for comp in comparisons:
                         columns=['Description','GeneRatio','Count','p.adjust'],
                         evidence={'kind':'enrichment','comparison':comp,'direction':direction,'top_n':count})
         typst_note(f"{comp} {label}：{len(filtered)} / {len(frame)} 个条目满足校正后 P < {cutoff}；正文展示前 {len(chosen)} 个。")
+        display_result_ai(f"rna.results.enrichment__{comp}_{direction}")
 ```

@@ -11,6 +11,7 @@
 data_path = input_files["fastp_stats_file"]
 # 一行代码搞定！
 display_fastp_table(data_path)
+display_result_ai("rna.qc.fastp__table")
 ```
 
 ::: {.callout-note appearance="minimal" icon=false collapse="true"}
@@ -34,6 +35,7 @@ visualize_multiqc_logs(
     analysis_dir=input_files["fastp_report_dir"],
     target_modules=['fastp']
 )
+display_result_ai("rna.qc.fastp__figure")
 ```
 
 ::: {.callout-note appearance="minimal" icon=false collapse="true"}

@@ -14,4 +14,5 @@ with figure_group('fastq-screen-reads'):
             analysis_dir=input_files[f"fastq_screen_{read}_dir"],
             target_modules=['fastq_screen']
         )
+        display_result_ai(f'rna.qc.screen__{read.upper()}')
 ```

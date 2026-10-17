@@ -8,6 +8,15 @@ from bioreport.config import load_project_metadata
 
 project_info = load_project_metadata()
 input_files = project_info['input_files']
+
+def display_result_ai(result_id):
+    from pathlib import Path
+    import re
+    safe_id = re.sub(r"[^A-Za-z0-9_.-]", "-", result_id).strip(".")
+    note = Path("../data/ai_interpretations") / f"{safe_id}.md"
+    if note.is_file() and not note.is_symlink():
+        from IPython.display import Markdown, display
+        display(Markdown(note.read_text(encoding="utf-8")))
 ```
 
 

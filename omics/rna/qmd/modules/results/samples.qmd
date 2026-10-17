@@ -19,6 +19,7 @@ if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
     )
 
     show_figure(fig, config=config_plot)
+    display_result_ai("rna.results.samples__pca")
 else:
     raise FileNotFoundError(f"PCA requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}")
 ```
@@ -54,6 +55,7 @@ if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
     # 2. 显示或保存
     if fig:
         show_figure(fig, config=conf)
+        display_result_ai("rna.results.samples__distribution")
 else:
     raise FileNotFoundError(f"Expression distribution requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}")
 ```

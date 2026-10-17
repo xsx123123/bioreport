@@ -12,6 +12,7 @@ star_pdf = star_config.get('report',{}).get('pdf',{})
 mapping_path = input_files.get('mapping_file')
 if not mapping_path:
     visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['STAR'])
+    display_result_ai('rna.qc.star__figure')
 else:
     mapping = pd.read_csv(mapping_path, sep='\t')
     star_columns = [c for c in mapping if c.lower().startswith('star-')]

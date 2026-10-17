@@ -2,9 +2,11 @@
 
 from pathlib import Path
 import json
+import hashlib
 import re
 import shutil
 from html import escape
+from collections.abc import Mapping
 
 import bioreport
 import yaml
@@ -131,7 +133,10 @@ def selected_modules(config: dict) -> list[str]:
     for module in validation_modules:
         if module not in MODULES and module not in custom and module not in registered:
             raise ValueError(f"Module is not registered: {module}")
-    if not config.get("ai", {}).get("enabled", True):
+    ai_settings = config.get("ai", {})
+    if ai_settings.get("scope", "results") != "global":
+        modules = [module for module in modules if module != "ai"]
+    if not ai_settings.get("enabled", True):
         modules = [module for module in modules if module != "ai"]
         if not modules:
             raise ValueError("No report modules remain after disabling AI")
@@ -242,6 +247,97 @@ def _namespace_chunk_labels(body: str, module_id: str, position: int) -> str:
     for original, renamed in labels.items():
         body = re.sub(rf"(?<![\w-])@{re.escape(original)}(?![\w-])", f"@{renamed}", body)
     return body
+
+
+def _module_ai_slot(module_id: str) -> str:
+    """Add a safe no-op-unless-present module interpretation slot to QMD."""
+    safe_id = re.sub(r"[^A-Za-z0-9_.-]", "-", module_id)
+    return f'''\n\n```{{python}}\n#| echo: false\n#| warning: false\nfrom pathlib import Path as _BioReportPath\nfrom IPython.display import Markdown as _BioReportMarkdown, display as _BioReportDisplay\n_ai_root = _BioReportPath("../data/ai_interpretations")\n_ai_files = sorted(_ai_root.glob("{safe_id}__*.md")) + ([_ai_root / "{safe_id}.md"] if (_ai_root / "{safe_id}.md").is_file() else [])\nfor _ai_file in _ai_files:\n    if _ai_file.is_file() and not _ai_file.is_symlink():\n        _BioReportDisplay(_BioReportMarkdown(_ai_file.read_text(encoding="utf-8")))\n```\n'''
+
+
+def stage_module_interpretations(
+    template_dir: Path,
+    interpretations: Mapping[str, str] | None,
+    *,
+    max_bytes: int = 2 * 1024 * 1024,
+    execution_id: str | None = None,
+) -> list[Path]:
+    """Write optional module Markdown into the Quarto staging tree.
+
+    The writer accepts logical module IDs only; it never treats a caller value
+    as a path. Existing symlinks are rejected so a staging configuration cannot
+    redirect Quarto to an arbitrary file.
+    """
+    if interpretations is None:
+        interpretations = {}
+    if not isinstance(interpretations, Mapping):
+        raise ValueError("ai.module_interpretations must be an object")
+    data_dir = Path(template_dir) / "data"
+    target_dir = data_dir / "ai_interpretations"
+    if any(candidate.is_symlink() for candidate in (data_dir, target_dir)):
+        raise ValueError("AI_INTERPRETATION_DIR_SYMLINK")
+    target_dir.mkdir(parents=True, exist_ok=True)
+    # The directory is owned by this staging writer. Remove only generated
+    # Markdown files so a reused staging tree cannot render a previous run's
+    # interpretation when the current run has no module output.
+    for stale in target_dir.glob("*.md"):
+        if stale.is_symlink():
+            raise ValueError("AI_INTERPRETATION_FILE_SYMLINK")
+        if stale.is_file():
+            stale.unlink()
+    written: list[Path] = []
+    safe_ids: set[str] = set()
+    for module_id, content in interpretations.items():
+        if not isinstance(module_id, str) or not isinstance(content, str):
+            raise ValueError("ai.module_interpretations keys and values must be strings")
+        if "\x00" in module_id or "\x00" in content:
+            raise ValueError("AI_INTERPRETATION_NUL")
+        if re.search(r"<\s*script\b|\{\{<|```\s*\{", content, flags=re.IGNORECASE):
+            raise ValueError("AI_INTERPRETATION_UNSAFE_MARKUP")
+        safe_id = re.sub(r"[^A-Za-z0-9_.-]", "-", module_id).strip(".")
+        if not safe_id:
+            raise ValueError("AI_INTERPRETATION_MODULE_ID_INVALID")
+        if safe_id in safe_ids:
+            raise ValueError("AI_INTERPRETATION_MODULE_ID_COLLISION")
+        safe_ids.add(safe_id)
+        encoded = content.encode("utf-8")
+        if len(encoded) > max_bytes:
+            raise ValueError("AI_INTERPRETATION_TOO_LARGE")
+        destination = target_dir / f"{safe_id}.md"
+        if destination.exists() and destination.is_symlink():
+            raise ValueError("AI_INTERPRETATION_FILE_SYMLINK")
+        destination.write_bytes(encoded)
+        written.append(destination)
+    manifest_dir = Path(template_dir) / "data" / "ai_reports"
+    if manifest_dir.exists() and manifest_dir.is_symlink():
+        raise ValueError("AI_INTERPRETATION_MANIFEST_DIR_SYMLINK")
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+    manifest = manifest_dir / "ai-interpretation-manifest.json"
+    if manifest.is_symlink():
+        raise ValueError("AI_INTERPRETATION_MANIFEST_SYMLINK")
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "execution_id": execution_id,
+                "artifacts": [
+                    {
+                        "module_id": path.stem,
+                        "path": str(path.relative_to(Path(template_dir) / "data")),
+                        "size": path.stat().st_size,
+                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    }
+                    for path in written
+                ],
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return written
 
 
 def _cover_provenance(template_dir: Path) -> dict:
@@ -366,7 +462,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             return ' vs '.join(f"Group {p}" if p.isdigit() else p for p in parts)
 
         checksums = provenance.get('input_checksums') or {}
-        integrity = (f"已记录 SHA-256 指纹（{len(checksums)} 个输入文件），未与外部基准比对"
+        integrity = (f"已记录 SHA-256 指纹（{len(checksums)} 个输入文件）"
                      if checksums else "未提供校验结果")
         study = [
             ("委托单位", clean(lines[1]), False),
@@ -484,6 +580,13 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             body = re.sub(r"(?m)^:::\s*\{\.callout-[^\n]*\}", "::: {.report-note}", body)
             # Typst otherwise treats CJK text directly after a citation as part of its label.
             body = re.sub(r"(\[@[A-Za-z0-9_:-]+\])(?=[\u4e00-\u9fff])", r"\1 ", body)
+        # Module interpretations are staged as data files by the deterministic
+        # writer. The slot is a no-op when AI is disabled or unavailable, so
+        # legacy reports keep their original structure.
+        if config.get("ai", {}).get("enabled", True) and config.get("ai", {}).get("scope", "results") == "global" and canonical == "ai":
+            body += _module_ai_slot(canonical)
+        elif config.get("ai", {}).get("enabled", True) and config.get("ai", {}).get("scope", "results") == "module" and canonical in registered and canonical not in {"provenance", "about"}:
+            body += _module_ai_slot(canonical)
         chapters = [(canonical, heading, body)]
         if canonical == "rna.index":
             overview, separator, samples = body.partition("\n## 样本信息 (Sample Info)")

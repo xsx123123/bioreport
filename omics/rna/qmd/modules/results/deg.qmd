@@ -44,6 +44,7 @@ for comp in comparisons:
         fc_cutoff=deg_settings.get('log2fc_threshold', 1.0),
         pval_cutoff=deg_settings.get('pvalue_threshold', 0.05))
     show_figure(fig)
+    display_result_ai(f"rna.results.deg__{comp}")
 
 display(Markdown(":::"))
 ```

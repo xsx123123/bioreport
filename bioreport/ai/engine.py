@@ -3,6 +3,7 @@ import base64
 import mimetypes
 import tiktoken
 import uuid
+import time
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
@@ -40,9 +41,9 @@ class AIInterpreter:
 
         Args:
             model: 模型 ID
-            provider: 服务提供商 ("volcengine" or "aliyun")
-            base_url: 自定义 API Base URL (用于 Aliyun/OpenAI 兼容)
-            api_key: API Key (默认读取环境变量 ARK_API_KEY 或 DASHSCOPE_API_KEY)
+            provider: 服务商别名；支持 volcengine、aliyun、openai 及 openai-compatible
+            base_url: OpenAI-compatible API Base URL
+            api_key: API Key (默认按 provider 从环境变量读取)
             template_dir: Jinja2 模板目录
             config: 完整的 ai_config 字典，用于 Fallback 逻辑
         """
@@ -61,35 +62,36 @@ class AIInterpreter:
             self.env = None 
 
     def _init_client(self, provider: str, base_url: str = None, api_key: str = None) -> Any:
-        """初始化特定 Provider 的客户端"""
-        client = None
-        if provider == "volcengine":
-            key = api_key or os.environ.get("ARK_API_KEY")
-            if not key:
-                logger.warning(f"未检测到 ARK_API_KEY (Provider: {provider})")
-            else:
-                from volcenginesdkarkruntime import Ark
-                client = Ark(api_key=key, timeout=120)
-                
-        elif provider == "aliyun":
-            key = api_key or os.environ.get("DASHSCOPE_API_KEY")
-            if not key:
-                logger.warning(f"未检测到 DASHSCOPE_API_KEY (Provider: {provider})")
-            else:
-                # Aliyun uses standard OpenAI client with custom base_url
-                # Try to get base_url from config if not provided
-                if not base_url and self.config:
-                     base_url = self.config.get("aliyun", {}).get("base_url")
-                
-                client = OpenAI(
-                    api_key=key,
-                    base_url=base_url or "https://dashscope.aliyuncs.com/compatible-mode/v1",
-                    timeout=120
-                )
-        else:
-            logger.error(f"不支持的 Provider: {provider}")
-            
-        return client 
+        """Build the common OpenAI client for any compatible provider."""
+        if provider == "mock":
+            return None
+
+        settings = self.config.get(provider, {})
+        if not isinstance(settings, dict):
+            settings = {}
+        key_env_defaults = {
+            "volcengine": "ARK_API_KEY",
+            "aliyun": "DASHSCOPE_API_KEY",
+            "openai": "OPENAI_API_KEY",
+            "openai-compatible": "OPENAI_API_KEY",
+        }
+        key_env = settings.get("api_key_env") or self.config.get("api_key_env") or key_env_defaults.get(provider, "OPENAI_API_KEY")
+        key = api_key or os.environ.get(str(key_env))
+        if not key:
+            raise AIInterpretationError(f"Missing API key: set {key_env} for provider '{provider}'")
+
+        configured_base_url = settings.get("base_url") or self.config.get("base_url")
+        base_url = base_url or configured_base_url
+        if not base_url:
+            base_url = {
+                "volcengine": "https://ark.cn-beijing.volces.com/api/v3",
+                "aliyun": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            }.get(provider) or os.environ.get("OPENAI_BASE_URL")
+
+        try:
+            return OpenAI(api_key=key, base_url=base_url, timeout=120)
+        except Exception as exc:
+            raise AIInterpretationError(f"Could not initialize OpenAI-compatible client for '{provider}'") from exc
 
     def validate_data(self, data: Dict[str, Any]) -> RNASeqResult:
         """验证输入数据是否符合 Schema"""
@@ -176,8 +178,16 @@ class AIInterpreter:
     def _encode_file(self, file_path: str) -> Optional[str]:
         """将文件编码为 Base64 Data URI"""
         path = Path(file_path)
-        if not path.exists():
+        max_bytes = max(1, min(int(self.config.get("max_image_bytes", 20_000_000)), 50_000_000))
+        if not path.exists() or path.is_symlink() or not path.is_file():
             logger.warning(f"文件不存在，跳过: {file_path}")
+            return None
+        try:
+            if path.stat().st_size > max_bytes:
+                logger.warning(f"图片超过发送大小限制，跳过: {file_path}")
+                return None
+        except OSError:
+            logger.warning(f"无法检查附件，跳过: {file_path}")
             return None
         
         mime_type, _ = mimetypes.guess_type(path)
@@ -191,6 +201,15 @@ class AIInterpreter:
         except Exception as e:
             logger.error(f"读取文件失败 {file_path}: {e}")
             return None
+
+    def _vision_enabled(self) -> bool:
+        """Resolve an explicit vision capability with a safe default."""
+        provider_config = self.config.get(self.provider, {})
+        if isinstance(provider_config, dict) and "vision" in provider_config:
+            return bool(provider_config["vision"])
+        if "vision" in self.config:
+            return bool(self.config["vision"])
+        return True
 
     def render_prompt(self, template_path: str, data: RNASeqResult) -> str:
         """渲染 Prompt 模板"""
@@ -227,14 +246,23 @@ class AIInterpreter:
             "temperature": temperature,
             "top_p": top_p
         }
+        max_output_tokens = self.config.get("max_output_tokens")
+        if max_output_tokens is not None:
+            extra_params["max_tokens"] = max(1, int(max_output_tokens))
         
-        # Thinking param is specific to VolcEngine/DeepSeek on Ark
-        if thinking and self.provider == "volcengine":
-            extra_params["thinking"] = {"type": "enabled"}
-        # For Aliyun/OpenAI, we ignore 'thinking' param or handle differently if needed
+        # Provider-specific extensions are opt-in and travel through the
+        # OpenAI SDK's documented extra_body escape hatch.
+        provider_settings = self.config.get(self.provider, {})
+        if thinking and isinstance(provider_settings, dict) and provider_settings.get("thinking"):
+            extra_params["extra_body"] = {"thinking": provider_settings["thinking"]}
 
+        request_started = time.perf_counter()
+        user_chars = sum(len(str(part.get("text", ""))) for part in user_content if isinstance(part, dict))
+        image_parts = sum(1 for part in user_content if isinstance(part, dict) and part.get("type") in {"image_url", "input_image"})
+        endpoint = getattr(self.client, "base_url", None) or self.base_url or "provider-default"
         logger.info(f"[{trace_id}] 调用模型 {self.model} ({self.provider}) | Params: temp={temperature}, top_p={top_p}")
-        logger.debug(f"System Prompt: {system_prompt}")
+        logger.debug(f"[{trace_id}] AI request: endpoint={endpoint} system_chars={len(system_prompt)} user_chars={user_chars} images={image_parts} messages={len(user_content)}")
+        logger.trace(f"[{trace_id}] System Prompt: {system_prompt}")
         
         try:
             # Both Ark and OpenAI clients share the same interface for chat.completions.create
@@ -257,14 +285,22 @@ class AIInterpreter:
                     "total_tokens": response.usage.total_tokens
                 }
 
+            response_content = response.choices[0].message.content or ""
+            elapsed = time.perf_counter() - request_started
+            logger.info(
+                f"[{trace_id}] 模型响应完成 | elapsed={elapsed:.2f}s "
+                f"response_chars={len(response_content)} usage={usage or 'unavailable'}"
+            )
+
             return AIResponse(
-                content=response.choices[0].message.content,
+                content=response_content,
                 usage=usage,
                 model=self.model,
                 provider=self.provider
             )
         except Exception as e:
-            logger.warning(f"[{trace_id}] API 调用失败 ({self.provider}): {str(e)}")
+            elapsed = time.perf_counter() - request_started
+            logger.warning(f"[{trace_id}] API 调用失败 ({self.provider}) after {elapsed:.2f}s: {str(e)}")
             raise
 
     def execute_inference(self, 
@@ -356,7 +392,7 @@ class AIInterpreter:
     def generate_report(self, 
                         data_json: Dict[str, Any], 
                         template_path: str, 
-                        attachments: List[str] = [],
+                        attachments: Optional[List[str]] = None,
                         output_path: Optional[str] = None,
                         temperature: float = 0.6,
                         top_p: float = 0.9,
@@ -383,13 +419,16 @@ class AIInterpreter:
         # 4. 准备多模态内容
         user_content = []
         # 先加图片/文件
-        for path in attachments:
-            data_uri = self._encode_file(path)
-            if data_uri:
-                user_content.append({
-                    "type": "image_url",
-                    "image_url": {"url": data_uri}
-                })
+        if attachments and self._vision_enabled():
+            for path in attachments:
+                data_uri = self._encode_file(path)
+                if data_uri:
+                    user_content.append({
+                        "type": "image_url",
+                        "image_url": {"url": data_uri}
+                    })
+        elif attachments:
+            logger.info("当前 provider 未启用视觉能力，已降级为纯文本证据")
         # 再加文本
         user_content.append({"type": "text", "text": text_prompt})
         

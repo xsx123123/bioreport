@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import signal
+import sqlite3
 import subprocess
 import sys
 import sysconfig
@@ -38,6 +39,44 @@ from .utils.run_browser import browse_runs, render_runs
 console = Console()
 
 
+def _workspace_execution(project_id: str) -> tuple[object, str] | None:
+    """Start tracking only when the explicit Workspace schema is present."""
+    db_path = default_db_path()
+    if not db_path.is_file():
+        return None
+    try:
+        with sqlite3.connect(db_path) as connection:
+            exists = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'agent_runs'"
+            ).fetchone()
+        if not exists:
+            return None
+        from .ai.persistence import InterpretationRepository
+        repository = InterpretationRepository(db_path)
+        execution_id = repository.create_execution(project_id=project_id)
+        logger.debug("Workspace execution staged: {}", execution_id)
+        return repository, execution_id
+    except Exception as exc:
+        logger.warning("Workspace execution tracking unavailable; continuing legacy run: {}", exc)
+        return None
+
+
+def _finish_workspace_execution(
+    execution: tuple[object, str] | None,
+    *,
+    run_id: int | None,
+    status: str,
+) -> None:
+    if execution is None or run_id is None:
+        return
+    repository, execution_id = execution
+    try:
+        repository.bind_execution(execution_id, run_id=run_id, status=status)
+        logger.debug("Workspace execution bound: {} -> run {} ({})", execution_id, run_id, status)
+    except Exception as exc:
+        logger.warning("Workspace execution binding failed (execution={}): {}", execution_id, exc)
+
+
 def show_help() -> None:
     console.print("[bold]bioreport[/bold]  Quarto 报告生成器\n")
     console.print("[dim]用法[/dim]  bioreport <命令> -c <配置文件> [-o <输出目录>]\n")
@@ -48,6 +87,8 @@ def show_help() -> None:
     commands.add_row("runs", "搜索和浏览本地运行记录")
     commands.add_row("validate", "检查配置格式")
     commands.add_row("init", "查看初始配置位置")
+    commands.add_row("workspace-migrate", "显式迁移 Workspace 数据库并创建备份")
+    commands.add_row("workspace-restore", "显式恢复 Workspace 迁移备份")
     console.print(commands)
     console.print("\n[dim]选项[/dim]  -c, --config 配置路径    -o, --output 输出目录")
     console.print("[dim]      [/dim]  --dry-run 仅检查模板       --data-prefix 数据挂载前缀")
@@ -64,7 +105,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         add_help=False,
     )
     parser.add_argument("-h", "--help", action="store_true")
-    parser.add_argument("command", nargs="?", choices=("run", "runs", "validate", "init"), default="run")
+    parser.add_argument(
+        "command", nargs="?",
+        choices=("run", "runs", "validate", "init", "workspace-migrate", "workspace-restore"),
+        default="run",
+    )
 
     parser.add_argument(
         "-c",
@@ -469,6 +514,18 @@ def main():
         else:
             render_runs(console, rows, db_path)
         return
+    if args.command in {"workspace-migrate", "workspace-restore"}:
+        from .db.migrations import migrate_workspace, restore_workspace_backup
+        db_path = Path(args.db).expanduser() if args.db else default_db_path()
+        if args.command == "workspace-migrate":
+            backup = migrate_workspace(db_path)
+            console.print(f"Workspace schema v2 已迁移: {db_path}")
+            if backup:
+                console.print(f"迁移前备份: {backup}")
+        else:
+            restore_workspace_backup(db_path)
+            console.print(f"Workspace 迁移备份已恢复: {db_path}")
+        return
     if args.command == "run":
         print_banner()
     setup_logging()
@@ -516,8 +573,10 @@ def main():
         provenance = build_provenance(config, selected)
         provenance_path = write_provenance(provenance, template_dir / "qmd")
         logger.debug(f"报告溯源信息已写入: {provenance_path}")
+        workspace_execution = None
+        execution_id = None
 
-        def _record_run(status: str) -> None:
+        def _record_run(status: str) -> int | None:
             """将本次运行写入本地离线数据库；失败只告警，不阻断报告。"""
             try:
                 db = default_db_path()
@@ -529,9 +588,12 @@ def main():
                     output_dir=str(Path(args.output).resolve()),
                     status=status,
                 )
+                _finish_workspace_execution(workspace_execution, run_id=row_id, status=status)
                 logger.debug(f"运行记录已写入本地数据库: {db} (id={row_id}, 状态={status})")
+                return row_id
             except Exception as exc:
                 logger.warning(f"写入本地运行数据库失败（不影响报告生成）: {exc}")
+                return None
 
         # 先读取配置并检查输入文件完整性（含计算 SHA256），再渲染 Quarto 模板。
         check_input_files(config, provenance)
@@ -546,11 +608,37 @@ def main():
             logger.info("配置与模块已验证，跳过 Quarto 渲染。")
             return
 
-        if "ai" in selected:
-            run_ai_pipeline(config, config["_config_path"], args.output, template_dir)
+        workspace_execution = _workspace_execution(config["project"]["project_id"])
+        if workspace_execution:
+            execution_id = workspace_execution[1]
+            provenance["execution_id"] = execution_id
+            write_provenance(provenance, template_dir / "qmd")
+
         try:
-            render_report(config, config["_config_path"], args.output, template_dir, log_file)
-        except (RuntimeError, FileNotFoundError) as exc:
+            ai_enabled = "ai" in selected or config.get("ai", {}).get("enabled", False)
+            visual_pdf = (
+                ai_enabled
+                and config.get("ai", {}).get("scope", "results") == "results"
+                and "pdf" in formats
+                and config.get("report", {}).get("layout", "single") == "single"
+            )
+            if visual_pdf:
+                logger.info("PDF AI 两阶段流程：第一遍先生成无 AI 卡片的图表...")
+                render_report(config, config["_config_path"], args.output, template_dir, log_file)
+                run_ai_pipeline(
+                    config, config["_config_path"], args.output, template_dir,
+                    execution_id=execution_id, visual_mode=True,
+                )
+                logger.info("PDF AI 两阶段流程：正在回填视觉解读并重新渲染...")
+                render_report(config, config["_config_path"], args.output, template_dir, log_file)
+            else:
+                if ai_enabled:
+                    run_ai_pipeline(
+                        config, config["_config_path"], args.output, template_dir,
+                        execution_id=execution_id,
+                    )
+                render_report(config, config["_config_path"], args.output, template_dir, log_file)
+        except Exception as exc:
             logger.error("{}", exc)
             _record_run("failed")
             raise SystemExit(1) from None

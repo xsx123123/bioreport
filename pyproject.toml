@@ -27,7 +27,6 @@ dependencies = ["pyyaml", "jinja2", "jsonschema>=4.26", "loguru", "rich", "rich-
 [project.optional-dependencies]
 rna = ["pandas", "numpy", "scipy", "scikit-learn", "plotly", "matplotlib", "plotnine", "kaleido", "itables>=2.8.2,<2.9", "tabulate>=0.9", "python-dateutil", "pytz", "requests", "beautifulsoup4", "lxml", "ipython", "ipykernel", "jupyter", "jupyterlab", "nbconvert", "nbformat", "multiqc", "openai", "tiktoken", "tenacity"]
 ai = [
-    "volcenginesdkarkruntime",
     "openai",
     "tiktoken",
     "tenacity",
@@ -35,6 +34,7 @@ ai = [
 ]
 security = ["pikepdf"]
 validation = ["pypdfium2", "Pillow", "numpy"]
+web = ["fastapi>=0.115", "uvicorn>=0.30"]
 dev = [
     "pytest",
     "black",

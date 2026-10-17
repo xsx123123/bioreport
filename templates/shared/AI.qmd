@@ -11,4 +11,15 @@ execute:
 > Note:本报告由AI生成，请谨慎鉴别相关内容 !!!
 {{< include ../data/consolidated_rna_seq_report.md >}}
 
+```{python}
+# Optional module-level interpretations are generated before Quarto. Missing
+# or rejected modules remain readable in the original report.
+from pathlib import Path
+from IPython.display import Markdown, display
+
+module_interpretations = Path("../data/module_interpretations.md")
+if module_interpretations.is_file():
+    display(Markdown(module_interpretations.read_text(encoding="utf-8")))
+```
+
 :::

@@ -286,7 +286,7 @@ def test_ai_include_is_resolved_after_generation(tmp_path):
     qmd = tmp_path / "qmd"
     qmd.mkdir()
     shutil.copyfile(source, qmd / "AI.qmd")
-    config = {"report": {"modules": ["ai"]}, "ai": {"enabled": True}}
+    config = {"report": {"modules": ["ai"]}, "ai": {"enabled": True, "scope": "global"}}
 
     html_doc = compose_report(config, tmp_path).read_text(encoding="utf-8")
     pdf_doc = compose_report(config, tmp_path, pdf=True).read_text(encoding="utf-8")

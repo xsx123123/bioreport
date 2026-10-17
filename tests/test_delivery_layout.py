@@ -38,7 +38,7 @@ def test_python_entrypoints_are_consolidated_under_bioreport():
         if "if __name__ ==" in path.read_text(encoding="utf-8")
     }
 
-    assert entrypoints == {"bioreport/__main__.py", "bioreport/cli.py"}
+    assert entrypoints == {"bioreport/__main__.py", "bioreport/cli.py", "bioreport/api_server.py"}
 
 
 @pytest.mark.parametrize("arguments", [[], ["-h"], ["--help"]])
