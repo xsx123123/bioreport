@@ -18,6 +18,12 @@ _figure_count = 0
 _table_count = 0
 _figure_group = None
 
+# Plotly's browser exporter exposes ``scale`` rather than a DPI setting.
+# Plotly renders CSS pixels at 96 DPI, so this scale produces PNG dimensions
+# equivalent to 1000 DPI for the figure's configured width and height.
+DEFAULT_PNG_DPI = 1000
+PLOTLY_CSS_DPI = 96
+
 
 def is_pdf() -> bool:
     return os.environ.get("BIOREPORT_OUTPUT_FORMAT") == "pdf"
@@ -66,7 +72,7 @@ def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
             # Emit the library separately so no chart is moved before the report.
             display(HTML(f'<script data-bioreport-dependency="plotly">{get_plotlyjs()}</script>'))
             _plotly_loaded = True
-        display(HTML(_responsive_figure_html(figure, config)))
+        display(HTML(_responsive_figure_html(figure, config, caption=caption)))
 
 
 @contextmanager
@@ -102,7 +108,39 @@ def figure_group(block_id, columns=1):
         _figure_group = None
 
 
-def _responsive_figure_html(figure, config):
+def _plotly_filename(figure, caption=None):
+    """Derive a stable PNG name from the visible chart title."""
+    title = getattr(getattr(figure, "layout", None), "title", None)
+    value = getattr(title, "text", None) if title is not None else None
+    value = value or caption or "BioReport Figure"
+    value = re.sub(r"<[^>]+>", "", str(value))
+    value = value.split("<br>", 1)[0].strip()
+    value = re.sub(r"[\\/:*?\"<>|]+", "-", value)
+    value = re.sub(r"\s+", "_", value).strip("._-")
+    return value or "BioReport_Figure"
+
+
+def _html_plotly_config(figure, config=None, caption=None):
+    """Apply one PNG download policy to every HTML Plotly chart."""
+    normalized = dict(config or {})
+    options = dict(normalized.get("toImageButtonOptions") or {})
+    dpi = float(normalized.pop("png_dpi", DEFAULT_PNG_DPI))
+    if dpi <= 0:
+        raise ValueError("png_dpi must be greater than zero")
+    options.update({
+        "format": "png",
+        "filename": _plotly_filename(figure, caption),
+        "scale": dpi / PLOTLY_CSS_DPI,
+    })
+    # Keep explicit export dimensions, falling back to the figure layout.
+    options.setdefault("width", figure.layout.width)
+    options.setdefault("height", figure.layout.height)
+    options = {key: value for key, value in options.items() if value is not None}
+    normalized["toImageButtonOptions"] = options
+    return normalized
+
+
+def _responsive_figure_html(figure, config, caption=None):
     """Render a plotly figure inside an aspect-ratio box.
 
     Plotly pins the graph div and its drawing size to the layout's pixel
@@ -113,7 +151,8 @@ def _responsive_figure_html(figure, config):
     already carry. The pixel sizes are then removed from the serialized
     layout so plotly.js fills the box instead of forcing its own height.
     """
-    export_options = (config or {}).get("toImageButtonOptions") or {}
+    config = _html_plotly_config(figure, config, caption=caption)
+    export_options = config.get("toImageButtonOptions") or {}
     width = figure.layout.width or export_options.get("width")
     height = figure.layout.height or export_options.get("height")
     saved_width, saved_height = figure.layout.width, figure.layout.height

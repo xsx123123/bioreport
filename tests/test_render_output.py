@@ -3,6 +3,7 @@ import re
 import IPython.display as ipython_display
 import pandas as pd
 import plotly.graph_objects as go
+import pytest
 
 from bioreport.utils import render_output
 
@@ -23,6 +24,27 @@ def test_html_figures_embed_plotly_only_once(monkeypatch):
     assert 'class="plotly-graph-div"' not in shown[0].data
     assert 'class="plotly-graph-div"' in shown[1].data
     assert 'class="plotly-graph-div"' in shown[2].data
+
+
+def test_html_png_download_uses_1000_dpi_equivalent_and_chart_name(monkeypatch):
+    captured = {}
+    monkeypatch.delenv("BIOREPORT_OUTPUT_FORMAT", raising=False)
+
+    figure = go.Figure(go.Scatter(x=[1, 2], y=[2, 3]))
+    figure.update_layout(title="样本 PCA / PC1 vs PC2", width=900, height=600)
+
+    def fake_to_html(*, full_html, include_plotlyjs, config):
+        captured["config"] = config
+        return '<div id="chart" class="plotly-graph-div" style="height:600px; width:900px;"></div>'
+
+    monkeypatch.setattr(figure, "to_html", fake_to_html)
+    monkeypatch.setattr(render_output, "display", lambda item: None)
+    render_output.show_figure(figure)
+
+    options = captured["config"]["toImageButtonOptions"]
+    assert options["format"] == "png"
+    assert options["filename"] == "样本_PCA_-_PC1_vs_PC2"
+    assert options["scale"] == pytest.approx(1000 / 96)
 
 
 def test_pdf_output_uses_image_and_bounded_table(monkeypatch, tmp_path):
