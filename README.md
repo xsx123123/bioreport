@@ -56,6 +56,15 @@ bioreport runs --json
 bioreport runs --tui
 ```
 
+Workspace v2 数据库迁移必须显式执行，默认会在迁移前创建相邻的 `.bak` 备份；恢复也必须由操作人员明确调用：
+
+```bash
+bioreport workspace-migrate --db /path/to/runs.db
+bioreport workspace-restore --db /path/to/runs.db
+```
+
+历史报告查询和 API 启动不会自动迁移数据库。
+
 使用 `--db /path/to/runs.db` 或环境变量 `BIOREPORT_DB` 可以查看指定数据库。`--tui` 启动后默认显示运行仪表盘：总运行数、成功/失败数、成功率、项目数和最近运行。随后按 `s` 搜索、`r` 刷新、`c` 清除筛选、`q` 退出。
 
 示例数据位于 `examples/rna-seq/data/`，本地配置在 `tests/report.rna.local.json`，默认使用 `single` 模式，生成 `output/rna-report/PRJ-RNA-HTML-001_report.html` 与 `output/rna-report-pdf/PRJ-RNA-PDF-001_report.pdf`（报告文件名以配置中的 `project.project_id` 为前缀，形如 `<project_id>_report.<格式>`），样式、脚本及图片资源嵌入 HTML。报告内通过顶部导航切换六个章节视图（示例配置为项目概况/分析流程/质量控制/分析结果/溯源信息/关于，`ai` 等为可选模块）。页面使用 `templates/theme/New_Brutalism.scss`、`styles.css` 和 `itables_saas.css`；修改模板或 Logo 后重新生成即可更新。若需要六份独立 HTML，可将 `report.layout` 改为 `website`，从 `output/rna-report/index.html` 打开。先用 `--dry-run` 可检查配置和模板组合，此模式不生成 HTML。`configs/report.example.json` 的数据根目录为容器内 `/data`，本地直接运行前须修改路径。
@@ -140,232 +149,91 @@ BioReport 采用配置驱动的模块化报告架构，将报告组织、领域�
 
 > 本节是面向使用者的概览；实现细节（流水线步骤、模块注册机制、PDF 语义校验、扩展指南）见 **[docs/Architecture.md](docs/Architecture.md)**。
 
-下图表达组件依赖与产物流向（非逐行执行时序）：实线为主构建链路或数据输入，虚线为可选 AI 分支及解读内容回填，不代表异步服务。启用 AI 时，解读 Markdown 在 Quarto 渲染前生成；Docker 属于生成阶段的运行环境。
+下图表达组件依赖与产物流向（非逐行执行时序）：实线为主构建链路或数据输入，虚线为可选 AI 分支及解读内容回填。HTML 或非视觉路径会在 Quarto 渲染前生成解读；PDF `scope: results` 会先渲染图表，再基于已渲染图像和结构化证据生成解读，最后二次渲染回填卡片。Docker 属于生成阶段的运行环境。
 
 ```mermaid
 flowchart LR
-
-  %% ==========================================
-  %% 01 输入与配置
-  %% ==========================================
-  subgraph INPUT["01 · 输入与配置"]
-    direction TB
-
-    Config["JSON / YAML 配置<br/>JSON Schema 校验"]
-
-    Data["多组学分析结果<br/>DEG / Enrichment / QC"]
-
-    Meta["项目与实验元数据<br/>Sample / Comparison"]
-
-    RNA["RNA-seq 模块<br/>omics/rna"]
-
-    Custom["自定义 QMD 模块"]
-  end
-
-
-  %% ==========================================
-  %% 02 BioReport 核心
-  %% ==========================================
-  subgraph CORE["02 · BioReport Core"]
-    direction TB
-
-    Control["CLI / Pipeline<br/>配置校验与流程编排"]
-
-    Registry["Module Registry<br/>模块注册 · 选择 · 排序"]
-
-    Compose["Module Composer<br/>模块组合与模板装配"]
-
-    Theme["Jinja2 Templates<br/>共享主题与样式"]
-
-    Stage["Quarto Project<br/>QMD / Config / Assets"]
-
-    Control --> Registry
-    Registry --> Compose
-    Compose --> Stage
-    Theme --> Stage
-  end
-
-
-  %% ==========================================
-  %% 03 科学分析与证据构建
-  %% ==========================================
-  subgraph EVIDENCE["03 · Scientific Evidence Layer"]
-    direction TB
-
-    Analysis["Analysis Functions<br/>现有统计计算与绘图函数"]
-
-    Builder["Module Evidence Builder<br/>模块级证据构建 · 拟新增"]
-
-    Metrics["Structured Evidence<br/>统计指标 · 阈值 · 比较组"]
-
-    Figures["Figure Assets<br/>PNG / SVG / 图表元数据"]
-
-    Tables["Result Tables<br/>DEG / Enrichment / QC"]
-
-    Package[("Module Evidence Package<br/>模块证据包与缓存")]
-
-    Analysis --> Builder
-
-    Builder --> Metrics
-    Builder --> Figures
-    Builder --> Tables
-
-    Metrics --> Package
-    Figures --> Package
-    Tables --> Package
-  end
-
-
-  %% ==========================================
-  %% 04 AI 科学解读
-  %% ==========================================
-  subgraph AGENT["04 · Interpretation Agent · 可选"]
-    direction TB
-
-    Agent["Interpretation Agent<br/>轻量级模块解读编排"]
-
-    Prompts["Prompt Registry<br/>通用规则 + 模块专属提示词"]
-
-    Tools["Controlled Tools<br/>get_module_evidence<br/>read_result_table<br/>get_figure"]
-
-    Engine["AI Engine<br/>多模态模型 · Provider Fallback"]
-
-    Validate["Scientific Validation<br/>统计核验 · 证据检查 · 安全约束"]
-
-    Markdown["Module Interpretation<br/>模块解读 Markdown"]
-
-    Prompts --> Agent
-    Tools -.-> Agent
-
-    Agent --> Engine
-    Engine --> Validate
-    Validate --> Markdown
-  end
-
-
-  %% ==========================================
-  %% 05 报告生成
-  %% ==========================================
-  subgraph REPORT["05 · Quarto Report Engine"]
-    direction TB
-
-    Slots["Interpretation Slots<br/>模块级 AI 解读插槽 · 拟新增"]
-
-    Execute["Quarto / Jupyter<br/>执行所选报告模块"]
-
-    Render["Report Rendering<br/>结果解析 · 图表与表格渲染"]
-
-    HTMLView["HTML Renderer<br/>Plotly / ITables"]
-
-    PDFView["PDF Renderer<br/>静态图表 / Typst"]
-
-    Slots --> Execute
-    Execute --> Render
-
-    Render --> HTMLView
-    Render --> PDFView
-  end
-
-
-  %% ==========================================
-  %% 06 最终输出
-  %% ==========================================
-  subgraph OUTPUT["06 · Report Delivery"]
-    direction TB
-
-    HTML["Interactive HTML<br/>单文件 / 多页面"]
-
-    PDF["Scientific PDF<br/>标准科研报告"]
-
-    Audit["Provenance & Manifest<br/>Input / Artifact / Report<br/>AI Trace / SHA-256"]
-
-    Records["Runtime Logs<br/>运行日志 · 配置备份"]
-  end
-
-
-  %% ==========================================
-  %% 主流程
-  %% ==========================================
-
-  Config --> Control
-
-  RNA --> Registry
-  Custom --> Registry
-
-  Data --> Analysis
-  Meta --> Builder
-
-  Control -.-> Builder
-
-  Stage --> Slots
-
-  HTMLView --> HTML
-  PDFView --> PDF
-
-  Control --> Records
-
-
-  %% ==========================================
-  %% Agent 可选分支
-  %% ==========================================
-
-  Package -.->|"AI Enabled"| Agent
-
-  Markdown -.->|"模块级原位回填"| Slots
-
-  Data --> Render
-
-  Package -.->|"图表缓存与证据复用"| Render
-
-
-  %% ==========================================
-  %% 科研溯源
-  %% ==========================================
-
-  Package -.-> Audit
-  Validate -.-> Audit
-  HTML -.-> Audit
-  PDF -.-> Audit
-
-
-  %% ==========================================
-  %% 样式
-  %% ==========================================
-
-  classDef plain fill:#ffffff,stroke:#94a3b8,color:#334155;
-
-  classDef blue fill:#eff6ff,stroke:#3b82f6,color:#173258;
-
-  classDef cyan fill:#ecfeff,stroke:#0891b2,color:#164e63;
-
-  classDef purple fill:#faf5ff,stroke:#a78bfa,color:#553285;
-
-  classDef green fill:#f0fdf4,stroke:#22a06b,color:#14532d;
-
-  classDef gray fill:#f8fafc,stroke:#64748b,color:#334155;
-
-
-  class Config,Data,Meta,RNA,Custom plain;
-
-  class Control,Registry,Compose,Theme,Stage blue;
-
-  class Analysis,Builder,Metrics,Figures,Tables,Package cyan;
-
-  class Agent,Prompts,Tools,Engine,Validate,Markdown purple;
-
-  class Slots,Execute,Render,HTMLView,PDFView blue;
-
-  class HTML,PDF green;
-
-  class Audit,Records gray;
-
-  style INPUT fill:#f8fafc,stroke:#cbd5e1
-  style CORE fill:#eff6ff,stroke:#93c5fd
-  style EVIDENCE fill:#ecfeff,stroke:#67e8f9
-  style AGENT fill:#faf5ff,stroke:#d8b4fe
-  style REPORT fill:#eff6ff,stroke:#93c5fd
-  style OUTPUT fill:#f0fdf4,stroke:#86efac
+    subgraph INPUT["01 · 数据输入"]
+        direction TB
+        A["RNAFlow / FlowFrame"]
+        B["DEG / QC / Enrichment"]
+        C["项目配置与元数据"]
+    end
+
+    subgraph CORE["02 · BioReport Core"]
+        direction TB
+        D["CLI / Pipeline"]
+        E["Module Registry"]
+        F["Analysis Functions"]
+        D --> E --> F
+    end
+
+    subgraph EVIDENCE["03 · Evidence & Visual Capture"]
+        direction TB
+        G["Result evidence"]
+        H["Statistics + tables"]
+        I["Rendered figures + block manifest"]
+        G --> H
+        G --> I
+    end
+
+    subgraph AI["04 · Interpretation Agent"]
+        direction TB
+        J["Module Orchestrator"]
+        K["AIInterpreter"]
+        L["Scientific Validator"]
+        M["Per-result Markdown cards"]
+        J --> K --> L --> M
+    end
+
+    subgraph REPORT["05 · Report Generation"]
+        direction TB
+        N["QMD Interpretation Slots"]
+        O["Quarto / Jupyter"]
+        P["HTML / final PDF"]
+        P0["PDF first render"]
+        T["PDF second render"]
+        N --> O
+    end
+
+    subgraph AUDIT["06 · Provenance"]
+        direction TB
+        Q["Evidence Hash"]
+        R["AI Trace / Manifest"]
+        Q --> R
+    end
+
+    A --> B
+    B --> F
+    C --> D
+
+    F --> G
+    H --> J
+    I --> J
+
+    E --> N
+    M -.-> T -.-> P
+    O --> P
+    O --> P0
+    P0 --> I
+
+    G -.-> Q
+    L -.-> R
+    P -.-> R
+
+    classDef blue fill:#eff6ff,stroke:#3b82f6,color:#173258
+    classDef cyan fill:#ecfeff,stroke:#0891b2,color:#164e63
+    classDef purple fill:#faf5ff,stroke:#a78bfa,color:#553285
+    classDef green fill:#f0fdf4,stroke:#22a06b,color:#14532d
+
+    class A,B,C,D,E,F blue
+    class G,H,I cyan
+    class J,K,L,M purple
+    class N,O,P,Q,R green
 ```
+
+
+
 
 BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶段读取分析结果并生成图表，分别适配交互式 HTML 与打印 PDF。AI 解读作为可选分支，在渲染前生成辅助解释内容。
 
@@ -377,10 +245,10 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 | 模块与内容组合 | Registry · QMD · 模块组合器 · Jinja2 | 注册领域模块及输入要求，按配置组合章节、传入模块参数，生成 Quarto 配置与部分模板内容 |
 | 数据处理与交互展示 | pandas / NumPy · Plotly · ITables | 读取已有质控、表达、差异及富集等分析结果，进行整理、统计汇总、绘图与可检索表格展示 |
 | 多格式渲染与交付 | Quarto · Jupyter · 静态图形 · Typst | HTML 提供交互式浏览；PDF 使用 PDF 专用章节、适合分页的静态图表与 Typst 排版；两种输出共享分析函数 |
-| 可选 AI 辅助解读 | 大语言模型接入 · Markdown | 选择 AI 模块且启用后，整合指定差异与富集结果并生成 Markdown 解读，渲染前就绪；模型生成内容需研究人员审阅 |
+| 可选 AI 辅助解读 | OpenAI SDK · 结构化证据 · Markdown | 默认按结果生成独立解读卡片；HTML/非视觉路径在渲染前生成，PDF 视觉路径在第一次渲染后读取图像与证据，再二次回填；模型生成内容需研究人员审阅 |
 | 运行环境 | 本地 Python / Quarto · Docker | 本地或容器内完成模板渲染、代码执行与文档构建；报告阅读使用浏览器或 PDF 阅读器 |
 
-> 架构图源文件唯一维护于 [`templates/shared/assets/architecture.mmd`](templates/shared/assets/architecture.mmd)：报告「关于」页通过 include 机制内嵌同一份 Mermaid 源码，PDF 中的静态 SVG（`templates/shared/assets/architecture.svg`）由该文件离线导出，README 中的副本与其保持同步。当前内置 RNA-seq 模块；新增组学类型需要提供对应的数据读取、图表和解释模块。
+> 架构图的权威源文件是 [`templates/shared/assets/architecture.mmd`](templates/shared/assets/architecture.mmd)：报告「关于」页通过 include 机制内嵌该 Mermaid 源码。README 和 `docs/Architecture.md` 使用同一架构语义的说明性副本；PDF 中的静态 SVG（`templates/shared/assets/architecture.svg`）需要在架构图变更后重新离线导出。当前内置 RNA-seq 模块；新增组学类型需要提供对应的数据读取、图表和解释模块。
 
 ## 📂 目录结构说明
 
@@ -542,27 +410,58 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 | 字段 | 说明 |
 | :--- | :--- |
 | `enabled` | 是否启用 AI 解读 |
-| `model` / `provider` | 模型与服务商；支持 `volcengine`、`aliyun`，后者必须指定模型名 |
+| `model` / `provider` | 模型与服务商；`volcengine`、`aliyun` 是带默认地址和 Key 环境变量的别名，也可用 `openai-compatible` 配合自定义地址 |
+| `base_url` / `api_key_env` | OpenAI-compatible API 地址和 API Key 环境变量名；别名可省略，通用服务需配置 |
 | `temperature` | 模型温度 |
+| `max_output_tokens` | 可选的单次输出上限；结果卡片建议设置为 `600`–`1200`，可减少过长输出带来的等待 |
+| `scope` | 解读范围；默认 `results`，对每个比较组的 DEG 与 UP/DOWN 富集结果分别生成卡片；`global` 才生成旧式合并章节 |
+| `result_rows` | 每个结果送入模型的 CSV 行数上限；默认 DEG 30 行、富集 20 行 |
 | `prompt_file` | 自定义 Prompt 文件路径；相对路径以配置文件所在目录为根 |
 | `deg_limit` / `enrichment_limit` | 提交给 AI 的差异基因与通路数量 |
+| `vision` / `max_image_bytes` | 视觉能力开关与单张附件上限；关闭 `vision` 时自动降级为纯文本 |
 
 ## 🤖 AI 分析流程
 
-### 待办（2026-10-17 下午）
+启用 AI 后，默认对 fastp 表/图、FastQ Screen R1/R2、QualiMap、STAR、PCA、表达分布、TPM 矩阵、热图，以及每个比较组的 DEG 和 UP/DOWN 富集结果分别解读，解读卡片紧跟对应图表/表格。HTML 路径会在 Quarto 渲染前准备卡片；PDF `scope: results` 使用两阶段流程：
 
-- [ ] 排查并解决 AI 解读问题，验证数据整合、模型调用、解读 Markdown 生成及报告嵌入流程。
+1. 第一次 Quarto 渲染生成 PDF 图表、表格和 `report-blocks-pdf.jsonl`。
+2. 系统按结果 ID 绑定结构化证据和已渲染图像，对每个结果单独请求模型。
+3. 将 Markdown 卡片写入临时数据目录，第二次 Quarto 渲染把卡片回填到对应结果下方。
 
-选择 `ai` 模块且启用 AI 时，生成报告前会执行以下步骤：
+提示词和解读逻辑目前仍是过渡实现。后续应拆分为“角色与安全边界、模块分析规则、证据格式、输出 schema、验证与回退”五层，避免一个全局 Prompt 同时处理 QC、图表、DEG 和富集结果。
 
-1. **数据整合 (Generate)**：从 JSON 配置引用的 CSV/TSV 文件中按输入文件的原有顺序提取差异基因、富集通路等信息，生成 Markdown 格式的中间文件。
-2. **AI 解读 (Report)**：将整合后的文本发送给 AI 模型，生成 `consolidated_rna_seq_report.md`。
-3. **网页渲染**：Quarto 会将 AI 生成的内容自动嵌入到“AI 解读”章节中。
+### 当前版本状态与下一版本计划
 
-通过设置 `ai.enabled: false`，可完全跳过 AI 流程并隐藏 AI 章节。
+当前版本已经完成 AI 解读的基础框架建设：
+
+- 按结果 ID 生成独立解读卡片，覆盖 QC、样本关系、表达矩阵、热图、DEG 和富集结果；
+- 使用结构化证据限制模型输入，并保留结果与输入文件的对应关系；
+- PDF 支持“首次渲染图表 → 读取图像与证据 → AI 解读 → 二次渲染回填”的视觉流程；
+- 所有服务商统一通过 OpenAI SDK 接入，并具备超时、重试、输入截断、视觉降级和空响应回退；
+- AI 解读结果已经具备独立的结果槽位，后续可接入 evidence hash、Prompt 版本和模型参数记录。
+
+下一个版本的重点是提示词和解读逻辑优化，不再扩展报告渲染主链路。计划按 fastp/QC、样本关系、DEG、富集和图表视觉解读拆分专家提示词，统一输出“观察、统计依据、生物学解释、限制条件、建议复核项”结构，并增加数值引用、证据一致性和结果为空校验。具体实施骨架记录在 [`todo.md`](todo.md) 的“AI 逐结果解读 Agent 框架”中。
+
+设置 `ai.scope: "global"` 并在 `report.modules` 中加入 `ai` 可使用旧式合并章节。设置 `ai.enabled: false` 可跳过 AI 流程。
 容器镜像包含 AI 可选依赖；在本地以 Python 包运行且需要 AI 功能时，使用 `pip install -e '.[rna,ai]'`。数据整合会逐个纳入 DEG 与富集结果文件，并按 `deg_limit`、`enrichment_limit` 限制每个文件的行数；如需优先解读显著性最高的结果，请先对输入文件排序。
 
-调用前设置对应服务商的环境变量：`ARK_API_KEY`（`volcengine`）或 `DASHSCOPE_API_KEY`（`aliyun`），并在 `ai.model` 中填写可调用的模型标识。引擎还支持 `fallback_providers`（主模型失败时自动降级）、`ai.max_input_tokens`（输入截断）与 `ai.pricing`（成本估算）等可选配置，详见 [docs/Architecture.md](docs/Architecture.md) §7。
+所有服务商统一使用 OpenAI Python SDK 的 Chat Completions 接口。默认 Key 环境变量为 `ARK_API_KEY`（`volcengine`）、`DASHSCOPE_API_KEY`（`aliyun`）和 `OPENAI_API_KEY`（`openai` / `openai-compatible`）；`base_url` 可针对通用服务或各 provider 单独配置。仍需填写服务商支持的模型/接入点 ID。火山方舟与百炼使用官方 OpenAI-compatible 数据面地址；其他兼容端点通过 `ai.base_url` 和 `ai.api_key_env` 接入。引擎还支持 `fallback_providers`（主模型失败时自动降级）、`ai.max_input_tokens`（输入截断）与 `ai.pricing`（成本估算）等可选配置，详见 [docs/Architecture.md](docs/Architecture.md) §7。
+
+通用兼容网关示例：
+
+```json
+{
+  "ai": {
+    "enabled": true,
+    "provider": "openai-compatible",
+    "base_url": "https://llm.example.com/v1",
+    "api_key_env": "MY_LLM_API_KEY",
+    "model": "provider-model-id"
+  }
+}
+```
+
+然后在运行 BioReport 的同一终端设置 `MY_LLM_API_KEY`。`volcengine` 与 `aliyun` 仍可沿用旧配置，无需迁移字段。
 
 ## 🔄 向后兼容
 
@@ -578,6 +477,29 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 - HTML 中的 Plotly 和 ITables 资源由展示函数以内联或离线方式提供；普通文献超链接仍可能指向外部网站。RNA PDF 图表使用 Matplotlib 导出 SVG。
 
 ## 验证与测试
+
+## BioReport Workspace v1
+
+Workspace 提供历史报告、证据和模块级解读的本地工作台。先复制 `.env.example` 并设置数据库和可信报告根目录，然后启动仅监听 loopback 的 API：
+
+```bash
+pip install -e '.[web]'
+BIOREPORT_DB=/path/to/runs.db \
+BIOREPORT_TRUSTED_ROOT=/approved/report/root \
+python -m bioreport.api_server --host 127.0.0.1 --port 8000
+```
+
+另一个终端启动 React 工作台：
+
+```bash
+cd frontend
+npm install
+npm run dev -- --host 127.0.0.1 --port 5174
+```
+
+默认 API 不接受公网绑定；绑定非 loopback 地址前必须设置 `BIOREPORT_API_TOKEN`，并在反向代理中配置项目授权。Workspace 只通过逻辑 artifact ID 读取可信根目录下由 Manifest 登记的文件，不直接向浏览器暴露 SQLite 或本地路径。详细 API、迁移、安全和验收记录见 [`docs/architecture`](docs/architecture)。
+
+团队部署可额外设置 `BIOREPORT_ALLOWED_PROJECTS`（精确项目 ID 白名单）、`BIOREPORT_RATE_LIMIT_PER_MINUTE`（每客户端限流）和 `BIOREPORT_CORS_ORIGINS`（明确的浏览器来源白名单）；请求中的 `project` 参数只用于筛选，不能授予项目权限。
 
 - `bioreport validate -c <配置文件>`：检查配置结构与字段取值，不检查模块是否可用或输入文件是否存在。
 - `bioreport run -c <配置文件> -o <输出目录> --dry-run`：进一步检查模块选择、模板组合与输入文件，不调用 AI 或执行 Quarto。

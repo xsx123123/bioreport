@@ -29,8 +29,12 @@ flowchart TB
   HTMLView --> HTML["单文件 / 多页 HTML"]
   PDFView --> PDF["PDF 报告 + 版式校验"]
   Control -.-> AI["pipeline.py · 可选 AI 分支"]
-  AI -.-> Markdown["解读 Markdown · 渲染前回填"]
+  AI -.-> Markdown["逐结果 Markdown 卡片"]
   Markdown -.-> Execute
+  PDF -.-> Visual["PDF 首次渲染后的图像 + block manifest"]
+  Visual -.-> AI
+  Markdown -.-> PDF2["PDF 二次渲染回填"]
+  PDF2 --> Post
   Execute --> Post["元数据 / 只读锁 / 运行记录 / manifests"]
 
   classDef plain fill:#ffffff,stroke:#94a3b8,color:#334155;
@@ -43,7 +47,7 @@ flowchart TB
   class AI,Markdown optional;
 ```
 
-> 架构图源文件唯一维护于 `templates/shared/assets/architecture.mmd`(README 中有一份同步副本),此处不再重复维护图源,改动架构请以该文件为准。
+> 架构图的权威源文件是 `templates/shared/assets/architecture.mmd`。README 与本文保留同一架构语义的说明性副本；PDF 静态 SVG 在源文件变更后需要重新离线导出。改动架构请以该源文件和当前 CLI 实现为准。
 
 ## 3. 目录结构(真实清单)
 
@@ -59,7 +63,7 @@ flowchart TB
 │   ├── pipeline.py              # AI 分析流程封装(触发条件 + 两步调用)
 │   ├── assets/                  # 内置字体(PDF 与离线 HTML 使用)
 │   ├── ai/                      # AI 调用引擎
-│   │   ├── engine.py            #   volcengine(Ark SDK)/ aliyun(OpenAI 兼容)、降级、限长、计价
+│   │   ├── engine.py            #   OpenAI SDK 兼容服务商、降级、限长、计价
 │   │   └── schemas.py
 │   ├── report/                  # PDF 语义文档模型与渲染后校验
 │   │   ├── model.py             #   语义块词汇表(Section/TableBlock/FigureBlock/…)
@@ -169,9 +173,12 @@ PDF 独有的"先规划、再渲染、后校验"三层:
 
 触发条件:`"ai"` 在 `report.modules` 中且 `ai.enabled` 为 true(`cli.py:524-525`)。
 
-1. **数据整合**(`utils/consolidate_rna_seq_data.py`):按配置引用顺序读取 DEG/富集文件,受 `deg_limit`(默认 20)、`enrichment_limit`(默认 10)限制,产出 `data/consolidated_rna_seq_data.txt`;支持自定义 `prompt_file`。
-2. **模型解读**(`ai/engine.py`):`volcengine` 走 Ark SDK + `ARK_API_KEY`(默认模型 `doubao-seed-1-6-251015`);`aliyun` 走 OpenAI 兼容接口 + `DASHSCOPE_API_KEY`(**必须显式指定模型**),`base_url` 可配。内置 tenacity 重试、`fallback_providers` 自动降级、`max_input_tokens` 截断与 `pricing` 成本估算。
-3. **渲染前回填**:解读结果写为 `data/consolidated_rna_seq_report.md`,`templates/shared/AI.qmd` 以 include 嵌入 —— 即在 Quarto 渲染前就绪。
+1. **结果证据准备**(`pipeline.py`):默认按 fastp、FastQ Screen、QualiMap、STAR、PCA、表达分布、矩阵、热图、DEG 和富集结果建立独立结果 ID，并限制送入模型的行数和输入大小。
+2. **模型解读**(`ai/engine.py`):所有 provider 统一使用 OpenAI Python SDK。`volcengine` 默认使用 `ARK_API_KEY` 与方舟兼容地址；`aliyun` 默认使用 `DASHSCOPE_API_KEY` 与百炼兼容地址；`openai-compatible` 默认使用 `OPENAI_API_KEY`，并可通过 `ai.base_url` 指定端点。各服务商必须提供其可调用的模型/接入点 ID。内置 tenacity 重试、`fallback_providers` 自动降级、`max_input_tokens` 截断与 `pricing` 成本估算。
+3. **HTML/非视觉路径**:解读结果写入临时 `data/ai_interpretations/`，由对应 QMD 结果槽位在一次 Quarto 渲染中回填。
+4. **PDF 视觉路径**:CLI 先渲染一次 PDF，读取 `report-blocks-pdf.jsonl` 中的图表映射并转换可用图像，再把图像与结构化证据交给模型，最后重新渲染 PDF 回填卡片并执行版式校验。
+
+当前 Prompt 仍是过渡实现。后续 Agent 框架应将提示词拆成角色/安全边界、模块规则、证据 schema、输出 schema 和验证回退五层，并为每个结果保存提示词版本、证据 hash、模型参数和响应状态。
 
 模型生成内容需研究人员审阅;AI 是可选分支,不启用时完全不依赖 AI 依赖与 API Key。
 

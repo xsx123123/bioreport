@@ -3,16 +3,29 @@ flowchart TB
   RNA["RNA-seq 模块 · omics/rna"] --> Compose["模块注册、选择与内容组合"]
   Custom["自定义 QMD 模块"] --> Compose
   Theme["Jinja2 模板与共享主题"] --> Stage["临时 Quarto 项目<br/>QMD / 配置 / 资源"]
-  Control --> Compose --> Stage --> Execute["Quarto / Jupyter · 执行所选模块"]
-  Execute --> Analysis["读取结果 · 统计汇总与绘图函数"]
-  Data["已有分析结果与项目元数据"] --> Analysis
-  Control --> Records["运行日志 &lt;project_id&gt;_&lt;time&gt;_bioreport.log<br/>成功后配置备份"]
+  Control --> Compose --> Stage
+  Data["已有分析结果与项目元数据"] --> Analysis["读取结果 · 统计汇总与绘图函数"]
+  Stage --> Execute["Quarto / Jupyter · 执行所选模块"]
+  Data --> Execute
+  Execute --> Analysis
+
   Analysis --> HTMLView["HTML · Plotly / ITables"] --> HTML["单文件 HTML / 多页 HTML"]
-  Analysis --> PDFView["PDF 专用章节 · 静态图表与 Typst"] --> PDF["PDF 报告"]
-  Data -.-> AI["可选 AI 分支 · 结果整合与模型解读"]
-  Control -.-> AI
-  AI -.-> Markdown["解读 Markdown · 渲染前就绪"]
-  Markdown -.-> Execute
+  Analysis --> PDFView["PDF 图表 · 静态 SVG 与 Typst"]
+  PDFView --> FirstPDF["PDF 第一次渲染<br/>生成图表与 block manifest"]
+  FirstPDF --> Evidence["结构化证据 + 已渲染图像"]
+
+  Control -.-> AIPre["AI 结果解读（HTML / 非视觉路径）"]
+  Data -.-> AIPre
+  AIPre -.-> Markdown["逐结果 Markdown 卡片"]
+  Markdown -.-> Stage
+  Evidence -.-> AIPost["AI 视觉解读（PDF 两阶段路径）"]
+  AIPost -.-> Markdown
+  Markdown -.-> SecondPDF["PDF 第二次渲染<br/>回填对应结果卡片"]
+  SecondPDF --> PDF["PDF 报告 + 版式校验"]
+
+  Control --> Records["运行日志 / 配置备份 / manifests"]
+  Evidence -.-> Records
+  AIPost -.-> Records
 
   classDef plain fill:#ffffff,stroke:#94a3b8,color:#334155;
   classDef blue fill:#eff6ff,stroke:#3b82f6,color:#173258;
@@ -21,5 +34,5 @@ flowchart TB
 
   class Config,Data,RNA,Custom,Theme,HTMLView,PDFView plain;
   class Control,Compose,Stage,Execute,Analysis blue;
-  class HTML,PDF,Records green;
-  class AI,Markdown optional;
+  class HTML,PDF,Records,FirstPDF,SecondPDF green;
+  class AIPre,AIPost,Markdown,Evidence optional;
