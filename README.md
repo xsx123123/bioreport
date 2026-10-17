@@ -10,6 +10,11 @@
 
 使用统一的 JSON 或 YAML 配置控制报告标题、章节、AI 开关、分析参数和输出格式。
 
+![RNA-seq pdf 示例报告](./docs/rna-seq-pdf-report.png)
+
+![RNA-seq html 示例报告](./docs/rna-seq-html-report.png)
+
+
 ## ✨ 核心功能
 
 - **统一配置**：JSON 或 YAML 驱动报告类型、标题、导航、章节、AI、分析参数等。
@@ -43,6 +48,8 @@ python -m bioreport validate -c tests/report.rna.local.json
 python -m bioreport run -c tests/report.rna.html.json -o output/rna-report
 # 生成 pdf 报告
 python -m bioreport run -c tests/report.rna.pdf.json -o output/rna-report-pdf
+# 生成 pdf 报告 (ai解读)
+python -m bioreport run -c tests/report.rna.pdf.ai.json -o output/rna-pdf-report-ai 
 ```
 
 ### 查询运行记录
