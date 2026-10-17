@@ -189,14 +189,19 @@ def show_print_table(frame, limit=10, *, block_id="table", allow_split=False, ev
                 if isinstance(value, (int, np.integer)): text = str(value)
                 else: text = f"{value:.2f}"
             else: text = str(value)
-            cells.append(_breakable(text))
+            if (evidence or {}).get('kind') == 'sha256' and key == 'sha256':
+                from .fonts import breakable_hash
+                cells.append(breakable_hash(text))
+            else:
+                cells.append(_breakable(text))
         rows.append(cells)
     numeric = [bool(pd.api.types.is_numeric_dtype(frame[c]) or str(c) == '数值' or str(c).lower() in ['pvalue','padj','p.adjust','qvalue']) for c in frame.columns]
     from bioreport.report import TableBlock, LayoutPlanner
     block = LayoutPlanner().plan(TableBlock(id=block_id, caption=caption or "数据概览", headers=headers, rows=rows,
                                             numeric=numeric, allow_split=allow_split, content=evidence))
     record_block(block)
-    expression = ("#report-table(" + typst_literal(headers)
+    table_function = "report-sha256-table" if (evidence or {}).get('kind') == 'sha256' else "report-table"
+    expression = ("#" + table_function + "(" + typst_literal(headers)
                   + ", " + typst_literal(rows) + ", " + typst_literal(numeric)
                   + ", caption: " + typst_literal(caption or "数据概览")
                   + ", keep-together: " + typst_literal(block.keep_together)

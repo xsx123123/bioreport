@@ -15,6 +15,22 @@
         }
       }
     },
+    "depth": {
+      "type": "object",
+      "properties": {
+        "ratio_cutoff": {"type": "number", "exclusiveMinimum": 1}
+      }
+    },
+    "qc_reference": {
+      "type": "object",
+      "properties": {
+        "q30_min": {"type": "number", "minimum": 0, "maximum": 100},
+        "mapping_min": {"type": "number", "minimum": 0, "maximum": 100},
+        "duplication_max": {"type": "number", "minimum": 0, "maximum": 100},
+        "retained_min": {"type": "number", "minimum": 0, "maximum": 100},
+        "unique_min": {"type": "number", "minimum": 0, "maximum": 100}
+      }
+    },
     "enrichment": {
       "type": "object",
       "properties": {

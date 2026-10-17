@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 import pytest
 
 from bioreport.config import load_config
-from bioreport.utils.pdf_results import apply_gene_annotation, comparison_summaries, deg_counts, enrichment_chunks, gene_columns, ordered_samples, raw_probability_columns, summary_metrics
+from bioreport.utils.pdf_results import apply_gene_annotation, comparison_summaries, deg_counts, deg_padj_count, enrichment_chunks, gene_columns, ordered_samples, raw_probability_columns, summary_metrics, qc_reference_summaries
 from bioreport.utils.print_theme import export_vector, group_palette, print_panels
 from bioreport.utils import render_output
 from omics.rna.analysis.enrichment_plotly import draw_fancy_dotplot, parse_gene_ratios
@@ -29,6 +29,12 @@ def test_counts_use_raw_p_thresholds_and_never_mutate_input():
     pd.testing.assert_frame_equal(frame,original)
 
 
+def test_padj_count_handles_missing_and_invalid_values():
+    assert deg_padj_count(pd.DataFrame({'padj':[.01,.05,.2]})) == 1
+    assert deg_padj_count(pd.DataFrame({'padj':['NA','bad']})) is None
+    assert deg_padj_count(pd.DataFrame({'pvalue':[.01]})) is None
+
+
 def test_numeric_format_distinguishes_zero_small_p_and_missing(monkeypatch):
     outputs=[]
     monkeypatch.setattr(render_output,'display',outputs.append)
@@ -38,6 +44,18 @@ def test_numeric_format_distinguishes_zero_small_p_and_missing(monkeypatch):
     assert '0 (输入)' in text and '1.00e-250' in text and '1.00e-20' in text
     assert 'NA' in text and '1.23' in text and '-2.35' in text
     assert 'null' not in text and 'nan' not in text
+
+
+def test_sha256_table_inserts_sparse_invisible_wrap_points(monkeypatch):
+    outputs=[]
+    monkeypatch.setattr(render_output,'display',outputs.append)
+    digest='0123456789abcdef' * 4
+    frame=pd.DataFrame({'文件':['gene_annotation_file'],'路径':['index/genes.tsv'],'SHA256':[digest]})
+    render_output.show_print_table(frame,limit=None,evidence={'kind':'sha256'})
+    source=outputs[0].data
+    assert '#report-sha256-table(' in source
+    assert digest[:32]+'\u200b'+digest[32:] in source
+    assert '\u200b'.join(digest[i:i+8] for i in range(0,64,8)) not in source
 
 
 def test_gene_id_semantics_preserve_real_symbols():
@@ -83,6 +101,17 @@ def test_summary_excludes_extra_read_and_mapping_stages_and_missing_is_na(tmp_pa
     assert summary_metrics(cfg).set_index('项目').loc['平均 Q30','数值']=='NA'
 
 
+def test_qc_reference_summary_uses_configurable_thresholds_and_final_sample_rows():
+    cfg=load_config(ROOT/'tests/report.rna.pdf.json')
+    table=qc_reference_summaries(cfg).set_index('指标')
+    assert table.loc['平均 Q30','本次值']=='95.86%'
+    assert table.loc['平均比对率','是否在常见范围']=='是'
+    assert table.loc['测序深度均衡 max/min','是否在常见范围']=='否'
+    cfg.setdefault('analysis',{}).setdefault('qc_reference',{})['q30_min']=100
+    table=qc_reference_summaries(cfg).set_index('指标')
+    assert table.loc['平均 Q30','是否在常见范围']=='否'
+
+
 def test_display_path_reports_delivery_relative_paths_only():
     from bioreport.config import display_path
     cfg = load_config(ROOT / 'tests/report.rna.pdf.json')
@@ -107,6 +136,11 @@ def test_each_comparison_is_counted_separately_and_disabled_modules_do_not_read_
     summary=comparison_summaries(cfg)
     assert summary['比较组'].tolist()==['B_vs_A','C_vs_B']
     assert summary['上调'].tolist()==[1,1] and summary['下调'].tolist()==[0,1]
+    assert summary['满足阈值差异基因'].tolist()==[1,2]
+    assert summary['padj<0.05 基因数'].tolist()==['NA','NA']
+    assert summary['参与检验的基因总数'].tolist()==[2,2]
+    compact=comparison_summaries(cfg,detailed=False)
+    assert '满足阈值差异基因' not in compact and '参与检验的基因总数' in compact
     (tmp_path/'C_vs_B_DEG.csv').unlink()
     with pytest.raises(FileNotFoundError,match='C_vs_B'): comparison_summaries(cfg)
     cfg['report']['modules']=['rna.results.samples']
@@ -199,6 +233,23 @@ def test_multiqc_print_keeps_read_stages_separate_and_has_full_detail_mode(tmp_p
     qc_vis.visualize_multiqc_logs(str(directory),['fastp'])
     assert sum('Sequence Quality' in c for _,c in seen)==4
     assert any('Insert' in c for _,c in seen)
+
+
+def test_qualimap_coverage_uses_per_sample_solid_lines_and_group_labels(tmp_path,monkeypatch):
+    from omics.rna.analysis import qc_vis
+    metadata=tmp_path/'samples.csv'
+    pd.DataFrame({'sample':['a_raw','b_raw','c_raw'],
+                  'sample_name':['a','b','c'],'group':['1','1','2']}).to_csv(metadata,index=False)
+    cfg={'report':{'pdf':{'qc_detail':'key'}},'input_files':{'sample_file':str(metadata)}}
+    monkeypatch.setattr('bioreport.config.load_config',lambda:cfg)
+    fig=go.Figure([go.Scatter(x=[1,2],y=[2,3],mode='lines',name=name) for name in ['a_raw','b_raw','c_raw']])
+    seen=[]
+    monkeypatch.setattr(qc_vis,'show_figure',lambda figure,caption=None:seen.append(figure))
+    qc_vis._show_print_qc(fig,'qualimap-coverage-histogram','Coverage histogram')
+    result=seen[0]
+    assert [trace.name for trace in result.data]==['a（组1）','b（组1）','c（组2）']
+    assert len({trace.line.color for trace in result.data})==3
+    assert {trace.line.dash for trace in result.data}=={'solid'}
 
 
 def test_pdf_options_are_validated(tmp_path):

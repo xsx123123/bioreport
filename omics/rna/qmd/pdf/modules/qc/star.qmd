@@ -39,7 +39,18 @@ else:
         'star-uniquely_mapped_percent': 'Unique (%)', 'star-multimapped': 'Multi reads'})
     limit = star_pdf.get('qc_rows',30)
     show_print_table(mapping, limit=limit, caption="STAR 比对质量统计")
-    typst_note(f"STAR 统计预览：前 {min(limit,len(mapping))} / {len(mapping)} 条记录；{'默认仅展示最终比对，排除 STARpass1' if star_pdf.get('qc_detail','key')=='key' else '保留输入中的比对阶段标签'}。样本名使用元数据的 sample_name，原始映射见样本文件。Reads 数值沿用输入文件单位（Million），百分比列单位为 %。完整结果（数据目录内相对路径）：{display_path(mapping_path)}")
+    notes = [f"STAR 显示最终样本（{min(limit,len(mapping))}/{len(mapping)}），排除 STARpass1；Reads 单位 Million；来源 {display_path(mapping_path)}。"]
+    cutoff = star_config.get('analysis', {}).get('depth', {}).get('ratio_cutoff', 1.5)
+    depth_rows = mapping[~mapping['Sample'].astype(str).str.contains('_STARpass1', regex=False)]
+    if 'Total reads' in depth_rows:
+        totals = pd.to_numeric(depth_rows['Total reads'], errors='coerce')
+        valid_totals = totals.dropna()
+        if len(valid_totals) >= 2 and valid_totals.min() > 0:
+            ratio = float(valid_totals.max() / valid_totals.min())
+            if ratio > cutoff:
+                hi, lo = totals.idxmax(), totals.idxmin()
+                notes.append(f"深度不均衡：{depth_rows.loc[hi, 'Sample']} {totals.loc[hi]:.2f}M / {depth_rows.loc[lo, 'Sample']} {totals.loc[lo]:.2f}M = {ratio:.1f} 倍（参考线 {cutoff:g}）；建议核查上样量与下机量。")
+    typst_note(' '.join(notes))
     if star_pdf.get('qc_detail','key')=='all':
         visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['STAR'])
 ```

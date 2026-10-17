@@ -42,6 +42,6 @@ python tests/render_report_inprocess.py -c tests/report.rna.pdf.json -o output/c
 
 项目、委托单位、物种、参考基因组来自现有配置；比较组来自 contrasts CSV，分析仍使用原始 ID `2_vs_1`，封面展示 `Group 2 vs Group 1`；日期来自配置或真实 provenance 生成日期；BioReport 版本来自运行中的包版本。没有添加模板常量项目、日期、物种或校验结论。
 
-示例输入的 pipeline_version 为 `RNAFlow example`，因此封面显示“未提供”，不会猜测真实版本。现有 provenance 的 input_checksums 仅能证明完成指纹计算，不能证明与可信基准完成比对，因此显示“SHA-256 指纹已记录（7 个输入文件）；未比对可信基准”。本次没有修改证据或校验逻辑，也没有引入未经支持的 Verified 状态。
+示例输入的 pipeline_version 为 `RNAFlow example`，封面现通过 `FlowVersion` 显示该值；BioReport 版本通过 `BioReport` 标识展示。现有 provenance 的 input_checksums 仅能证明完成指纹计算，不能证明与外部基准完成比对，因此封面显示“已记录 SHA-256 指纹（N 个输入文件），未与外部基准比对”。本次没有修改证据或校验逻辑，也没有引入未经支持的 Verified 状态。
 
 已知限制：现有元数据接口未提供可信哈希基准比对结论；本次不会宣称 SHA-256 Verified。极端无界长度仍受单张 A4 的物理容量限制；验证覆盖本记录所列中英文长文本。实体打印效果尚未验证。

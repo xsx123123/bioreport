@@ -89,6 +89,16 @@ def deg_counts(frame, fc, p):
             int(((values.log2FoldChange < -fc)&(values.pvalue < p)).sum()))
 
 
+def deg_padj_count(frame, padj_cutoff=.05):
+    """Count adjusted P values below the cutoff, or return None if unavailable."""
+    if 'padj' not in frame:
+        return None
+    values = pd.to_numeric(frame['padj'], errors='coerce')
+    if not values.notna().any():
+        return None
+    return int(values.lt(padj_cutoff).sum())
+
+
 def settings(project):
     return project.get('report',{}).get('pdf',{})
 
@@ -153,7 +163,7 @@ def deg_metric_label(comparison):
     return f'{comparison} 差异基因数'
 
 
-def comparison_summaries(config):
+def comparison_summaries(config, *, detailed=True):
     from bioreport.modules import selected_modules
     from bioreport.registry import get_registry
     from .report_utils import get_comparisons_from_csv, get_file_path
@@ -170,5 +180,61 @@ def comparison_summaries(config):
             raise FileNotFoundError(f'Missing DEG result: {comp}')
         frame = pd.read_csv(path)
         up, down = deg_counts(frame, fc, p)
-        rows.append({'比较组':comp, '上调':up, '下调':down, '总记录数':len(frame)})
+        row = {'比较组':comp, '上调':up, '下调':down}
+        if detailed:
+            padj_count = deg_padj_count(frame)
+            row.update({'满足阈值差异基因':up + down,
+                        'padj<0.05 基因数':padj_count if padj_count is not None else 'NA',
+                        '参与检验的基因总数':len(frame)})
+        else:
+            row['参与检验的基因总数'] = len(frame)
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def qc_reference_summaries(config):
+    """Build the PDF QC reference comparison from final sample-level MultiQC rows."""
+    files = config['input_files']
+    samples = pd.read_csv(files['sample_file'])
+    aliases = {str(v) for col in ('sample', 'sample_name', 'Sample')
+               if col in samples for v in samples[col].dropna()}
+
+    def values(path_key, column, *, scale=1):
+        path = files.get(path_key)
+        if not path or not Path(path).is_file():
+            return pd.Series(dtype=float)
+        frame = pd.read_csv(path, sep='\t')
+        if 'Sample' in frame:
+            frame = frame[frame['Sample'].astype(str).isin(aliases)].drop_duplicates('Sample')
+        return pd.to_numeric(frame[column], errors='coerce').dropna() * scale if column in frame else pd.Series(dtype=float)
+
+    def span(series, suffix='%'):
+        return 'NA' if series.empty else f'{series.min():.1f}–{series.max():.1f}{suffix}'
+
+    def avg(series):
+        return 'NA' if series.empty else f'{series.mean():.2f}%'
+
+    qc = config.get('analysis', {}).get('qc_reference', {})
+    q30 = values('qc_file', 'fastp-after_filtering_q30_rate')
+    if not q30.empty and q30.max() <= 1:
+        q30 *= 100
+    mapping = values('mapping_file', 'star-mapped_percent')
+    unique = values('mapping_file', 'star-uniquely_mapped_percent')
+    depth = values('mapping_file', 'star-total_reads')
+    duplication = values('fastp_stats_file', 'fastp-pct_duplication')
+    gc = values('fastp_stats_file', 'fastp-after_filtering_gc_content')
+    retained = values('fastp_stats_file', 'fastp-pct_surviving')
+    ratio = depth.max() / depth.min() if len(depth) >= 2 and depth.min() > 0 else None
+    rows = []
+    def add(label, reference, value, ok):
+        rows.append({'指标':label, '常见参考范围':reference, '本次值':value,
+                     '是否在常见范围':ok if value != 'NA' else '无法判断'})
+    add('平均 Q30', f"≥ {qc.get('q30_min', 85):g}%", avg(q30), '是' if not q30.empty and q30.mean() >= qc.get('q30_min', 85) else '否')
+    add('平均比对率', f"≥ {qc.get('mapping_min', 80):g}%", avg(mapping), '是' if not mapping.empty and mapping.mean() >= qc.get('mapping_min', 80) else '否')
+    add('重复率 Dup', f"< {qc.get('duplication_max', 20):g}%（视文库类型）", span(duplication), '是' if not duplication.empty and duplication.max() < qc.get('duplication_max', 20) else '部分偏高' if not duplication.empty else '无法判断')
+    add('GC 含量', '与物种预期一致', span(gc), '需结合物种判断' if not gc.empty else '无法判断')
+    add('过滤保留率 Retained', f"≥ {qc.get('retained_min', 90):g}%", span(retained), '是' if not retained.empty and retained.min() >= qc.get('retained_min', 90) else '否')
+    add('Unique 比对率', f"≥ {qc.get('unique_min', 80):g}%", span(unique), '是' if not unique.empty and unique.min() >= qc.get('unique_min', 80) else '否')
+    depth_cutoff = config.get('analysis', {}).get('depth', {}).get('ratio_cutoff', 1.5)
+    add('测序深度均衡 max/min', f"< {depth_cutoff:g}", 'NA' if ratio is None else f'{ratio:.1f}', '是' if ratio is not None and ratio < depth_cutoff else '否' if ratio is not None else '无法判断')
     return pd.DataFrame(rows)

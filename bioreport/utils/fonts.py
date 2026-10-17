@@ -93,6 +93,6 @@ def breakable_path(value: str) -> str:
 
 
 def breakable_hash(value: str) -> str:
-    """Insert a zero-width space every 8 chars so SHA256 digests never truncate."""
+    """Insert invisible wrap opportunities every 32 chars in SHA256 digests."""
     text = str(value)
-    return ZWSP.join(text[i:i + 8] for i in range(0, len(text), 8))
+    return ZWSP.join(text[i:i + 32] for i in range(0, len(text), 32))

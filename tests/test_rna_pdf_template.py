@@ -45,11 +45,10 @@ def test_pdf_has_own_content_and_print_layout(tmp_path):
         assert label in cover
     assert f"ProjectID: {config['project']['project_id']}" in cover
     assert "BioReport: v2.0.0" in cover
-    assert "FlowVersion: RNAFlow" in cover
-    assert "RNAFlow example" not in cover
+    assert f"FlowVersion: {config['project']['pipeline_version']}" in cover
     assert "align: center" in (staged / "pdf/print-style.typ").read_text()
     print_style = (staged / "pdf/print-style.typ").read_text()
-    assert 'numbering("1-1"' in print_style and "supplement: [图]" in print_style
+    assert 'numbering("1-1"' in print_style and "supplement: [图#h(" in print_style
     assert "block(sticky: true)[#figure(" in print_style
     assert "sci(" in cover and "Group 2 vs Group 1" in cover
     assert "2_vs_1" not in cover
@@ -64,9 +63,9 @@ def test_pdf_has_own_content_and_print_layout(tmp_path):
     compose_report(config, staged, pdf=True)
     cover = (staged / "pdf/rna-cover.typ").read_text()
     assert "报告生成日期" in cover and "2026-10-17" in cover
-    assert "数据完整性校验状态" in cover and "SHA-256 指纹已记录" in cover
+    assert "数据完整性校验状态" in cover and "已记录 SHA-256 指纹" in cover
     assert "Verified" not in cover
-    assert "未比对可信基准" in cover
+    assert "未与外部基准比对" in cover
 
 
 def test_pdf_cells_read_rna_example_and_produce_tables_and_figures(tmp_path, monkeypatch):

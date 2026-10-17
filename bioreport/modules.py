@@ -366,7 +366,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             return ' vs '.join(f"Group {p}" if p.isdigit() else p for p in parts)
 
         checksums = provenance.get('input_checksums') or {}
-        integrity = (f"SHA-256 指纹已记录（{len(checksums)} 个输入文件）；未比对可信基准"
+        integrity = (f"已记录 SHA-256 指纹（{len(checksums)} 个输入文件），未与外部基准比对"
                      if checksums else "未提供校验结果")
         study = [
             ("委托单位", clean(lines[1]), False),

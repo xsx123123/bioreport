@@ -98,6 +98,31 @@
   ]
 })
 
+#let report-sha256-table(headers, rows, numeric, keep-together: true, note: none, caption: "数据概览", id: "table") = layout(size => {
+  let body = [
+    #report-table-counter.step()
+    #block(width: 100%, sticky: true, below: 2mm)[
+      #set par(first-line-indent: 0pt, justify: false)
+      #align(center, context [#report-observation(id, "table", "caption")
+        #text(size: 9.5pt, weight: "medium", fill: rgb("#29445F"))[表 #counter(heading).at(here()).first()-#report-table-counter.display("1") #h(.5em)#caption]])
+    ]
+    #set text(size: 8pt)
+    #table(columns: (40mm, 58mm, 68mm), inset: (x: 4pt, y: 5pt), align: center,
+      stroke: (x, y) => (bottom: .35pt + rgb("#dce3ec")),
+      fill: (x, y) => if y == 0 { rgb("#eaf0f7") } else if calc.even(y) { rgb("#f6f9fc") } else { none },
+      table.header(repeat: true, ..headers.enumerate().map(((j, h)) => [#if j == 0 { report-observation(id, "table", "header") }#text(weight: "bold", report-cell(h))#if j == 0 { report-continuation(id) }])),
+      ..rows.enumerate().map(((i, row)) => row.enumerate().map(((j, cell)) =>
+        [#if j == 0 { report-observation(id, "table", "row-" + str(i)) }#if j == 0 { text(size: 6.5pt, report-cell(cell)) } else if j == 2 { text(font: report-mono-fonts, size: 8pt, cell) } else { report-cell(cell) }])).flatten(),
+    )
+  ]
+  let fits = measure(body, width: size.width).height <= 225mm
+  report-observation(id, "table", if keep-together and fits { "small" } else { "large" })
+  block(breakable: not (keep-together and fits), sticky: keep-together and fits, above: 3mm, below: 3mm)[
+    #body
+    #if note != none { v(1.5mm); text(size: 9pt, fill: rgb("#53636a"))[#note] }
+  ]
+})
+
 // Pair / triplet / grid: preserve captions and move the reading unit together
 // when it fits a page. Oversized groups flow without reducing typography.
 #let report-figure-group(items, columns: 1) = layout(size => {

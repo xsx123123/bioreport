@@ -274,11 +274,13 @@ def _show_print_qc(fig, identifier, title):
             'mapped reads', 'mapped_reads', 'coverage histogram', 'coverage_histogram',
             'alignment scores', 'alignment_scores', 'star_alignment']):
         return
-    # The same sample group uses the same color in QC, PCA, distribution and heatmap.
+    coverage_plot = 'coverage histogram' in key or 'coverage_histogram' in key
+    # Coverage curves encode sample identity with color; group identity stays in the legend.
     sample_file = config.get('input_files', {}).get('sample_file')
     if sample_file and os.path.isfile(sample_file):
         import pandas as pd
         from bioreport.utils.print_theme import group_palette
+        sample_palette = ['#4477AA', '#EE6677', '#228833', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB', '#44AA99', '#DDCC77', '#AA4499']
         metadata = pd.read_csv(sample_file)
         if 'group' in metadata:
             palette = group_palette(metadata['group'])
@@ -287,17 +289,22 @@ def _show_print_qc(fig, identifier, title):
                 for column in ['sample','sample_name']:
                     if column in metadata:
                         aliases[str(row[column])] = (str(row.get('sample_name',row[column])),str(row['group']))
-            for trace in fig.data:
+            for trace_index, trace in enumerate(fig.data):
                 if trace.type == 'scatter' and trace.name in aliases:
                     sample, group = aliases[trace.name]
-                    trace.line.color = palette[group]
-                    # Preserve replicate identity through the sample legend.
-                    trace.line.dash = ['solid','dash','dot','dashdot'][list(aliases).index(trace.name)%4]
-                    trace.name = sample
+                    if coverage_plot:
+                        trace.line.color = sample_palette[trace_index % len(sample_palette)]
+                        trace.line.dash = 'solid'
+                        trace.name = f'{sample}（组{group}）'
+                    else:
+                        trace.line.color = palette[group]
+                        # Preserve replicate identity through the sample legend.
+                        trace.line.dash = ['solid','dash','dot','dashdot'][list(aliases).index(trace.name)%4]
+                        trace.name = sample
             from bioreport.utils.pdf_results import ordered_samples
             order = ordered_samples(metadata)
             if all(t.type=='scatter' and 'lines' in (t.mode or 'lines') for t in fig.data):
-                fig.data = sorted(fig.data,key=lambda t:order.index(t.name) if t.name in order else len(order))
+                fig.data = sorted(fig.data,key=lambda t:next((i for i, sample in enumerate(order) if t.name == sample or t.name.startswith(sample+'（组')),len(order)))
             if fig.data and all(t.type=='bar' for t in fig.data):
                 def identity(value):
                     for alias in sorted(aliases,key=len,reverse=True):

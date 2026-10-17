@@ -3,6 +3,16 @@ title: 质量控制
 ---
 
 {{< include pdf/modules/qc/setup.qmd >}}
+```{python}
+#| label: qc-reference-table
+#| results: asis
+from bioreport.utils.pdf_results import qc_reference_summaries
+from bioreport.utils.render_output import show_print_table, typst_note
+from bioreport.config import load_config
+qc_reference = qc_reference_summaries(load_config())
+show_print_table(qc_reference, limit=None, caption="常见 QC 参考范围对照")
+typst_note("表中参考范围为常见经验值，不是强制判定标准；是否在常见范围仅作客观对照，最终质控判定由研究人员负责。GC 含量需结合物种与文库类型判断。")
+```
 {{< include pdf/modules/qc/fastp.qmd >}}
 {{< include pdf/modules/qc/screen.qmd >}}
 {{< include pdf/modules/qc/qualimap.qmd >}}
