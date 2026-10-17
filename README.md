@@ -248,3 +248,7 @@ Current version: **v2.0.0**
 Maintainer: **Zhang Jian**
 
 The project welcomes issue reports and module contributions through GitHub. The BioReport/CygnusX BioOps team thanks the research teams who contributed analysis requirements and testing feedback.
+
+<p align="center">
+  <img src="愿景.png" alt="愿景 FROM STARDUST, TO DISCOVERY：让每一次计算留下证据，让每一份报告承载发现。本项目欢迎通过 GitHub 提交问题反馈与模块贡献；感谢华中农业大学相关科研团队在研究场景、分析需求与工具测试方面提供的宝贵支持。开发与维护：BioReport / CygnusX BioOps 研发团队。" width="880">
+</p>
