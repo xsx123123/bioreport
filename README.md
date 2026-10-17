@@ -79,6 +79,8 @@ bioreport runs --json
 bioreport runs --tui
 ```
 
+![查询运行记录](./docs/tui.png)
+
 Workspace database migration is explicit and creates a neighboring backup:
 
 ```bash
