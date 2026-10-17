@@ -17,13 +17,21 @@ The same project configuration can produce interactive HTML and print-ready PDF 
 ## Features
 
 - **Unified configuration**: JSON or YAML controls report metadata, modules, analysis parameters, AI, and output formats.
-- **Composable modules**: Select built-in modules such as `index`, `workflow`, `qc`, `results`, `provenance`, `ai`, and `about`; custom QMD modules can be added through `report.module_definitions`.
-- **HTML and PDF delivery**: `report.output_format: [html, pdf]` produces a single-file HTML report and a Typst-based PDF report.
+- **Composable modules**: The engine composes shared modules such as `index`, `workflow`, `provenance`, `ai`, and `about`. The built-in `qc.*` and `results.*` modules, including `qc.fastp`, `results.deg`, and `results.enrichment`, are currently RNA-seq-specific. Other omics workflows can use external QMD modules through `report.module_definitions`; native modules, data contracts, and analysis components for additional omics types are planned.
+- **HTML and PDF delivery**: The engine supports `report.output_format: [html, pdf]` for HTML and Typst-based PDF delivery. The current RNA-seq single-page template exposes six navigable pages; other omics types will use the same delivery interface with their own chapter templates.
 - **Interactive HTML**: Plotly figures and searchable Itables tables are embedded for offline use.
-- **Reproducible output**: Input SHA-256 fingerprints, provenance, delivery manifests, configuration backups, and run logs are recorded.
-- **AI-assisted interpretation**: Results can be interpreted independently with structured evidence and optional visual input.
-- **Docker support**: The image includes Python, Quarto, and the report dependencies.
+- **Report variants**: The same data and code can produce full, compact, or AI-disabled reports through module and PDF settings.
+- **Reproducible delivery**: Input SHA-256 fingerprints, provenance, delivery manifests, configuration backups, engine metadata, module lists, and run logs are recorded; final artifacts are re-hashed and validated.
+- **Report history and evidence**: Workspace/API endpoints expose historical runs, artifacts, evidence packages, provenance, and module-level interpretation status with integrity and availability information.
+- **Per-result AI interpretation**: QC, sample relationships, expression, heatmaps, DEG, and enrichment outputs receive independent Markdown interpretation cards linked to their source evidence.
+- **PDF visual interpretation**: For `ai.scope: results`, PDF generation renders figures first, sends rendered images plus structured evidence to the model, and performs a second render to place cards below the corresponding result; structured evidence is used as a fallback when an image cannot be prepared.
+- **Auditable AI integration**: Providers use the OpenAI Python SDK with retries, input limits, fallback providers, visual fallback, and empty-response handling; result slots can record evidence hashes, prompt versions, model parameters, and response status.
+- **Docker roadmap**: A Dockerfile and deployment draft are included; the formal container delivery workflow is planned for a later version.
 - **Backward compatibility**: Legacy `project_summary.json` and older YAML layouts remain supported by the config loader.
+
+## Next-stage priorities
+
+The next stage will focus on three areas: completing Docker images, mount conventions, and formal container delivery; evolving the current per-result AI framework with specialized prompts, evidence validation, auditable agents, and asynchronous Workspace interpretation; and adding native modules, data readers, analysis functions, and report templates for additional omics types. See [`todo.md`](todo.md) and [`docs/AI.md`](docs/AI.md) for the roadmap.
 
 ## Requirements
 
@@ -33,7 +41,7 @@ The same project configuration can produce interactive HTML and print-ready PDF 
 - AI dependencies: `pip install -e '.[rna,ai]'`
 - Optional PDF validation and read-only locking: `pip install -e '.[rna,security,validation]'`
 - Kaleido and a supported Chrome/Chromium installation for static figure export
-- Docker for containerized execution
+- Docker support is planned; see [`deploy/`](deploy/) for the deployment draft.
 
 ## Quick start
 
@@ -78,31 +86,9 @@ bioreport workspace-migrate --db /path/to/runs.db
 bioreport workspace-restore --db /path/to/runs.db
 ```
 
-### Docker
+## Docker and PDF deployment
 
-```bash
-docker build -f deploy/Dockerfile -t bioreport:latest .
-
-docker run --rm \
-  -v /path/to/data:/data:ro \
-  -v /path/to/output:/workspace \
-  -v "$(pwd)/configs/report.example.json:/app/configs/report.example.json:ro" \
-  bioreport:latest -c /app/configs/report.example.json -o /workspace
-```
-
-## PDF reports
-
-RNA-seq PDF reports use dedicated QMD chapters and Typst print styles. They include a cover, table of contents, project and sample information, workflow and methods, QC, expression, differential expression, enrichment, provenance, and delivery notes.
-
-PDF tables are previews; complete result files remain in the configured delivery directory. The PDF path descriptions use relative paths under `input_files.data_dir` and do not expose host absolute paths.
-
-The PDF AI path with `ai.scope: results` runs in two stages:
-
-1. Render the figures and tables once and record `report-blocks-pdf.jsonl`.
-2. Bind each result ID to structured evidence and any rendered figure image, then call the model independently.
-3. Write the Markdown cards and render the PDF again so each interpretation appears below its corresponding result.
-
-The PDF layout and content validators run after the final render. See [PDF style guidance](docs/info/pdf-style.md).
+Docker execution and RNA-seq PDF deployment details are maintained in the draft guide at [`deploy/README.zh-CN.md`](deploy/README.zh-CN.md). Docker support is planned as a formal delivery path; local Python/Quarto execution remains the recommended development workflow.
 
 ## Architecture
 
@@ -129,48 +115,11 @@ flowchart TB
   PDF2 --> PDF["Final PDF + validation"]
 ```
 
-## AI configuration
+## AI configuration and roadmap
 
-The default `results` scope creates one card for each supported result. The legacy `global` scope creates the old combined interpretation chapter.
+The JSON/YAML configuration already reserves compatibility fields for AI providers and future workflows, including `enabled`, `provider`, `model`, `base_url`, `api_key_env`, `scope`, `vision`, input limits, and fallback settings. Detailed field definitions and the current interpretation pipeline are maintained in [`docs/AI.md`](docs/AI.md).
 
-| Field | Description |
-| :--- | :--- |
-| `enabled` | Enable or disable interpretation. |
-| `provider` / `model` | Provider alias and model or endpoint ID. |
-| `base_url` / `api_key_env` | OpenAI-compatible endpoint and API key environment variable. |
-| `temperature` | Sampling temperature. |
-| `max_output_tokens` | Per-result output limit; 600–1200 is recommended for cards. |
-| `scope` | `results` for independent cards; `global` for the legacy combined chapter. |
-| `result_rows` | Maximum CSV rows sent for each result. |
-| `prompt_file` | Optional custom system prompt. |
-| `vision` / `max_image_bytes` | Visual input switch and per-image size limit. |
-
-All providers use the OpenAI Python SDK. Default API key variables are `ARK_API_KEY` for `volcengine`, `DASHSCOPE_API_KEY` for `aliyun`, and `OPENAI_API_KEY` for `openai-compatible`.
-
-```json
-{
-  "ai": {
-    "enabled": true,
-    "provider": "openai-compatible",
-    "base_url": "https://llm.example.com/v1",
-    "api_key_env": "MY_LLM_API_KEY",
-    "model": "provider-model-id",
-    "scope": "results"
-  }
-}
-```
-
-### Current AI framework and next version
-
-The current version has established the AI interpretation framework:
-
-- independent result IDs and cards for QC, sample relationships, expression, heatmaps, DEG, and enrichment;
-- bounded structured evidence and source-artifact mapping;
-- two-stage visual interpretation for PDF reports;
-- OpenAI SDK compatibility, retries, input limits, visual fallback, and visible empty-response fallback;
-- result slots ready to record evidence hashes, prompt versions, model parameters, and response status.
-
-The next version will focus on prompt and interpretation quality rather than changing the report rendering pipeline. Prompts will be specialized for fastp/QC, sample relationships, DEG, enrichment, and visual chart reading. The target output structure is: observations, statistical evidence, biological interpretation, limitations, and review items. Numeric references, evidence consistency, and empty-result validation will be strengthened. The implementation skeleton is tracked in [`todo.md`](todo.md).
+The current release provides the per-result interpretation framework. The next version will focus on specialized prompts, evidence constraints, output validation, audit fields, and asynchronous AI interpretation in Workspace v2. See [`docs/AI.md`](docs/AI.md) and [`todo.md`](todo.md) for the roadmap.
 
 ## Project structure
 
@@ -202,9 +151,9 @@ bioreport/
 - HTML figures and tables are emitted through shared display helpers. PDF figures use static SVG export and Typst layout.
 - New omics packages should register modules, provide QMD templates and analysis functions, and add package data as needed.
 
-## Workspace v1
+## Workspace v1 and Web roadmap
 
-The local Workspace exposes historical runs, evidence, artifacts, provenance, and module-level interpretations:
+The current Workspace v1 exposes historical runs, evidence, artifacts, provenance, and module-level interpretations. The static HTML/PDF reports remain the primary delivery format; a complete AI workbench is planned for Workspace v2.
 
 ```bash
 pip install -e '.[web]'
@@ -222,6 +171,8 @@ npm run dev -- --host 127.0.0.1 --port 5174
 ```
 
 The API defaults to loopback. Public deployment requires an API token, trusted project configuration, and a reverse proxy. Details are in [`docs/architecture/`](docs/architecture/).
+
+Workspace v2 will connect projects, runs, analysis modules, evidence, per-result AI interpretations, and delivery versions in one workflow. Planned capabilities include asynchronous interpretation, evidence-linked re-interpretation, version history, and precise HTML/PDF card backfill. See [`todo.md`](todo.md) for the roadmap.
 
 ## Validation and tests
 

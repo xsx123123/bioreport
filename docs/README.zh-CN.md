@@ -10,25 +10,31 @@
 
 作为 [**CygnusX BioOps**](https://github.com/xsx123123/omichub) 体系下的核心可视化与交付组件，**BioReport** 是一款基于 Python 与 Quarto 构建的模块化组学报告生成工具。目前内置的 RNA-seq 模块支持一站式整合质控（`fastp`）、序列比对、差异表达及富集分析结果，并可通过配置文件灵活编排报告模块，按需接入 AI 模型实现自动化结果解读。在输出格式上，默认 RNA-seq 流程生成的交互式单文件 HTML 包含六个可切换的章节视图；仓库内置的完整 RNA-seq 示例与通用分析示例均支持同时导出单文件 HTML 与 PDF，而本地轻量级 RNA 示例则仅输出 HTML。
 
-使用统一的 JSON 或 YAML 配置控制报告标题、章节、AI 开关、分析参数和输出格式。
-
+pdf 示例报告
 ![RNA-seq pdf 示例报告](./rna-seq-pdf-report.png)
-
+html 示例报告
 ![RNA-seq html 示例报告](./rna-seq-html-report.png)
 
 
 ## ✨ 核心功能
 
-- **统一配置**：JSON 或 YAML 驱动报告类型、标题、导航、章节、AI、分析参数等。
-- **JSON 输入**：`configs/report.example.json` 展示相同配置结构，`bioreport/report.schema.json` 定义字段类型与参数范围；`input_files` 中的相对路径以 `data_dir` 为根。
-- **模块组合**：`report.modules` 按顺序引用 `index`、`workflow`、`qc`、`results`、`provenance`、`ai`、`about` 等内容模块；单页模式可单独引用 `qc.fastp`、`qc.screen`、`qc.qualimap`、`qc.star` 和 `results.samples`、`results.matrix`、`results.heatmap`、`results.deg`、`results.enrichment`，也可通过 `report.module_definitions` 引用外部 QMD。
-- **双格式输出**：`report.output_format: [html, pdf]` 生成 HTML 和 PDF；RNA-seq 的 HTML 在一个文件内按导航切换六个页面，PDF 图表使用静态图。
-- **多报告变体**：同一套数据和代码，可输出完整版、精简版、无 AI 版等不同报告。
-- **自动化流程**：按配置执行数据检查、可选 AI 解读及 Quarto 渲染。
-- **AI 智能解读**：利用大语言模型（LLM）对差异基因和富集通路进行生物学功能分析。
+- **统一配置**：JSON 或 YAML 驱动报告类型、标题、导航、章节、AI、分析参数和交付格式；`configs/report.example.json` 展示配置结构，`bioreport/report.schema.json` 定义字段类型与参数范围，`input_files` 中的相对路径以 `data_dir` 为根。
+- **模块组合**：通用引擎通过 `report.modules` 按顺序组合 `index`、`workflow`、`provenance`、`ai`、`about` 等共享模块；当前内置的 `qc.*`、`results.*` 细分模块（如 `qc.fastp`、`results.deg`、`results.enrichment`）属于 RNA-seq 模板。其他组学或自定义流程可通过 `report.module_definitions` 引用外部 QMD，后续将逐步补充各组学的原生模块、数据契约和分析组件。
+- **双格式输出**：通用引擎支持 `report.output_format: [html, pdf]` 生成 HTML 和 PDF；HTML 保留 Plotly/Itables 交互能力，PDF 使用静态图和 Typst 排版，并支持 PDF 语义与版式校验。当前 RNA-seq 单页模板提供六个导航页面，其他组学将沿用同一交付接口并使用各自的章节模板。
+- **多报告变体**：同一套数据和代码可输出完整版、精简版、无 AI 版等报告，并可通过模块列表和 PDF 参数控制内容密度。
+- **可追溯交付**：每次运行记录输入文件 SHA-256、配置副本、引擎版本、模块清单、运行日志和交付 manifest，并对最终产物执行重哈希校验；`provenance` 页面展示可复现所需的元数据。
+- **运行历史与证据**：Workspace/API 可读取历史运行、报告产物、输入文件、证据包、溯源信息和模块级 AI 解读，并对不可用路径或完整性状态给出明确结果。
+- **自动化流程**：按配置执行输入完整性检查、模块组合、数据展示、可选 AI 解读、Quarto 渲染、PDF 校验和交付清单生成。
+- **逐结果 AI 解读**：LLM 针对 fastp、FastQ Screen、QualiMap、STAR、PCA、表达分布、矩阵、热图、DEG 及每个富集结果分别生成 Markdown 解读卡片，并放置在对应表格或图形下方；结构化证据与来源结果绑定。
+- **PDF 视觉解读**：PDF 的 `ai.scope: results` 使用两阶段流程，先渲染图表，再将已渲染图像与结构化证据提交给视觉模型，最后二次渲染回填解读卡片；图像不可用时自动回退到结构化证据。
+- **AI 可审计性**：统一使用 OpenAI Python SDK 接入兼容服务，支持超时、重试、输入截断、服务商降级、视觉降级和空响应回退；结果槽位可记录证据哈希、提示词版本、模型参数和响应状态。
 - **交互式报告**：基于 Quarto 生成，包含 Plotly 交互图表、Itables 数据表格。
-- **Docker 容器化**：在镜像中提供 Python、Quarto 和报告依赖，便于部署。
+- **Docker 支持规划**：仓库已保留 Dockerfile 和部署草案，正式容器化交付方式将在后续版本完善。
 - **向后兼容**：旧版 `project_summary.json` 仍可运行。
+
+## 下一阶段重点
+
+下一阶段将集中优化三条方向：完善 Docker 镜像、挂载约定和正式容器化交付；将现有逐结果 AI 框架升级为分模块 Prompt、证据校验、可审计 Agent 和 Workspace 异步解读；在通用引擎契约基础上补充其他组学的原生模块、数据读取、分析函数和报告模板。详细计划见 [`todo.md`](../todo.md) 和 [`AI.md`](AI.md)。
 
 ## 🛠️ 环境依赖
 
@@ -37,7 +43,7 @@
 - AI 解读需额外安装 AI 依赖：`pip install -e '.[rna,ai]'`
 - PDF 只读锁与版式校验为可选依赖：`pip install -e '.[rna,security,validation]'`
 - PDF 图表通过 Kaleido 导出为图片；所用 Kaleido 版本若依赖 Chrome / Chromium，需在运行环境提供浏览器
-- Docker 运行需 Docker；镜像内已安装 Python、Quarto 和报告依赖
+- Docker 部署说明目前位于 `deploy/README.zh-CN.md`，正式交付流程仍在完善
 
 ## 🚀 快速上手
 
@@ -54,9 +60,9 @@ python -m bioreport run -c tests/report.rna.pdf.json -o output/rna-report-pdf
 python -m bioreport run -c tests/report.rna.pdf.ai.json -o output/rna-pdf-report-ai 
 ```
 
-### 查询运行记录
+### Workspace 与运行记录
 
-报告运行记录默认保存在 `~/.bioreport/runs.db`。可以按项目、状态和日期筛选，并以 Rich 终端表格查看：
+报告运行记录默认保存在 `~/.bioreport/runs.db`。当前 Workspace v1 提供运行历史、项目筛选、报告产物、证据、溯源信息和模块级 AI 解读的查询能力；命令行可按项目、状态和日期筛选，并以 Rich 终端表格查看：
 
 ```bash
 bioreport runs
@@ -65,92 +71,36 @@ bioreport runs --json
 bioreport runs --tui
 ```
 
-Workspace v2 数据库迁移必须显式执行，默认会在迁移前创建相邻的 `.bak` 备份；恢复也必须由操作人员明确调用：
+![查询运行记录](tui.png)
+
+Workspace v2 的数据库迁移必须显式执行。迁移前默认创建相邻的 `.bak` 备份；恢复也必须由操作人员明确调用：
 
 ```bash
 bioreport workspace-migrate --db /path/to/runs.db
 bioreport workspace-restore --db /path/to/runs.db
 ```
 
-历史报告查询和 API 启动不会自动迁移数据库。
+历史报告查询和 API 启动不会自动迁移数据库。使用 `--db /path/to/runs.db` 或环境变量 `BIOREPORT_DB` 指定数据库。
 
-使用 `--db /path/to/runs.db` 或环境变量 `BIOREPORT_DB` 可以查看指定数据库。`--tui` 启动后默认显示运行仪表盘：总运行数、成功/失败数、成功率、项目数和最近运行。随后按 `s` 搜索、`r` 刷新、`c` 清除筛选、`q` 退出。
+`--tui` 启动后默认显示运行仪表盘，包括总运行数、成功/失败数、成功率、项目数和最近运行；按 `s` 搜索、`r` 刷新、`c` 清除筛选、`q` 退出。
 
-示例数据位于 `examples/rna-seq/data/`，本地配置在 `tests/report.rna.local.json`，默认使用 `single` 模式，生成 `output/rna-report/PRJ-RNA-HTML-001_report.html` 与 `output/rna-report-pdf/PRJ-RNA-PDF-001_report.pdf`（报告文件名以配置中的 `project.project_id` 为前缀，形如 `<project_id>_report.<格式>`），样式、脚本及图片资源嵌入 HTML。报告内通过顶部导航切换六个章节视图（示例配置为项目概况/分析流程/质量控制/分析结果/溯源信息/关于，`ai` 等为可选模块）。页面使用 `templates/theme/New_Brutalism.scss`、`styles.css` 和 `itables_saas.css`；修改模板或 Logo 后重新生成即可更新。若需要六份独立 HTML，可将 `report.layout` 改为 `website`，从 `output/rna-report/index.html` 打开。先用 `--dry-run` 可检查配置和模板组合，此模式不生成 HTML。`configs/report.example.json` 的数据根目录为容器内 `/data`，本地直接运行前须修改路径。
+### RNA-seq 示例与输出
 
-需要单文件 HTML/PDF 时，将 `report.layout` 设为 `"single"`，并按需设置 `report.output_format`。修改 RNA 报告章节请编辑 `omics/rna/qmd/`，修改各类型共用的内置页面（关于/常见问题/许可/商标/AI 解读）请编辑 `templates/shared/`，调整共享样式请编辑 `templates/theme/`；报告默认使用其中的白色背景亮色主题和 CSS。报告标题、模块顺序、分析阈值等由配置文件控制。
+示例数据位于 `examples/rna-seq/data/`，本地配置为 `tests/report.rna.local.json`。默认使用 `single` 模式，生成以 `project.project_id` 为前缀的 `<project_id>_report.html`；启用 PDF 时还会生成 `<project_id>_report.pdf`。HTML 将 Quarto、Plotly、Itables、样式、脚本和图片资源内嵌为单文件，报告章节通过顶部导航切换。示例配置包含项目概况、分析流程、质量控制、分析结果、溯源信息和关于页面，`ai` 等模块按需启用。
 
-### Docker 生成报告
+如需多页 HTML，将 `report.layout` 改为 `website`，并从输出目录的 `index.html` 打开。`website` 不能与 PDF 同时使用；`--dry-run` 可检查配置、模板组合和输入文件，但不会调用 AI 或执行 Quarto。`configs/report.example.json` 使用容器内 `/data` 作为数据根目录，本地运行前需要按实际挂载路径修改。
 
-#### 1. 构建 Docker 镜像
+### 模板与样式扩展
 
-在仓库根目录执行：
+需要单文件 HTML/PDF 时，将 `report.layout` 设为 `single`，并按需设置 `report.output_format`。RNA-seq 章节位于 `omics/rna/qmd/`；所有组学共用的关于、常见问题、许可、商标和 AI 页面位于 `templates/shared/`；共享样式位于 `templates/theme/`。报告标题、模块顺序、分析阈值和 PDF 预览参数均由配置文件控制，修改模板或 Logo 后重新生成报告即可生效。
 
-```bash
-docker build -f deploy/Dockerfile -t bioreport:latest .
-```
+### Web 端 AI 现状与规划
 
-#### 2. 准备配置文件
+当前 Web 端已经具备 Workspace v1 的运行历史、证据、产物、溯源和模块级 AI 解读浏览能力，但完整的 AI 工作台尚未作为最终产品形态完成；静态 HTML/PDF 仍是当前主要交付方式。下一大版本计划建设 Workspace v2，将项目、运行、分析模块、结果证据、逐结果 AI 解读和交付版本串成统一工作流，支持异步解读、证据定位、重新解读、版本保留以及 HTML/PDF 原位回填。详细规划见 [`todo.md`](../todo.md) 的“Web 工作台大版本升级：BioReport Workspace v2”。
 
-推荐使用统一 JSON 配置文件。项目已提供三个示例：
+### Docker 与 PDF 部署说明
 
-| 配置文件 | 说明 |
-| :--- | :--- |
-| `configs/report.example.json` | 完整版 RNA 报告配置，使用容器内 `/data` |
-| `configs/report.generic.json` | 通用 assay 示例，使用仓库内的示例数据 |
-| `tests/report.rna.local.json` | 本地 RNA 示例，使用仓库内的示例数据 |
-
-你可以复制其中一个并根据实际项目修改 `project` 与 `input_files` 部分。
-
-#### 3. 运行报告生成
-使用 Docker 运行系统（请根据实际路径修改 `-v` 挂载）：
-
-```bash
-# 完整版报告
-docker run --rm \
-  -v /你的/本地/数据目录:/data:ro \
-  -v /你的/本地/输出目录:/workspace \
-  -v "$(pwd)/configs/report.example.json:/app/configs/report.example.json:ro" \
-  bioreport:latest -c /app/configs/report.example.json -o /workspace
-
-# 通用 assay 报告（需挂载配置及示例数据）
-docker run --rm \
-  -v "$(pwd)/examples/generic-assay:/app/examples/generic-assay:ro" \
-  -v "$(pwd)/configs:/app/configs:ro" \
-  -v /你的/本地/输出目录:/workspace \
-  bioreport:latest -c /app/configs/report.generic.json -o /workspace
-```
-
-RNA-seq 报告为 `/workspace/<project_id>_report.html` 和 `/workspace/<project_id>_report.pdf`（以配置中的 `project.project_id` 为前缀）。分享 HTML 时只需要一个文件，导航在文件内切换页面。HTML 会内嵌 Quarto、Plotly 和 ITables 的运行资源；普通超链接仍可指向外部文献或网站。若只要一种格式，将 `output_format` 设为 `"html"` 或 `"pdf"`。`report.layout: website` 保留多页 HTML，不能与 PDF 同时使用。
-
-#### 4. 干运行（跳过 AI 与 Quarto 渲染）
-用于快速检查配置、模块组合与输入文件；此模式仍会检查输入文件是否存在，仅跳过 AI 调用与 Quarto 渲染：
-
-```bash
-docker run --rm \
-  -v "$(pwd)/configs/report.example.json:/app/configs/report.example.json:ro" \
-  bioreport:latest -c /app/configs/report.example.json -o /workspace --dry-run
-```
-
-### RNA-seq PDF 专用模板
-
-PDF 使用独立的正文与打印排版，HTML 继续使用现有交互式模块。PDF 包含封面、目录、项目和样本信息、分析流程与方法、质控结果、表达和差异分析、富集结果以及报告说明；章节仍由 `report.modules` 控制。
-
-```bash
-bioreport run -c tests/report.rna.pdf.json -o output/rna-pdf-report
-```
-
-输出为 `output/rna-pdf-report/PRJ-RNA-PDF-001_report.pdf`。模板分工：
-
-- `omics/rna/qmd/pdf/`：PDF 专用章节、图表顺序和精简说明。
-- `templates/pdf/print-style.typ`：可复用的 A4 排版、字号、页眉页码、图块和跨页表格；`rna-style.typ` 提供 RNA 专用覆盖。
-- `templates/pdf/rna-cover.typ.j2`：封面 Logo、标题和项目元数据布局。
-- `bioreport/modules.py`：根据项目配置填充封面和组合章节。
-- `omics/rna/analysis/`：HTML 与 PDF 共用的数据处理和绘图函数。
-
-PDF 表格提供结果预览，表达矩阵默认展示前 8 个基因和最多 6 个样本列，差异基因和富集结果默认展示前 10 行；完整结果路径随表格提供，并统一描述为数据目录（`input_files.data_dir`，即交付目录）内的相对路径，不暴露运行环境的绝对路径。PDF 使用 A4 页面、独立封面和目录、页眉页码与静态 SVG 图表。建议安装 Noto CJK 字体以获得一致的中文排版。
-
-可通过 `report.pdf` 配置表格预览行数、富集 Top N 与 `qc_detail: key / all`。共享样式约定、验证命令和兼容边界见 [科研 PDF 样式规范](info/pdf-style.md)。
+Docker 构建、配置挂载、干运行和 RNA-seq PDF 模板的详细说明已移至 [`deploy/README.zh-CN.md`](../deploy/README.zh-CN.md)。Docker 作为正式交付方式仍在完善中，当前开发和验证建议优先使用本 README 前面的本地 Python/Quarto 命令。
 
 ## 🏗️ 技术架构
 
@@ -373,7 +323,7 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 配置 `params` 时，组合器在模块内容前设置 `report_module = {"id": 模块ID, "params": 配置参数}`；同一 QMD 可用不同模块 ID 和参数引用多次。自定义模块中的 `#| label:` 及对应 `@标签` 引用会按模块区分，避免重复引用时发生标签冲突。模块内的相对 `include` 会按原 QMD 所在目录递归展开，循环引用会报错。
 使用 Docker 时，应把包含 JSON 和 `modules/` 的目录整体挂载进容器，使相对模块路径在容器内仍然存在。
 
-`examples/generic-assay/` 提供非 RNA 示例：同一份 QMD 在 JSON 中被引用两次，每次通过 `params.input_key` 绑定不同的 CSV。QMD 用 `report_module["params"]` 读取当前引用的参数、通过 `load_config()` 读取输入路径，再用 `show_table()` / `show_figure()` 在 HTML 与 PDF 中分别输出交互或静态结果。本地可运行 `bioreport run -c configs/report.generic.json -o output/generic-report`；Docker 挂载与命令见快速上手中的通用 assay 示例。这个例子的数据列契约是 `sample`、`group`、`value`；其他分析可定义自己的模块和列契约。
+`examples/generic-assay/` 提供非 RNA 示例：同一份 QMD 在 JSON 中被引用两次，每次通过 `params.input_key` 绑定不同的 CSV。QMD 用 `report_module["params"]` 读取当前引用的参数、通过 `load_config()` 读取输入路径，再用 `show_table()` / `show_figure()` 在 HTML 与 PDF 中分别输出交互或静态结果。本地可运行 `bioreport run -c configs/report.generic.json -o output/generic-report`；Docker 部署草案见 [`deploy/README.zh-CN.md`](../deploy/README.zh-CN.md)。这个例子的数据列契约是 `sample`、`group`、`value`；其他分析可定义自己的模块和列契约。
 
 ### `project` — 项目元数据
 
@@ -414,63 +364,11 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 | `distribution.threshold` / `distribution.width` / `distribution.height` | 表达分布图参数 |
 | `expression.preview_rows` | 表达矩阵 HTML 预览行数；RNA PDF 默认预览 8 行 |
 
-### `ai` — AI 解读设置
+### AI 配置与后续计划
 
-| 字段 | 说明 |
-| :--- | :--- |
-| `enabled` | 是否启用 AI 解读 |
-| `model` / `provider` | 模型与服务商；`volcengine`、`aliyun` 是带默认地址和 Key 环境变量的别名，也可用 `openai-compatible` 配合自定义地址 |
-| `base_url` / `api_key_env` | OpenAI-compatible API 地址和 API Key 环境变量名；别名可省略，通用服务需配置 |
-| `temperature` | 模型温度 |
-| `max_output_tokens` | 可选的单次输出上限；结果卡片建议设置为 `600`–`1200`，可减少过长输出带来的等待 |
-| `scope` | 解读范围；默认 `results`，对每个比较组的 DEG 与 UP/DOWN 富集结果分别生成卡片；`global` 才生成旧式合并章节 |
-| `result_rows` | 每个结果送入模型的 CSV 行数上限；默认 DEG 30 行、富集 20 行 |
-| `prompt_file` | 自定义 Prompt 文件路径；相对路径以配置文件所在目录为根 |
-| `deg_limit` / `enrichment_limit` | 提交给 AI 的差异基因与通路数量 |
-| `vision` / `max_image_bytes` | 视觉能力开关与单张附件上限；关闭 `vision` 时自动降级为纯文本 |
+统一 JSON/YAML 配置已经为 AI 兼容性预留 `enabled`、`provider`、`model`、`base_url`、`api_key_env`、`scope`、`vision`、输入限制和回退策略等字段，可兼容 OpenAI SDK 及 OpenAI-compatible 服务商。详细字段、当前逐结果流程和 PDF 视觉流程见 [`AI.md`](AI.md)。
 
-## 🤖 AI 分析流程
-
-启用 AI 后，默认对 fastp 表/图、FastQ Screen R1/R2、QualiMap、STAR、PCA、表达分布、TPM 矩阵、热图，以及每个比较组的 DEG 和 UP/DOWN 富集结果分别解读，解读卡片紧跟对应图表/表格。HTML 路径会在 Quarto 渲染前准备卡片；PDF `scope: results` 使用两阶段流程：
-
-1. 第一次 Quarto 渲染生成 PDF 图表、表格和 `report-blocks-pdf.jsonl`。
-2. 系统按结果 ID 绑定结构化证据和已渲染图像，对每个结果单独请求模型。
-3. 将 Markdown 卡片写入临时数据目录，第二次 Quarto 渲染把卡片回填到对应结果下方。
-
-提示词和解读逻辑目前仍是过渡实现。后续应拆分为“角色与安全边界、模块分析规则、证据格式、输出 schema、验证与回退”五层，避免一个全局 Prompt 同时处理 QC、图表、DEG 和富集结果。
-
-### 当前版本状态与下一版本计划
-
-当前版本已经完成 AI 解读的基础框架建设：
-
-- 按结果 ID 生成独立解读卡片，覆盖 QC、样本关系、表达矩阵、热图、DEG 和富集结果；
-- 使用结构化证据限制模型输入，并保留结果与输入文件的对应关系；
-- PDF 支持“首次渲染图表 → 读取图像与证据 → AI 解读 → 二次渲染回填”的视觉流程；
-- 所有服务商统一通过 OpenAI SDK 接入，并具备超时、重试、输入截断、视觉降级和空响应回退；
-- AI 解读结果已经具备独立的结果槽位，后续可接入 evidence hash、Prompt 版本和模型参数记录。
-
-下一个版本的重点是提示词和解读逻辑优化，不再扩展报告渲染主链路。计划按 fastp/QC、样本关系、DEG、富集和图表视觉解读拆分专家提示词，统一输出“观察、统计依据、生物学解释、限制条件、建议复核项”结构，并增加数值引用、证据一致性和结果为空校验。具体实施骨架记录在 [`todo.md`](todo.md) 的“AI 逐结果解读 Agent 框架”中。
-
-设置 `ai.scope: "global"` 并在 `report.modules` 中加入 `ai` 可使用旧式合并章节。设置 `ai.enabled: false` 可跳过 AI 流程。
-容器镜像包含 AI 可选依赖；在本地以 Python 包运行且需要 AI 功能时，使用 `pip install -e '.[rna,ai]'`。数据整合会逐个纳入 DEG 与富集结果文件，并按 `deg_limit`、`enrichment_limit` 限制每个文件的行数；如需优先解读显著性最高的结果，请先对输入文件排序。
-
-所有服务商统一使用 OpenAI Python SDK 的 Chat Completions 接口。默认 Key 环境变量为 `ARK_API_KEY`（`volcengine`）、`DASHSCOPE_API_KEY`（`aliyun`）和 `OPENAI_API_KEY`（`openai` / `openai-compatible`）；`base_url` 可针对通用服务或各 provider 单独配置。仍需填写服务商支持的模型/接入点 ID。火山方舟与百炼使用官方 OpenAI-compatible 数据面地址；其他兼容端点通过 `ai.base_url` 和 `ai.api_key_env` 接入。引擎还支持 `fallback_providers`（主模型失败时自动降级）、`ai.max_input_tokens`（输入截断）与 `ai.pricing`（成本估算）等可选配置，详见 [Architecture.md](Architecture.md) §7。
-
-通用兼容网关示例：
-
-```json
-{
-  "ai": {
-    "enabled": true,
-    "provider": "openai-compatible",
-    "base_url": "https://llm.example.com/v1",
-    "api_key_env": "MY_LLM_API_KEY",
-    "model": "provider-model-id"
-  }
-}
-```
-
-然后在运行 BioReport 的同一终端设置 `MY_LLM_API_KEY`。`volcengine` 与 `aliyun` 仍可沿用旧配置，无需迁移字段。
+当前主线已经具备逐结果 AI 解读框架；下一版本将重点优化分模块 Prompt、证据约束、输出验证、审计字段和 Web Workspace v2 的异步解读能力，详见 [`AI.md`](AI.md) 与 [`../todo.md`](../todo.md)。
 
 ## 🔄 向后兼容
 

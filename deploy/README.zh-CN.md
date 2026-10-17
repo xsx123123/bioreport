@@ -1,0 +1,79 @@
+# Docker 与 PDF 部署说明（草案）
+
+> 本文档集中记录 Docker 运行和 RNA-seq PDF 交付的操作说明。Docker 作为正式交付方式仍在持续完善；当前开发和验证建议优先使用仓库根目录 README 中的本地 Python/Quarto 命令。
+
+## Docker 生成报告
+
+### 1. 构建镜像
+
+在仓库根目录执行：
+
+```bash
+docker build -f deploy/Dockerfile -t bioreport:latest .
+```
+
+### 2. 准备配置
+
+项目提供以下配置示例：
+
+| 配置文件 | 说明 |
+| :--- | :--- |
+| `configs/report.example.json` | 完整版 RNA 报告配置，使用容器内 `/data` |
+| `configs/report.generic.json` | 通用 assay 示例，使用仓库内示例数据 |
+| `tests/report.rna.local.json` | 本地 RNA 示例，使用仓库内示例数据 |
+
+复制配置后，根据实际项目修改 `project` 与 `input_files`。容器内路径必须与挂载点一致。
+
+### 3. 运行报告
+
+请根据实际路径调整 `-v` 挂载：
+
+```bash
+# 完整版 RNA 报告
+docker run --rm \
+  -v /你的/本地/数据目录:/data:ro \
+  -v /你的/本地/输出目录:/workspace \
+  -v "$(pwd)/configs/report.example.json:/app/configs/report.example.json:ro" \
+  bioreport:latest -c /app/configs/report.example.json -o /workspace
+
+# 通用 assay 报告
+docker run --rm \
+  -v "$(pwd)/examples/generic-assay:/app/examples/generic-assay:ro" \
+  -v "$(pwd)/configs:/app/configs:ro" \
+  -v /你的/本地/输出目录:/workspace \
+  bioreport:latest -c /app/configs/report.generic.json -o /workspace
+```
+
+`report.layout: single` 生成单文件 HTML；按需设置 `report.output_format` 为 `"html"`、`"pdf"` 或 `["html", "pdf"]`。`website` 布局生成多页 HTML，不能与 PDF 同时使用。报告文件名以 `project.project_id` 为前缀，形如 `<project_id>_report.html` 或 `<project_id>_report.pdf`。
+
+### 4. 干运行
+
+`--dry-run` 会检查配置、模块组合和输入文件，但不会调用 AI 或执行 Quarto：
+
+```bash
+docker run --rm \
+  -v "$(pwd)/configs/report.example.json:/app/configs/report.example.json:ro" \
+  bioreport:latest -c /app/configs/report.example.json -o /workspace --dry-run
+```
+
+## RNA-seq PDF 模板
+
+RNA-seq PDF 使用独立正文和 Typst 打印排版，包含封面、目录、项目和样本信息、分析流程、质控、表达、差异分析、富集、溯源和交付说明。章节仍由 `report.modules` 控制：
+
+```bash
+bioreport run -c tests/report.rna.pdf.json -o output/rna-pdf-report
+```
+
+模板职责如下：
+
+- `omics/rna/qmd/pdf/`：PDF 专用章节、图表顺序和精简说明。
+- `templates/pdf/print-style.typ`：A4 排版、字号、页眉页码、图块和跨页表格；`rna-style.typ` 提供 RNA 专用覆盖。
+- `templates/pdf/rna-cover.typ.j2`：封面 Logo、标题和项目元数据布局。
+- `bioreport/modules.py`：根据配置填充封面并组合章节。
+- `omics/rna/analysis/`：HTML 与 PDF 共用的数据处理和绘图函数。
+
+PDF 表格提供结果预览，完整结果文件仍保存在配置的数据交付目录中。表达矩阵默认展示前 8 个基因和最多 6 个样本列，差异基因和富集结果默认展示前 10 行。PDF 使用 A4 页面、独立封面和目录、页眉页码及静态 SVG 图表；建议安装 Noto CJK 字体以获得一致的中文排版。
+
+可通过 `report.pdf` 配置表格预览行数、富集 Top N 和 `qc_detail: key / all`。共享样式、验证命令和兼容边界见 [`../docs/info/pdf-style.md`](../docs/info/pdf-style.md)。
+
+启用 `ai.scope: results` 时，PDF 使用两阶段流程：第一次渲染生成图表、表格和结果块清单；随后将每个结果的结构化证据与可用图像提交给模型；最后写入 Markdown 解读卡片并重新渲染 PDF，使卡片出现在对应结果下方。图像无法准备时回退到结构化证据，最终 PDF 仍会执行版式和内容校验。
