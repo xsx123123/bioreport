@@ -6,6 +6,8 @@
 
 # BioReport
 
+[![CI](https://github.com/xsx123123/bioreport/actions/workflows/ci.yml/badge.svg)](https://github.com/xsx123123/bioreport/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/xsx123123/bioreport)](https://github.com/xsx123123/bioreport/releases)
+
 BioReport is a configuration-driven, modular omics reporting engine built with Python and Quarto. It is part of the [CygnusX BioOps](https://github.com/xsx123123/omichub) ecosystem and currently includes an RNA-seq package for integrating QC, alignment, expression, differential expression, and enrichment results.
 
 The same project configuration can produce interactive HTML and print-ready PDF reports. Optional AI interpretation can be attached to individual tables, figures, comparisons, and enrichment results.
@@ -196,7 +198,7 @@ Complete rendering tests require a working Jupyter kernel and Kaleido/Chrome. Ea
 
 ## Version and acknowledgements
 
-Current version: **v2.0.0**
+Current version: **v2.0.0**. See [`CHANGELOG.md`](CHANGELOG.md) for release history.
 
 Maintainer: **Zhang Jian**
 

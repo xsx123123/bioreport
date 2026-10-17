@@ -61,7 +61,14 @@ bioreport = ["utils/prompt.txt", "report.schema.json", "assets/fonts/**/*"]
 
 [tool.setuptools.data-files]
 "share/bioreport/templates" = ["templates/_quarto.yml.j2", "templates/_quarto-single.yml.j2"]
-"share/bioreport/templates/shared" = ["templates/shared/*"]
+"share/bioreport/templates/shared" = [
+    "templates/shared/AI.qmd",
+    "templates/shared/about.qmd",
+    "templates/shared/faq.qmd",
+    "templates/shared/license.qmd",
+    "templates/shared/provenance.qmd",
+    "templates/shared/trademark.qmd",
+]
 "share/bioreport/templates/shared/assets" = ["templates/shared/assets/*"]
 "share/bioreport/templates/theme" = ["templates/theme/*"]
 "share/bioreport/templates/reference" = ["templates/reference/*"]
