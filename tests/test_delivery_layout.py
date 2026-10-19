@@ -14,7 +14,8 @@ def test_dockerfile_uses_root_build_context_and_packaged_entrypoint():
     for directory in ("bioreport", "omics", "templates", "configs", "examples"):
         assert f"COPY {directory} ./{directory}" in dockerfile
         assert (REPO_ROOT / directory).is_dir()
-    assert 'ENTRYPOINT ["bioreport", "run"]' in dockerfile
+    assert 'ENTRYPOINT ["bioreport"]' in dockerfile
+    assert 'CMD ["--help"]' in dockerfile
 
 
 def test_console_script_and_docker_entrypoint_share_the_same_command():
@@ -22,7 +23,7 @@ def test_console_script_and_docker_entrypoint_share_the_same_command():
     dockerfile = (REPO_ROOT / "deploy" / "Dockerfile").read_text(encoding="utf-8")
 
     assert 'bioreport = "bioreport.cli:main"' in pyproject
-    assert 'ENTRYPOINT ["bioreport", "run"]' in dockerfile
+    assert 'ENTRYPOINT ["bioreport"]' in dockerfile
 
 
 def test_init_does_not_require_an_existing_config(monkeypatch, capsys):
@@ -48,5 +49,6 @@ def test_cli_help_exits_cleanly_without_a_config(arguments, capsys):
 
     assert result.value.code == 0
     output = capsys.readouterr().out
-    assert "bioreport <命令>" in output
+    assert "Usage: bioreport" in output
+    assert "Configuration file" in output
     assert "tests/report.rna.local.json" in output

@@ -279,7 +279,7 @@ def display_fastp_table(data_path: str):
     try:
         df = pd.read_csv(data_path, sep='\t')
     except Exception as e:
-        print(f"❌ 无法读取文件: {e}")
+        print(f"Error: could not read file: {e}")
         return
 
     # ==========================================
@@ -415,7 +415,7 @@ def display_fastq_screen_table(r1_path: str, r2_path: str, sample_sheet_path: st
         df_r2 = pd.read_csv(r2_path, sep='\t')
         df_samples = pd.read_csv(sample_sheet_path)
     except Exception as e:
-        print(f"❌ 无法读取文件: {e}")
+        print(f"Error: could not read file: {e}")
         return
 
     # ==========================================
@@ -469,7 +469,7 @@ def display_fastq_screen_table(r1_path: str, r2_path: str, sample_sheet_path: st
         # 创建 Others 列
         pct_df['Others'] = pct_df[other_cols].sum(axis=1)
         final_species = top_cols + ['Others']
-        print(f"💡 [INFO] 物种较多，已显示 Top {top_number}，其余 {len(other_cols)} 种合并为 'Others'。")
+        print(f"Info: showing the top {top_number} species; the remaining {len(other_cols)} are grouped as 'Others'.")
 
     # 构建最终显示 DF
     df_display = pd.DataFrame()
@@ -578,12 +578,12 @@ def display_gene_expression_table(data: Union[str, pd.DataFrame], top_n: Optiona
             # 自动推断分隔符
             df = pd.read_csv(data, sep=None, engine='python')
         except Exception as e:
-            print(f"❌ 无法读取文件: {e}")
+            print(f"Error: could not read file: {e}")
             return
     elif isinstance(data, pd.DataFrame):
         df = data.copy()
     else:
-        print("❌ 错误：输入数据必须是文件路径或 pd.DataFrame")
+        print("Error: input data must be a file path or a pandas DataFrame.")
         return
 
     # 如果指定了 top_n，进行切片

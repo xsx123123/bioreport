@@ -1,0 +1,22 @@
+---
+title: License
+---
+
+## Academic and Non-Commercial Use Only
+
+This project is available free of charge for academic research by non-profit institutions, education and training, and personal non-commercial learning and testing. Modification and non-commercial redistribution are permitted when the original copyright notice is retained.
+
+### Restrictions
+
+Explicit written authorization is required for commercial use, including paid analysis services, internal research and development at for-profit companies, and integration into commercial software or hardware products.
+
+### Commercial Licensing
+
+Commercial organizations should contact the development team for authorization.
+
+- Contact: JZHANG
+- Email: zhangjian199567@outlook.com
+
+### Disclaimer
+
+The software is supplied as is, without warranties. The BFP Team accepts no liability for data loss, calculation errors or consequential damages arising from its use.

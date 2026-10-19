@@ -1,0 +1,20 @@
+---
+title: "Quality Control"
+bibliography: ../reference/qc_references.bib
+csl: ../reference/china-national-standard-gb-t-7714-2015-numeric.csl
+lang: zh
+execute:
+  echo: false
+  warning: false
+---
+
+
+{{< include modules/qc/setup.qmd >}}
+
+{{< include modules/qc/fastp.qmd >}}
+
+{{< include modules/qc/screen.qmd >}}
+
+{{< include modules/qc/qualimap.qmd >}}
+
+{{< include modules/qc/star.qmd >}}

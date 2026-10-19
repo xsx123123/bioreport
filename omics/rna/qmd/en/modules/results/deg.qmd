@@ -1,0 +1,38 @@
+
+## Differential Expression Analysis
+
+Volcano plots show upstream DESeq2 log2 fold changes and -log10(raw P). The direction is Treat relative to Control: positive values indicate upregulation and negative values downregulation. Red and blue mark genes meeting both configured P and absolute log2FC cutoffs; gray marks the remainder. Dashed lines show cutoffs.
+
+Raw-P classification is distinct from FDR control. Original pvalue and padj values are retained. A display cap, where used, clips only the plotted coordinates. Preview tables and labels identify significant genes; complete records remain in the input files.
+
+```{python}
+#| label: table-deg-preview
+#| output: asis
+display(Markdown('::: {.panel-tabset}'))
+for comp in comparisons:
+    deg_file_key = f'{comp}_DEG.csv'
+    deg_file = get_file_path(config, deg_file_key, local_base_dir=deg_base_dir)
+    display(Markdown(f'### {comp}'))
+    if not deg_file or not os.path.exists(deg_file):
+        raise FileNotFoundError(f'DEG result is missing for {comp}: {deg_file or deg_file_key}')
+    df_deg = pd.read_csv(deg_file)
+    display_gene_expression_table(df_deg)
+display(Markdown(':::'))
+```
+
+```{python}
+#| label: fig-volcano-dynamic
+#| output: asis
+display(Markdown('::: {.panel-tabset}'))
+for comp in comparisons:
+    deg_file_key = f'{comp}_DEG.csv'
+    deg_file = get_file_path(config, deg_file_key, local_base_dir=deg_base_dir)
+    display(Markdown(f'### {comp}'))
+    if not deg_file or not os.path.exists(deg_file):
+        raise FileNotFoundError(f'DEG result is missing for {comp}: {deg_file or deg_file_key}')
+    df_deg = pd.read_csv(deg_file)
+    fig = plot_volcano_pvalue(df_deg, title=f'{comp} Volcano', col_logfc='log2FoldChange', col_pval='pvalue', col_padj='padj', col_symbol='Symbol', col_status='Status_By_Pval', fc_cutoff=deg_settings.get('log2fc_threshold', 1.0), pval_cutoff=deg_settings.get('pvalue_threshold', 0.05))
+    show_figure(fig)
+    display_result_ai(f'rna.results.deg__{comp}')
+display(Markdown(':::'))
+```

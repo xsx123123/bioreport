@@ -1,0 +1,58 @@
+
+## Functional Enrichment Analysis
+
+Existing clusterProfiler results are read separately for each comparison and expression direction. The report does not recompute enrichment. Plots and previews use the same cutoff and Top N setting, with stable ascending ordering by p.adjust.
+
+- **Description** is the input functional term or pathway name.
+- **GeneRatio** is the fraction of genes assigned to a term among the annotated genes submitted for that direction and database. Its denominator can differ between upregulated and downregulated sets and is not necessarily the total DEG count.
+- **Count** determines bubble area and records the number of genes assigned to the term.
+- **p.adjust** determines bubble color; lower adjusted P indicates stronger statistical evidence.
+
+Long labels may require multiple panels, which retain a shared color and bubble scale for the same direction. GO/KEGG categories follow the input annotations. Full results remain in the delivered data directory.
+
+```{python}
+#| label: pdf-enrichment
+#| output: asis
+from bioreport.utils.pdf_results import enrichment_chunks, raw_probability_columns
+from bioreport.utils.render_output import figure_group
+from contextlib import nullcontext
+from bioreport.config import display_path
+from omics.rna.analysis.enrichment_plotly import parse_gene_ratios
+if not comparisons:
+    typst_note('No valid comparisons; enrichment plots are omitted.')
+for comp in comparisons:
+    for direction, label in [('UP', 'Upregulated'), ('DOWN', 'Downregulated')]:
+        path = get_file_path(config, f'{comp}_{direction}.csv', local_base_dir=enrich_base_dir)
+        if not path or not os.path.isfile(path):
+            typst_note(f'{comp} {label}: enrichment results not supplied; direction skipped. Expected path (relative to data directory): {display_path(enrich_base_dir)}/{comp}_{direction}.csv')
+            continue
+        frame = pd.read_csv(path)
+        required = {'Description', 'GeneRatio', 'Count', 'p.adjust'}
+        if required - set(frame.columns):
+            raise ValueError(f'Missing enrichment columns: {sorted(required - set(frame.columns))} in {path}')
+        cutoff = enrichment_settings.get('p_cutoff', 0.1)
+        filtered = frame[frame['p.adjust'] < cutoff].sort_values('p.adjust', kind='stable')
+        if filtered.empty:
+            typst_note(f'{comp} {label}: no terms with adjusted P < {cutoff}. Full input results (relative to data directory): {display_path(path)}')
+            continue
+        count = enrichment_settings['top_n']
+        valid = parse_gene_ratios(filtered['GeneRatio']).notna() & pd.to_numeric(filtered['Count'], errors='coerce').ge(0)
+        if not valid.all():
+            typst_note(f'{comp} {label}：{int((~valid).sum())} terms meeting the cutoff have invalid or missing GeneRatio / Count and are excluded from the preview; the original records remain in the input file.')
+        chosen = filtered[valid].head(count)
+        chosen = chosen.assign(Count=pd.to_numeric(chosen['Count']))
+        chunks = list(enrichment_chunks(chosen))
+        for part, (start, chunk) in enumerate(chunks):
+            with figure_group(f'enrichment-{comp}-{direction}') if part == len(chunks) - 1 else nullcontext():
+                fig, conf = draw_fancy_dotplot(chunk, top_n=None, p_cutoff=None, height_num=450, width_num=1000, wrap_width=28)
+                fig.update_layout(coloraxis_cmin=float(chosen['p.adjust'].min()), coloraxis_cmax=float(chosen['p.adjust'].max()), meta={**fig.layout.meta, 'count_max': int(chosen['Count'].max())})
+                databases = sorted({str(v).split(':')[0] for v in chunk.get('ID', []) if str(v).startswith(('GO:', 'KEGG:'))})
+                category = '/'.join(databases) if databases else 'Input Terms'
+                if 'ONTOLOGY' in chunk:
+                    category += ' / ' + '/'.join(sorted(chunk['ONTOLOGY'].dropna().unique()))
+                show_figure(fig, evidence={'kind': 'enrichment', 'comparison': comp, 'direction': direction, 'top_n': count, 'indices': list(chunk.index)}, caption=f'{comp} {label} enrichment ({category}），Top {count} terms {start + 1}–{start + len(chunk)} (displayed {len(chosen)}). GeneRatio follows input values; bubble area represents Count and color adjusted P. Panels for the same direction share scales.')
+                if part == len(chunks) - 1:
+                    preview(raw_probability_columns(path, frame).loc[chosen.index], path, sort_by='p.adjust', limit=count, caption=f'{comp} {label}Enrichment Result Preview', columns=['Description', 'GeneRatio', 'Count', 'p.adjust'], evidence={'kind': 'enrichment', 'comparison': comp, 'direction': direction, 'top_n': count})
+        typst_note(f'{comp} {label}：{len(filtered)} / {len(frame)} terms meet adjusted P < {cutoff}; body shows the first {len(chosen)} entries.')
+        display_result_ai(f'rna.results.enrichment__{comp}_{direction}')
+```

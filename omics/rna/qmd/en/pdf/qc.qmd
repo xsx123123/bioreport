@@ -1,0 +1,25 @@
+---
+title: Quality Control
+---
+
+
+{{< include pdf/modules/qc/setup.qmd >}}
+
+```{python}
+#| label: qc-reference-table
+#| results: asis
+from bioreport.utils.pdf_results import qc_reference_summaries
+from bioreport.utils.render_output import show_print_table, typst_note
+from bioreport.config import load_config
+qc_reference = qc_reference_summaries(load_config())
+show_print_table(qc_reference, limit=None, caption='QC Reference Ranges')
+typst_note('Reference ranges are descriptive conventions, not mandatory QC rules. Final assessment requires researcher review, species and library context.')
+```
+
+{{< include pdf/modules/qc/fastp.qmd >}}
+
+{{< include pdf/modules/qc/screen.qmd >}}
+
+{{< include pdf/modules/qc/qualimap.qmd >}}
+
+{{< include pdf/modules/qc/star.qmd >}}

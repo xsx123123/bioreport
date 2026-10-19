@@ -1,0 +1,27 @@
+---
+title: Trademarks
+---
+
+## Trademarks
+
+Product names, logos and brands identify the technologies described in this project and belong to their respective owners.
+
+### Third-Party Trademarks
+
+- Quarto®: Posit Software, PBC.
+- Nextflow: Seqera Labs.
+- Snakemake: Johannes Köster and its development team.
+- Docker and its logo: Docker, Inc.
+- Vue.js: Evan You and the Vue Core Team.
+- Python and its logo: Python Software Foundation.
+- FastAPI: Sebastián Ramírez.
+
+Other trademarks belong to their respective owners.
+
+### Descriptive Use
+
+References describe the technologies used by or compatible with this workflow. They do not imply endorsement, sponsorship or affiliation. This project is independently developed and maintained by the bioinformatics team at Huazhong Agricultural University.
+
+### Project Identity
+
+The BFP name, logo and related design elements are reserved by the Xin Wang research group, College of Horticulture and Forestry Sciences, Huazhong Agricultural University. Permission is required for commercial use that could cause confusion.

@@ -1,0 +1,43 @@
+
+
+```{python}
+#| label: setup-import-res
+#| echo: false
+import os
+import pandas as pd
+from IPython.display import display, Markdown
+from omics.rna.analysis.plot_utils import plot_pca_static, plot_pca_interactive, show_gene_table, plot_volcano_pvalue
+from bioreport.utils.visualize_utils import display_fastp_table, display_gene_expression_table
+from omics.rna.analysis.plotly_heatmap import draw_interactive_heatmap
+from omics.rna.analysis.pca_plotly import draw_pca_plotly
+from omics.rna.analysis.enrichment_plotly import draw_fancy_dotplot
+from omics.rna.analysis.distribution_plotly import draw_expression_distribution_plotly
+from bioreport.utils.report_utils import load_analysis_config, get_file_path, find_comparisons, get_comparisons_from_csv
+from bioreport.config import load_project_metadata
+from bioreport.utils.render_output import show_figure, show_table, typst_note
+from bioreport.utils.pdf_results import preview, gene_columns, apply_gene_annotation, deg_counts, settings
+pdf_settings = settings(load_project_metadata())
+project_info = load_project_metadata()
+input_files = project_info['input_files']
+analysis = project_info.get('analysis', {})
+pca_settings = analysis.get('pca', {})
+heatmap_settings = analysis.get('heatmap', {})
+deg_settings = analysis.get('deg', {})
+enrichment_settings = analysis.get('enrichment', {})
+distribution_settings = analysis.get('distribution', {})
+meta_file = input_files.get('sample_file')
+tpm_file = input_files.get('tpm_file')
+comparisons_file = input_files.get('contrasts_file')
+deg_base_dir = input_files.get('deg_dir')
+enrich_base_dir = input_files.get('enrichment_dir')
+config = {'files': project_info.get('files', {})}
+comparisons = get_comparisons_from_csv(comparisons_file) if comparisons_file and os.path.exists(comparisons_file) else []
+
+def display_result_ai(result_id):
+    from pathlib import Path
+    import re
+    safe_id = re.sub('[^A-Za-z0-9_.-]', '-', result_id).strip('.')
+    note = Path('../data/ai_interpretations/en') / f'{safe_id}.md'
+    if note.is_file() and (not note.is_symlink()):
+        display(Markdown(note.read_text(encoding='utf-8')))
+```

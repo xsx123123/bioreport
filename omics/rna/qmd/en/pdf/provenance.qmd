@@ -1,0 +1,51 @@
+---
+title: "Report Provenance"
+---
+
+This section records the report engine, generation time, selected modules, pipeline version and input SHA-256 fingerprints. It supports research reproducibility and verification of the delivered files. Verify a source file with `sha256sum <filepath>` and compare the result with its recorded fingerprint.
+
+## Run and Analysis Provenance
+
+```{python}
+#| label: pdf-provenance
+#| output: asis
+from datetime import datetime
+import pandas as pd
+import bioreport
+from bioreport.i18n import translate
+from bioreport.registry import get_registry
+from bioreport.utils.report_utils import load_provenance
+from bioreport.utils.render_output import show_print_table, typst_note
+prov = load_provenance() or {}
+_BUILTIN_TITLES = {'ai': 'AI Interpretation', 'about': 'About', 'faq': 'FAQ', 'license': 'License', 'trademark': 'Trademarks', 'provenance': 'Provenance'}
+_FORMAT_NAMES = {'html': 'HTML', 'pdf': 'PDF'}
+_registry = get_registry()
+
+def _module_title(module_id):
+    canonical = _registry.canonical(module_id)
+    if canonical in _registry.modules:
+        return translate(_registry.modules[canonical].title)
+    return _BUILTIN_TITLES.get(module_id, module_id)
+rows = [{'项目': 'Project ID', 'Value': prov.get('project_id', 'N/A')}, {'项目': 'Report Engine', 'Value': f"BioReport v{prov.get('bioreport_version') or bioreport.__version__}"}, {'项目': 'Generated At', 'Value': prov.get('generated_at', 'N/A')}, {'项目': 'Report Modules', 'Value': '; '.join((_module_title(m) for m in prov.get('rendered_modules') or [])) or 'N/A'}, {'项目': 'Layout', 'Value': prov.get('layout', 'N/A')}, {'项目': 'Output Formats', 'Value': ', '.join((_FORMAT_NAMES.get(f, f) for f in prov.get('output_format') or [])) or 'N/A'}]
+if prov.get('pipeline_version'):
+    rows.append({'项目': 'Pipeline Version', 'Value': prov['pipeline_version']})
+show_print_table(pd.DataFrame(rows), limit=None, caption='Run and Analysis Provenance')
+```
+
+## Data Integrity Verification
+
+```{python}
+#| label: pdf-provenance-integrity
+#| output: asis
+
+checksums = prov.get('input_checksums') or {}
+if checksums:
+    display(Markdown('The table records SHA-256 fingerprints of core inputs. To verify a delivered file, run sha256sum and compare the full digest with the recorded value. A matching digest establishes byte-level consistency with the fingerprinted input.'))
+    from bioreport.config import load_config, display_path
+    cfg = load_config()
+    fingerprints = [{'Input File': key, 'Path Relative to Data Directory': display_path(cfg['input_files'].get(key, ''), cfg), 'SHA256': digest} for key, digest in checksums.items()]
+    show_print_table(pd.DataFrame(fingerprints), limit=None, caption='Input SHA-256 Fingerprints', evidence={'kind': 'sha256'})
+    typst_note(f"Fingerprints support integrity verification. The full Input Manifest covers {len(prov.get('input_manifest', []))} unique files, including declared result directories. Paths, roles, SHA256 and sizes are recorded in input-manifest.json. Report, Artifact and Reproduction Manifests accompany normal CLI output.")
+else:
+    typst_note('No input fingerprints collected. This report may use an earlier engine.')
+```

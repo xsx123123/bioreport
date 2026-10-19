@@ -64,9 +64,9 @@ const navbarStub={
   },
 };
 const context={document:{
- documentElement:{style:{setProperty(){}}},
- querySelector(){return navbarStub;},
- readyState:"complete", body:{classList:bodyClassList},
+ documentElement:{dataset:{},style:{setProperty(){}}},
+ querySelector(q){return q==='.report-navbar'?navbarStub:null;},
+ readyState:"complete", body:{classList:bodyClassList,dataset:{}},
   querySelectorAll(q) { return q==='.report-page'?pages:q==='.report-navbar a.nav-link'?links:q==='pre.mermaid-js'?[diagram]:toc; },
   createElement(){return {querySelector(){return {classList:{add(){}},removeAttribute(){}};}};},
   getElementById(id) { return nodes.get(id); },
@@ -80,7 +80,7 @@ const context={document:{
   }}},
   Plotly:{Plots:{resize(){resized++;}}},
   addEventListener(k,fn){events[k]=fn;},dispatchEvent(){}
-},requestAnimationFrame(fn){fn();},Event:function(){}};
+},requestAnimationFrame(fn){fn();},matchMedia(){return {matches:false};},Event:function(){}};
 const source=fs.readFileSync('templates/theme/report-pages.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 vm.runInNewContext(source,context);
 function check(index){

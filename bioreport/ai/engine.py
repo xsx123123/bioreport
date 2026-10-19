@@ -98,8 +98,8 @@ class AIInterpreter:
         try:
             return RNASeqResult(**data)
         except ValidationError as e:
-            logger.error(f"输入数据校验失败: {e}")
-            raise AIInterpretationError(f"数据格式错误: {e}")
+            logger.error(f"Input data validation failed: {e}")
+            raise AIInterpretationError(f"Invalid data format: {e}")
 
     def _estimate_tokens(self, text: str) -> int:
         """预估文本 Token 数量 (使用 cl100k_base 编码)"""
@@ -121,7 +121,7 @@ class AIInterpreter:
         if token_count <= max_tokens:
             return data
             
-        logger.warning(f"Token 预估 ({token_count}) 超过限制 ({max_tokens})，执行数据截断...")
+        logger.warning(f"Estimated token count ({token_count}) exceeds the limit ({max_tokens}); truncating input...")
         
         # 策略 1: 截断 Top Genes (保留前 50 -> 20 -> 10)
         limits = [50, 20, 10]
@@ -131,7 +131,7 @@ class AIInterpreter:
             if len(original_genes) <= limit:
                 continue
                 
-            logger.info(f"截断 Top Genes 至前 {limit} 个...")
+            logger.info(f"Truncating top genes to {limit} entries...")
             data.top_genes = original_genes[:limit]
             
             prompt = self.render_prompt(template_path, data)
@@ -146,14 +146,14 @@ class AIInterpreter:
             if len(original_paths) <= limit:
                 continue
                 
-            logger.info(f"截断 Pathways 至前 {limit} 个...")
+            logger.info(f"Truncating pathways to {limit} entries...")
             data.enrichment.top_pathways = original_paths[:limit]
             
             prompt = self.render_prompt(template_path, data)
             if self._estimate_tokens(prompt) <= max_tokens:
                 return data
                 
-        logger.warning("数据截断后仍超出 Token 限制，可能会导致 API 错误。")
+        logger.warning("Input still exceeds the token limit after truncation; the API request may fail.")
         return data
 
     def _verify_and_extract_content(self, raw_response: str) -> str:
@@ -164,7 +164,7 @@ class AIInterpreter:
         end_tag = "</bio_report>"
         
         if start_tag not in raw_response or end_tag not in raw_response:
-            logger.warning("LLM 返回未包含完整的 <bio_report> 标签。尝试自动修复或提取...")
+            logger.warning("LLM response is missing complete <bio_report> tags; attempting recovery...")
             
             content = raw_response
             if start_tag in content:
@@ -180,14 +180,14 @@ class AIInterpreter:
         path = Path(file_path)
         max_bytes = max(1, min(int(self.config.get("max_image_bytes", 20_000_000)), 50_000_000))
         if not path.exists() or path.is_symlink() or not path.is_file():
-            logger.warning(f"文件不存在，跳过: {file_path}")
+            logger.warning(f"File does not exist; skipping: {file_path}")
             return None
         try:
             if path.stat().st_size > max_bytes:
-                logger.warning(f"图片超过发送大小限制，跳过: {file_path}")
+                logger.warning(f"Image exceeds the upload size limit; skipping: {file_path}")
                 return None
         except OSError:
-            logger.warning(f"无法检查附件，跳过: {file_path}")
+            logger.warning(f"Could not inspect attachment; skipping: {file_path}")
             return None
         
         mime_type, _ = mimetypes.guess_type(path)
@@ -199,7 +199,7 @@ class AIInterpreter:
                 encoded = base64.b64encode(f.read()).decode('utf-8')
                 return f"data:{mime_type};base64,{encoded}"
         except Exception as e:
-            logger.error(f"读取文件失败 {file_path}: {e}")
+            logger.error(f"Failed to read file {file_path}: {e}")
             return None
 
     def _vision_enabled(self) -> bool:
@@ -214,7 +214,7 @@ class AIInterpreter:
     def render_prompt(self, template_path: str, data: RNASeqResult) -> str:
         """渲染 Prompt 模板"""
         if not Path(template_path).exists():
-             raise AIInterpretationError(f"模板文件不存在: {template_path}")
+             raise AIInterpretationError(f"Prompt template not found: {template_path}")
         
         # 临时创建一个 loader 指向模板所在目录
         env = Environment(loader=FileSystemLoader(os.path.dirname(template_path)))
@@ -240,7 +240,7 @@ class AIInterpreter:
         [内部方法] 单次调用 LLM API，包含自动重试机制。
         """
         if not self.client:
-            raise AIInterpretationError("API Client 未初始化")
+            raise AIInterpretationError("API client is not initialized")
 
         extra_params = {
             "temperature": temperature,
@@ -260,7 +260,7 @@ class AIInterpreter:
         user_chars = sum(len(str(part.get("text", ""))) for part in user_content if isinstance(part, dict))
         image_parts = sum(1 for part in user_content if isinstance(part, dict) and part.get("type") in {"image_url", "input_image"})
         endpoint = getattr(self.client, "base_url", None) or self.base_url or "provider-default"
-        logger.info(f"[{trace_id}] 调用模型 {self.model} ({self.provider}) | Params: temp={temperature}, top_p={top_p}")
+        logger.info(f"[{trace_id}] Calling model {self.model} ({self.provider}) | Params: temp={temperature}, top_p={top_p}")
         logger.debug(f"[{trace_id}] AI request: endpoint={endpoint} system_chars={len(system_prompt)} user_chars={user_chars} images={image_parts} messages={len(user_content)}")
         logger.trace(f"[{trace_id}] System Prompt: {system_prompt}")
         
@@ -288,7 +288,7 @@ class AIInterpreter:
             response_content = response.choices[0].message.content or ""
             elapsed = time.perf_counter() - request_started
             logger.info(
-                f"[{trace_id}] 模型响应完成 | elapsed={elapsed:.2f}s "
+                f"[{trace_id}] Model response complete | elapsed={elapsed:.2f}s "
                 f"response_chars={len(response_content)} usage={usage or 'unavailable'}"
             )
 
@@ -300,7 +300,7 @@ class AIInterpreter:
             )
         except Exception as e:
             elapsed = time.perf_counter() - request_started
-            logger.warning(f"[{trace_id}] API 调用失败 ({self.provider}) after {elapsed:.2f}s: {str(e)}")
+            logger.warning(f"[{trace_id}] API call failed ({self.provider}) after {elapsed:.2f}s: {str(e)}")
             raise
 
     def execute_inference(self, 
@@ -317,14 +317,14 @@ class AIInterpreter:
         try:
             return self._call_provider_internal(system_prompt, user_content, thinking, temperature, top_p, trace_id)
         except Exception as e:
-            logger.error(f"[{trace_id}] 主 Provider ({self.provider}) 失败: {e}")
+            logger.error(f"[{trace_id}] Primary provider ({self.provider}) failed: {e}")
             
             # 2. 检查降级配置
             fallback_providers = self.config.get("fallback_providers", [])
             if not fallback_providers:
                 raise e # 无降级策略，直接抛出异常
             
-            logger.warning(f"[{trace_id}] 触发自动降级策略，尝试 Providers: {fallback_providers}")
+            logger.warning(f"[{trace_id}] Starting automatic provider fallback; trying: {fallback_providers}")
             
             # 保存原始状态以便恢复 (可选，这里我们直接修改 self 状态)
             original_provider = self.provider
@@ -335,14 +335,14 @@ class AIInterpreter:
                 if fb_provider == original_provider:
                     continue # 跳过自己
                     
-                logger.info(f"正在切换到备用 Provider: {fb_provider}")
+                logger.info(f"Switching to fallback provider: {fb_provider}")
                 
                 # 获取备用 Provider 的默认模型
                 fb_models = self.config.get(fb_provider, {}).get("model", [])
                 fb_model = fb_models[0] if isinstance(fb_models, list) and fb_models else (fb_models if isinstance(fb_models, str) else None)
                 
                 if not fb_model:
-                    logger.warning(f"Provider {fb_provider} 未配置模型，跳过")
+                    logger.warning(f"Provider {fb_provider} has no model configured; skipping")
                     continue
                 
                 # 重新初始化 Client
@@ -352,21 +352,21 @@ class AIInterpreter:
                     self.client = self._init_client(fb_provider)
                     
                     if not self.client:
-                        logger.warning(f"Provider {fb_provider} 客户端初始化失败，跳过")
+                        logger.warning(f"Could not initialize provider {fb_provider}; skipping")
                         continue
                         
                     # 尝试调用
                     return self._call_provider_internal(system_prompt, user_content, thinking, temperature, top_p, trace_id)
                     
                 except Exception as fb_e:
-                    logger.error(f"[{trace_id}] 备用 Provider {fb_provider} 调用失败: {fb_e}")
+                    logger.error(f"[{trace_id}] Fallback provider {fb_provider} failed: {fb_e}")
                     # 继续尝试下一个
             
             # 所有降级都失败，恢复原始状态并抛出异常
             self.provider = original_provider
             self.model = original_model
             self.client = original_client
-            raise AIInterpretationError("所有 Provider (含降级) 均调用失败") from e
+            raise AIInterpretationError("All providers, including fallbacks, failed") from e
 
     def _calculate_cost(self, response: AIResponse) -> float:
         """
@@ -403,7 +403,7 @@ class AIInterpreter:
         if not trace_id:
             trace_id = str(uuid.uuid4())[:8]
 
-        logger.debug(f"[{trace_id}] 开始执行 generate_report...")
+        logger.debug(f"[{trace_id}] Starting generate_report...")
         
         # 1. 验证数据
         validated_data = self.validate_data(data_json)
@@ -428,7 +428,7 @@ class AIInterpreter:
                         "image_url": {"url": data_uri}
                     })
         elif attachments:
-            logger.info("当前 provider 未启用视觉能力，已降级为纯文本证据")
+            logger.info("Vision is not enabled for the current provider; using text-only evidence.")
         # 再加文本
         user_content.append({"type": "text", "text": text_prompt})
         
@@ -452,20 +452,20 @@ class AIInterpreter:
             
             # 计算并记录成本
             cost = self._calculate_cost(ai_response)
-            logger.info(f"[{trace_id}] 生成成功 | Cost: ¥{cost} | Tokens: {ai_response.usage}")
+            logger.info(f"[{trace_id}] Generation succeeded | Cost: ¥{cost} | Tokens: {ai_response.usage}")
             
             # 6. 验证和提取内容
             final_result = self._verify_and_extract_content(ai_response.content)
             
         except Exception as e:
-            logger.error(f"[{trace_id}] 最终生成失败: {e}")
-            return f"生成失败，请检查日志 (TraceID: {trace_id})。错误信息: {e}"
+            logger.error(f"[{trace_id}] Generation failed: {e}")
+            return f"Generation failed; check the logs (Trace ID: {trace_id}). Error: {e}"
 
         # 7. 输出
         if output_path:
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(final_result)
-            logger.info(f"[{trace_id}] 报告已保存至: {output_path}")
+            logger.info(f"[{trace_id}] Report saved to: {output_path}")
             
         return final_result

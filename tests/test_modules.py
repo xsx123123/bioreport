@@ -31,8 +31,8 @@ def test_single_report_uses_shared_styles_by_default(tmp_path):
     assert 'toc-location: left' in settings
     assert 'theme/report-pages.html' in settings
     assert 'theme/load-mermaid.html' in settings
-    assert 'dark:' not in settings
-    assert '- theme/bioreport.scss' in settings
+    assert 'dark: darkly' in settings
+    assert 'light: theme/bioreport.scss' in settings
 
 
 def test_website_report_stages_seven_independent_pages_with_shared_styles(tmp_path):
@@ -51,7 +51,10 @@ def test_website_report_stages_seven_independent_pages_with_shared_styles(tmp_pa
     settings = yaml.safe_load((staged / "_quarto.yml").read_text())
     paths = settings["project"]["render"]
     assert len(paths) == 7
-    assert settings["format"]["html"]["theme"] == ["theme/bioreport.scss"]
+    assert settings["format"]["html"]["theme"] == {
+        "light": "theme/bioreport.scss",
+        "dark": "darkly",
+    }
     css = settings["format"]["html"]["css"]
     # Built-in fonts stage first, then the shared theme styles.
     assert css[-2:] == ["theme/styles.css", "theme/itables_saas.css"]
@@ -95,6 +98,8 @@ def test_rna_report_has_seven_pages_with_samples_outside_overview(tmp_path):
     workflow = document.split("# 分析概述\n", 1)[1].split("# 质量控制\n", 1)[0]
     assert "::: {#refs}" in workflow
     assert 'class="navbar report-navbar"' in document
+    assert 'data-report-language' in document
+    assert 'data-report-theme' in document
     assert 'class="nav-link"' in document
     assert "# 关于 BioReport\n" in document
     assert "CygnusX BioOps" in document

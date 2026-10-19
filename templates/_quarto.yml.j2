@@ -61,7 +61,7 @@ website:
   page-footer:
       border: true
       left: |
-        <a href="https://www.hzau.edu.cn/" target="_blank" rel="noopener noreferrer"><img src="/logo/Huazhong_Agricultural_University_logo.svg" alt="华中农业大学" height="32" style="vertical-align: middle; margin-right: 10px;"></a>
+        <a href="https://www.hzau.edu.cn/" target="_blank" rel="noopener noreferrer"><img src="/logo/Huazhong_Agricultural_University_logo.svg" alt="Huazhong Agricultural University" height="32" style="vertical-align: middle; margin-right: 10px;"></a>
         <span style="vertical-align: middle;">FROM STARDUST, TO DISCOVERY</span>
         <a href="https://posit.co" target="_blank" style="text-decoration: none; border-bottom: none;">
           <img src="/logo/Posit_logo.svg" alt="Posit" height="18" style="vertical-align: middle; margin: 0 10px;">
@@ -72,8 +72,8 @@ website:
 
 
       center: |
-{% for page in pages if page.title == '关于' %}
-        <a href="/{{ page.href | replace('.qmd', '.html') }}" class="footer-link">关于 BioReport</a>
+{% for page in pages if page.title in ['About', '关于'] %}
+        <a href="/{{ page.href | replace('.qmd', '.html') }}" class="footer-link">About BioReport</a>
 {% endfor %}
 
 format:
@@ -81,7 +81,8 @@ format:
     embed-resources: false
     self-contained: false
     theme:
-      - {{ (report.get('theme') or {}).get('light', 'theme/bioreport.scss') }}
+      light: {{ (report.get('theme') or {}).get('light', 'theme/bioreport.scss') }}
+      dark: {{ (report.get('theme') or {}).get('dark', 'darkly') }}
     mainfont: "Source Sans 3"
     toc: true
     toc-depth: 3
@@ -99,7 +100,7 @@ format:
       margin-width: 250px
       gutter-width: 1.2rem
     toc-location: right
-    toc-title: "目录"
+    toc-title: "Contents"
     page-layout: article
     code-copy: true
     smooth-scroll: true

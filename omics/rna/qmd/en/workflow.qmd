@@ -1,0 +1,154 @@
+---
+title: "Analysis Workflow"
+bibliography: ../reference/qc_references.bib
+csl: ../reference/china-national-standard-gb-t-7714-2015-numeric.csl
+format:
+  html:
+    lightbox: true
+    code-copy: true
+---
+
+## Analysis Workflow
+
+The workflow diagram shows the upstream data processing stages. The software table lists the supplied version records. Methods describe quality control, alignment, expression quantification, differential testing and enrichment; optional analyses depend on the upstream workflow.
+
+```{python}
+#| label: setup-import
+#| echo: false
+from bioreport.utils.visualize_utils import load_software_data
+from bioreport.utils.report_utils import software_version_table
+from bioreport.config import load_project_metadata
+input_files = load_project_metadata()['input_files']
+```
+
+```{mermaid}
+%%| label: fig-pipeline-clean
+%%| fig-cap: "RNA-seq Analysis Workflow"
+%%| fig-width: 12
+
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#E3F2FD', 'primaryTextColor': '#2c3e50', 'lineColor': '#7f8c8d', 'fontFamily': 'Helvetica'}}}%%
+
+graph LR
+
+    %% -------------------- Style Library -------------------- %%
+    %% Use balanced mid-tone colors. %%
+    
+    %% Standard nodes: rounded corners and neutral borders. %%
+    classDef base fill:#fff,stroke:#7f8c8d,stroke-width:1px,rx:5,ry:5,color:#333;
+    
+    %% 1. Data flow (blue) %%
+    classDef raw fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,rx:5,ry:5,color:#0d47a1;
+    
+    %% 2. Alignment flow (green) %%
+    classDef map fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,rx:5,ry:5,color:#1b5e20;
+    
+    %% 3. Analysis flow (orange) %%
+    classDef core fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,rx:5,ry:5,color:#e65100;
+    
+    %% 4. Advanced analysis (purple) %%
+    classDef adv fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,rx:5,ry:5,color:#4a148c;
+    
+    %% 5. Delivery: white text on dark gray with a light border. %%
+    classDef endNode fill:#37474f,stroke:#cfd8dc,stroke-width:2px,rx:15,ry:15,color:#fff;
+
+
+    %% -------------------- Workflow diagram -------------------- %%
+    
+    %% 1. Read and clean inputs %%
+    subgraph S1 ["Step 1: Data Cleaning"]
+        direction TB
+        Raw[Raw Data]:::raw --> MD5{MD5}:::base
+        MD5 --> QC1[FastQC & Screen]:::base
+        QC1 --> Trim[Fastp Trimming]:::base
+        Trim --> Clean[Clean Data]:::raw
+    end
+
+    %% 2. Align reads %%
+    subgraph S2 ["Step 2: Alignment"]
+        direction TB
+        Clean --> STAR[STAR Mapping]:::map
+        STAR --> BAM[BAM Processing]:::base
+        BAM --> QMap[Qualimap & Stats]:::base
+    end
+
+    %% 3. Quantify expression %%
+    subgraph S3 ["Step 3: Quantification"]
+        direction TB
+        STAR -.-> RSEM[RSEM Quant]:::core
+        RSEM --> Matrix[Count Matrix]:::core
+        Matrix --> DEG[DESeq2 Analysis]:::core
+        DEG --> Enrich["GO/KEGG & Heatmap"]:::core
+    end
+
+    %% 4. Run downstream analyses %%
+    subgraph S4 ["Step 4: Advanced Analysis"]
+        direction TB
+        STAR -.-> GATK[Variant Calling]:::adv
+        STAR -.-> rMATS[Alt Splicing]:::adv
+        STAR -.-> Arriba[Gene Fusion]:::adv
+        STAR -.-> StrTie[Novel Transcript]:::adv
+    end
+
+    %% 5. Deliver reports and data %%
+    Report(Final Report):::endNode
+
+    %% -------------------- Connections -------------------- %%
+    QMap --> Report
+    Enrich --> Report
+    GATK --> Report
+    rMATS --> Report
+    Arriba --> Report
+    StrTie --> Report
+
+    %% -------------------- Transparent subgraphs -------------------- %%
+    %% Keep subgraph backgrounds transparent. %%
+    %% fill:none = transparent %%
+    %% Neutral border visible on light and dark backgrounds. %%
+    %% Dashed lines keep the diagram lightweight. %%
+    
+    style S1 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
+    style S2 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
+    style S3 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
+    style S4 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
+
+    %% Use neutral gray for all connector lines. %%
+    linkStyle default stroke:#7f8c8d,stroke-width:1px,fill:none;
+```
+
+```{python}
+#| label: software-table
+#| echo: false
+sw_file = input_files.get('software_versions_file', '../data/software_versions.yaml')
+df_sw = load_software_data(sw_file)
+sw_ver_map = software_version_table(df_sw, sw_file)
+```
+
+## Detailed Methods
+
+
+#### Data Preprocessing and Quality Control {#en-data-preprocessing-and-quality-control}
+
+Raw sequencing data were first subjected to comprehensive quality control. The integrity and quality of raw reads were assessed using **`FastQC`** (`{python} sw_ver_map.get('FastQC', 'v0.12.x')`)[@andrews2010fastqc] and **`MultiQC`** (`{python} sw_ver_map.get('MultiQC', 'v1.x')`)[@MultiQC].  Potential cross-species contamination was screened using **`Fastq Screen`** (`{python} sw_ver_map.get('Fastq Screen', 'v0.15.x')`)[@FastQ_Screen].  To obtain high-quality clean reads, adapter sequences and low-quality bases were trimmed using **`Fastp`** (`{python} sw_ver_map.get('Fastp', 'v0.23.x')`) [@chen2018fastp] with default parameters.
+
+#### Read Alignment and Quantification {#en-read-alignment-and-quantification}
+
+Cleaned reads were aligned to the reference genome using **`STAR`** (`{python} sw_ver_map.get('STAR', 'v2.7.x')`)[@dobin2013star] in two-pass mode to enhance splice junction discovery. Post-alignment processing, including sorting and indexing, was carried out using **`Samtools`** (`{python} sw_ver_map.get('Samtools', 'v1.x')`)[@li2009sequence].  Alignment quality, coverage distribution, and insert sizes were evaluated using **`Qualimap`** (`{python} sw_ver_map.get('Qualimap', 'v2.2.x')`)[@okonechnikov2016qualimap] and Samtools stats. For visualization, coverage tracks (BigWig files) were generated using **`deepTools`** (`{python} sw_ver_map.get('deepTools', 'v3.5.x')`)[@ramirez2014deeptools].  Gene and transcript expression levels were quantified using **`RSEM`** (`{python} sw_ver_map.get('RSEM', 'v1.3.x')`)[@li2011rsem] to calculate expected counts, TPM, and FPKM.
+
+#### Differential Expression and Functional Analysis {#en-differential-expression-and-functional-analysis}
+
+Differential expression analysis between experimental groups was performed using **`DESeq2`** (`{python} sw_ver_map.get('DESeq2', 'v1.40.x')`)[@love2014moderated] based on the raw count matrix. Volcano plots mark differential genes using the configured raw P-value and $|\log_2(\text{FoldChange})|$ cutoffs. Functional enrichment analyses (GO and KEGG) were conducted using **`clusterProfiler`** (`{python} sw_ver_map.get('clusterProfiler', 'v4.x')`)[@yu2012clusterprofiler]. 
+
+#### Advanced Downstream Analyses {#en-advanced-downstream-analyses}
+
+To explore transcriptomic complexity, several specialized analyses were performed:
+
+*   **Novel Transcript Discovery**: **`StringTie`** (`{python} sw_ver_map.get('StringTie', 'v2.x')`) was used for de novo transcript assembly[@pertea2020gff], followed by **`GffCompare`** (`{python} sw_ver_map.get('GffCompare', 'v0.12.x')`) to compare with reference genome annotations[@pertea2015stringtie]. 
+*   **Alternative Splicing**: **`rMATS`** (`{python} sw_ver_map.get('rMATS', 'v4.x')`) was used to detect differential alternative splicing events[@wang2024rmats]. 
+*   **Variant Calling**: SNPs and Indels were identified following the **`GATK Best Practices`** (`{python} sw_ver_map.get('GATK', 'v4.x')`) workflow. Analysis steps included Duplicate Marking with **`Picard`** (`{python} sw_ver_map.get('Picard', 'v2.x')`), Base Quality Score Recalibration (BQSR), and variant filtering[@mckenna2010genome]. 
+*   **Gene Fusion**: Potential gene fusion events were detected using **`Arriba`** (`{python} sw_ver_map.get('Arriba', 'v2.x')`) based on STAR alignment results[@uhrig2021accurate]. 
+
+
+## References
+
+::: {#refs}
+:::

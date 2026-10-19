@@ -1,0 +1,13 @@
+---
+title: Frequently Asked Questions
+---
+
+## Frequently Asked Questions
+
+**How should I cite the analysis workflow?**
+
+See the Citation section of the project GitHub repository.
+
+**Where can I download the data?**
+
+Use the study's NCBI SRA accession when the study has deposited its raw data. Consult the delivery files for locally supplied inputs.

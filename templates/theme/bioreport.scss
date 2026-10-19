@@ -61,6 +61,70 @@ a { text-underline-offset: .18em; }
 #TOC a { color: #63748a; text-decoration: none; }
 #TOC a:hover, #TOC a:focus-visible { color: $primary; }
 
+:root[data-report-theme="dark"] {
+  color-scheme: dark;
+  --bs-body-bg: #171c24;
+  --bs-body-color: #e2e8f0;
+  --bs-emphasis-color: #f8fafc;
+  --bs-secondary-color: #aab6c5;
+  --bs-tertiary-bg: #222a35;
+  --bs-border-color: #3b4654;
+  --bs-link-color: #86b7fe;
+  --bs-link-hover-color: #b6d4fe;
+  background: #171c24;
+  color: #e2e8f0;
+}
+:root[data-report-theme="dark"] body { background: #171c24; color: #e2e8f0; }
+:root[data-report-theme="dark"] h1,
+:root[data-report-theme="dark"] h2,
+:root[data-report-theme="dark"] h3,
+:root[data-report-theme="dark"] h4,
+:root[data-report-theme="dark"] h5,
+:root[data-report-theme="dark"] h6,
+:root[data-report-theme="dark"] .report-brand-link,
+:root[data-report-theme="dark"] .callout .callout-title { color: #e8eef7; }
+:root[data-report-theme="dark"] table:not(.dataTable) th,
+:root[data-report-theme="dark"] .dataTables_wrapper table.dataTable thead th { color: #d5e2f3 !important; background: #222a35 !important; }
+:root[data-report-theme="dark"] table:not(.dataTable) td,
+:root[data-report-theme="dark"] .dataTables_wrapper table.dataTable tbody td { color: #d5dce6 !important; border-color: #364150 !important; }
+:root[data-report-theme="dark"] table:not(.dataTable) tbody tr:hover,
+:root[data-report-theme="dark"] .dataTables_wrapper table.dataTable tbody tr:hover td { background: #293442 !important; }
+:root[data-report-theme="dark"] .report-navbar.navbar { background: rgba(23, 28, 36, .94) !important; border-color: #3b4654 !important; }
+:root[data-report-theme="dark"] .report-menu { background: rgba(23, 28, 36, .98); }
+:root[data-report-theme="dark"] .report-navbar a.nav-link { color: #a9c9f2 !important; }
+:root[data-report-theme="dark"] .report-navbar a.nav-link[aria-current="page"] { color: #d8e8ff !important; }
+:root[data-report-theme="dark"] .report-control,
+:root[data-report-theme="dark"] .report-nav-toggle { color: #d5dce6; border-color: #536173; }
+:root[data-report-theme="dark"] .report-control:hover,
+:root[data-report-theme="dark"] .report-nav-toggle:hover { background: #293442; }
+.report-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  min-height: 36px;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  background: $body-bg;
+  color: $body-color;
+  padding: .35rem .65rem;
+  font: inherit;
+  font-size: .84rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.report-control:hover { background: $surface; border-color: #b9c9da; }
+.report-control:focus-visible { outline: 2px solid $primary; outline-offset: 2px; }
+.report-control svg { width: 17px; height: 17px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.report-theme-control { width: 36px; padding: 0; }
+.report-control [hidden] { display: none !important; }
+:root[data-report-theme="dark"] .report-control { background: #202936; border-color: #465366; }
+:root[data-report-theme="dark"] .report-control:hover { background: #2a3747; border-color: #62738a; }
+
 /* Shared tables, including DataTables and Pandoc tables. */
 table:not(.dataTable) {
   width: 100%;

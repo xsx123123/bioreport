@@ -1,0 +1,30 @@
+
+## Highly Variable Gene Expression Patterns
+
+Genes with mean TPM > 1 and nonzero variance are ranked by the variance of log2(TPM + 1). Rows are standardized as Z-scores. Red indicates expression above a gene's mean and blue below it. The sample annotation bar identifies the original groups.
+
+Clustering reorders rows and columns by expression similarity. Interpret sample separation with PCA and QC; clustering alone does not prove a treatment effect. PDF shows a compact main heatmap and supplies the full configured heatmap as an SVG supplement.
+
+```{python}
+#| label: pdf-heatmap
+#| output: asis
+from bioreport.config import display_path
+from pathlib import Path
+from bioreport.utils.print_theme import export_vector
+full_n = heatmap_settings.get('top_n', 1000)
+main_n = min(pdf_settings.get('hvg_top_n', 50), full_n)
+full_fig, _ = draw_interactive_heatmap(tpm_file, meta_file, top_n=full_n, do_cluster=True)
+supplementary = Path(os.environ.get('BIOREPORT_DELIVERY_DIR', '.')) / 'supplementary'
+supplementary.mkdir(parents=True, exist_ok=True)
+supplement_path = supplementary / f"hvg-top-{full_fig.layout.meta['heatmap_genes']}.svg"
+export_vector(full_fig, supplement_path)
+fig, conf = draw_interactive_heatmap(tpm_file, meta_file, top_n=main_n, do_cluster=True)
+count = fig.layout.meta['heatmap_genes']
+cluster = fig.layout.meta['clustering']
+cluster_note = f"Row distance: correlation ({('clustered' if cluster['rows'] else 'not clustered')}); column distance: Euclidean ({('clustered' if cluster['columns'] else 'not clustered')}) with the existing Ward linkage. "
+if cluster['error']:
+    cluster_note += f"Clustering note: {cluster['error']}。"
+show_figure(fig, caption=f'HVG heatmap: {count} genes. Genes with mean TPM > 1 and nonzero variance are ranked by variance of Log2(TPM+1), then standardized by gene as Z-scores. Group annotations appear above the heatmap; the color range is -2 to 2, with extreme values shown at the endpoints. {cluster_note}Gene row names are hidden in static plots with more than 40 genes.')
+display_result_ai('rna.results.heatmap__figure')
+typst_note(f"Main figure: {count} genes; full heatmap: supplementary/{supplement_path.name}（{full_fig.layout.meta['heatmap_genes']} genes). Sample order follows clustering. Full expression matrix (relative to data directory): {display_path(tpm_file)}")
+```

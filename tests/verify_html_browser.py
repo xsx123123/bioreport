@@ -18,30 +18,50 @@ def verify(source, output):
             page=browser.new_page(viewport={'width':1440,'height':1100})
             page.on('pageerror',lambda error:errors.append(str(error)))
             page.goto(source.resolve().as_uri(),wait_until='load',timeout=120000)
-            page.wait_for_function("typeof Plotly !== 'undefined'",timeout=30000)
-            links=page.locator('.report-navbar a.nav-link')
+            if page.locator('.edition-switch').count():
+                page.wait_for_function("document.querySelector('#report')?.contentDocument?.querySelector('.report-navbar')",timeout=120000)
+                page.locator('#loading').wait_for(state='hidden',timeout=120000)
+                frame=page.frame_locator('#report')
+                assert page.locator('#report').evaluate('(node)=>node.contentDocument.documentElement.lang')=='zh-CN'
+                page.locator('[data-edition="en"]').click()
+                page.wait_for_function("document.querySelector('#report')?.contentDocument?.documentElement.lang === 'en'",timeout=120000)
+                page.locator('#loading').wait_for(state='hidden',timeout=120000)
+                assert frame.locator('.report-navbar').count()==1
+                checks.append('single-file English edition switch')
+                page.locator('[data-edition="zh"]').click()
+                page.wait_for_function("document.querySelector('#report')?.contentDocument?.documentElement.lang === 'zh-CN'",timeout=120000)
+                page.locator('#loading').wait_for(state='hidden',timeout=120000)
+                checks.append('single-file Chinese edition switch')
+                report=frame
+            else:
+                report=page
+            if page.locator('.edition-switch').count():
+                page.wait_for_function("typeof document.querySelector('#report').contentWindow.Plotly !== 'undefined'",timeout=30000)
+            else:
+                page.wait_for_function("typeof Plotly !== 'undefined'",timeout=30000)
+            links=report.locator('.report-navbar a.nav-link')
             for i in range(links.count()):
                 link=links.nth(i);name=link.inner_text();target=link.get_attribute('aria-controls')
                 link.click();page.wait_for_timeout(250)
-                visible=page.locator('.report-page:visible')
+                visible=report.locator('.report-page:visible')
                 if visible.count()!=1 or visible.first.get_attribute('id')!=target:
                     raise AssertionError('Navigation failed: '+name)
                 checks.append('navigation:'+name)
             # Enter each real report page and inspect actual Plotly layouts.
             for i in range(links.count()):
                 links.nth(i).click();page.wait_for_timeout(200)
-                charts=page.locator('.report-page:visible .plotly-graph-div')
+                charts=report.locator('.report-page:visible .plotly-graph-div')
                 for j in range(charts.count()):
                     assert charts.nth(j).evaluate('(node)=>!!node._fullLayout && node._fullData.length>0')
                 if charts.count():checks.append('plotly:'+str(charts.count()))
-            assert page.locator('table').count()>0
-            assert page.evaluate("!!document.querySelector('table.dataTable, .dt-container, .itables')")
+            assert report.locator('table').count()>0
+            assert report.locator('table.dataTable, .dt-container, .itables').count()>0
             checks.append('ITables initialized')
-            assert page.locator('#TOC a').count()>0
+            assert report.locator('#TOC a').count()>0
             # The about page hides the TOC by design; return to a content page first.
-            page.locator('.report-navbar a.nav-link').first.click()
+            report.locator('.report-navbar a.nav-link').first.click()
             page.wait_for_timeout(250)
-            page.locator('#TOC a').first.click(timeout=10000);page.wait_for_timeout(250)
+            report.locator('#TOC a').first.click(timeout=10000);page.wait_for_timeout(250)
             checks.append('TOC navigation')
             page.screenshot(path=str(output/'html.png'),full_page=True)
             browser.close()

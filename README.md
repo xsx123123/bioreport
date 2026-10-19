@@ -67,7 +67,7 @@ Use `--dry-run` to validate modules, templates, and input files without calling 
 python -m bioreport run -c tests/report.rna.local.json -o output/rna-report --dry-run
 ```
 
-The default single-file HTML report is written as `<project_id>_report.html`; the PDF is written as `<project_id>_report.pdf`. Set `report.layout: website` for a multi-page HTML site. Website layout cannot be combined with PDF output.
+For RNA-seq reports in `single` layout, `<project_id>_report.html` contains both Chinese and English, with a button to switch languages within the same file. PDFs are delivered separately as `<project_id>_report.pdf` (Chinese) and `<project_id>_report.en.pdf` (English), with evidence and validation manifests. Set `report.title_en` to customize the English title. Set `report.layout: website` for a multi-page HTML site with separate language editions; website layout cannot be combined with PDF output.
 
 ### Run history and Workspace
 
@@ -91,18 +91,92 @@ bioreport workspace-restore --db /path/to/runs.db
 
 ## Docker and PDF deployment
 
-Build the image from the repository root. The build pins Quarto 1.8.26 and automatically checks the installed package, Kaleido export, and RNA HTML/PDF report generation:
+### Build, test, and run with Make
+
+Run these commands from the repository root. The Makefile reads `[project].version` from `pyproject.toml` each time Make is invoked and uses `IMAGE=bioreport:<version>` by default. With the current version, `2.0.0`, the following command builds `bioreport:2.0.0`:
 
 ```bash
-docker build --platform linux/amd64 -f deploy/Dockerfile -t bioreport:latest .
+make docker-build
 ```
 
-Run the smoke test again against the built image:
+This expands to `docker build --platform linux/amd64 -f deploy/Dockerfile -t bioreport:2.0.0 .`. The build pins Quarto 1.8.26 and automatically checks the installed package, Kaleido export, and RNA HTML/PDF report generation. Changing the version in `pyproject.toml` changes the default image tag on the next invocation; rebuild the image before testing or running that version.
+
+`docker-test` and `docker-run` use the same default versioned image. They require an existing image and do not build it automatically:
 
 ```bash
-docker run --rm --entrypoint python bioreport:latest \
-  /opt/bioreport-smoke-test.py
+make docker-test
+make docker-run
 ```
+
+| Target | Behavior |
+| --- | --- |
+| `make docker-build` | Build the current source using `deploy/Dockerfile`, tagged with the project version. |
+| `make docker-test` | Run `/opt/bioreport-smoke-test.py` in the selected image to check the installed package and HTML/PDF rendering. |
+| `make docker-run` | Create `OUT` if necessary, mount `CONFIG` and `DATA` read-only, and generate reports in `OUT` using the selected image. |
+
+The Make variables below can be set as `make <target> NAME=value`:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `IMAGE` | `bioreport:<version>` | Image name and tag used by all three Docker targets. |
+| `PLATFORM` | `linux/amd64` | Build platform; the current Dockerfile downloads an amd64 Quarto package, so use this default. |
+| `CONFIG` | `configs/report.example.json` | Host configuration file mounted at `/config/report.json` by `docker-run`. |
+| `DATA` | `examples/rna-seq/data` | Host input directory mounted at `/data` read-only by `docker-run`. |
+| `OUT` | `output` | Host output directory mounted at `/workspace` with write access by `docker-run`. |
+
+For example, generate a report with a different configuration and data directory:
+
+```bash
+make docker-run \
+  CONFIG=/path/to/report.json \
+  DATA=/path/to/project-data \
+  OUT=/path/to/report-output
+```
+
+For `make docker-run`, set `input_files.data_dir` in the configuration to `/data`, with input file paths relative to that directory. The X101SC26098749-Z01-J001 configuration preserves a different relative directory structure; use its repository-mount command below.
+
+To use the `bioreport:latest` tag in the examples below, specify `IMAGE` for **each** Make invocation:
+
+```bash
+make docker-build IMAGE=bioreport:latest
+make docker-test IMAGE=bioreport:latest
+make docker-run IMAGE=bioreport:latest
+```
+
+An `IMAGE` override applies only to that invocation. A later plain `make docker-test` or `make docker-run` uses `bioreport:<version>` again. The default build creates only the versioned tag; it does not also create or update `bioreport:latest`.
+
+### Generate the X101SC26098749-Z01-J001 report
+
+From the repository root, the following command is equivalent to `python -m bioreport run -c tests/X101SC26098749-Z01-J001.json -o "$PWD/output/X101SC26098749-Z01-J001"`. It requires the example configuration and data to exist in your checkout. Create the output directory, then run:
+
+```bash
+mkdir -p "$PWD/output/X101SC26098749-Z01-J001"
+
+docker run --rm -it \
+  -v "$PWD:/project:ro" \
+  -v "$PWD/output/X101SC26098749-Z01-J001:/workspace" \
+  bioreport:latest run \
+  -c /project/tests/X101SC26098749-Z01-J001.json \
+  -o /workspace
+```
+
+| Argument | Meaning |
+| --- | --- |
+| `docker run` | Create and start a container using the specified image. |
+| `--rm` | Remove the container after it exits. Files written to the mounted output directory remain on the host. |
+| `-it` | Keep standard input open and allocate a terminal for interactive use and progress display. Omit this option in CI or other non-interactive jobs. |
+| `-v "$PWD:/project:ro"` | Mount the current repository directory at `/project` inside the container. `$PWD` must be the repository root; `:ro` makes this mount read-only. This exposes both `tests/` and `examples/` while preserving their relative paths. |
+| `-v "$PWD/output/X101SC26098749-Z01-J001:/workspace"` | Mount the host output directory at `/workspace` with write access, so reports and logs persist after the container exits. |
+| `bioreport:latest` | Select the Docker image. Replace it with `bioreport:2.0.0` when using the current versioned image built by `make docker-build`; use the corresponding version after updating `pyproject.toml`. |
+| `run` | Generate a report. The image entrypoint is `bioreport`, so this invokes `bioreport run` inside the container. |
+| `-c /project/tests/X101SC26098749-Z01-J001.json` | Load the report configuration from its container path. Its `input_files.data_dir`, `../examples/X101SC26098749-Z01-J001/data`, resolves relative to the configuration file directory. |
+| `-o /workspace` | Write the generated reports and logs to the container output mount, corresponding to `output/X101SC26098749-Z01-J001/` on the host. |
+
+The repository mount supplies configuration and input data; BioReport itself runs from the installed package in the image. Rebuild the image after changing the source code.
+
+During rendering, Quarto writes intermediate files such as `qmd/report.html` and `qmd/report_pdf.pdf` beneath the output directory. BioReport then moves and renames them using the project ID. For single-file RNA-seq HTML, the Chinese and English editions are staged, merged into `<project_id>_report.html`, and removed as separate files. PDFs remain separate Chinese and English deliverables. The run log records the render output, each move/rename, the HTML merge, and PDF delivery readiness. Short paths in these messages are relative to the output directory; the final summary shows the delivery locations.
+
+### Use separate configuration and data mounts
 
 To generate a report, mount a configuration, its input data, and an output directory. Paths inside the configuration must point to the container mount points, for example `/data` and `/workspace`:
 

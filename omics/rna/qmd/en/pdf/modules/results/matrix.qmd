@@ -1,0 +1,24 @@
+
+## Gene Expression Matrix
+
+The expression matrix contains TPM values supplied by the upstream analysis. Gene identifiers and sample names retain their input values. The report provides a preview; complete results remain in the delivered data directory.
+
+```{python}
+#| label: pdf-matrix
+#| output: asis
+matrix = pd.read_csv(tpm_file, sep='\t', index_col=0)
+metadata = pd.read_csv(meta_file) if meta_file else None
+if metadata is not None:
+    from bioreport.utils.pdf_results import ordered_samples
+    columns = ordered_samples(metadata, matrix.columns)
+else:
+    columns = list(matrix.columns)
+shown = matrix[columns[:pdf_settings.get('matrix_columns', 6)]].reset_index()
+shown = shown.rename(columns={shown.columns[0]: 'Gene ID'})
+shown = gene_columns(apply_gene_annotation(shown, project_info))
+preview(shown, tpm_file, limit=pdf_settings.get('matrix_rows', 8), caption='TPM Expression Matrix Preview')
+display_result_ai('rna.results.matrix__table')
+typst_note(f"Body shows {min(len(columns), pdf_settings.get('matrix_columns', 6))} / {len(matrix.columns)} sample columns.")
+if not project_info.get('input_files', {}).get('gene_annotation_file'):
+    typst_note('No gene annotation file supplied. The expression matrix retains original Gene IDs and omits Gene Symbol.')
+```

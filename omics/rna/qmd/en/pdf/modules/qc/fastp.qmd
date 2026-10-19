@@ -1,0 +1,35 @@
+
+## fastp Sequencing Quality
+
+Upstream fastp removes adapters and low-quality reads. Statistics summarize duplication, Q30, GC content, retained reads and adapter trimming. Q30 is the percentage of bases with Phred score >= 30. Filtering charts retain the read-count categories; quality curves show mean Phred scores by cycle for R1 and R2. The key-figure PDF mode uses after-filtering stages, while full mode retains all stages.
+
+```{python}
+#| label: fastp-table
+#| results: asis
+from bioreport.utils.render_output import show_print_table, typst_note
+from bioreport.config import load_config, display_path
+qc_config = load_config()
+data_path = input_files['fastp_stats_file']
+qc_frame = pd.read_csv(data_path, sep='\t')
+columns = {'Sample': 'Sample', 'fastp-pct_duplication': 'Dup (%)', 'fastp-after_filtering_q30_rate': 'Q30 (%)', 'fastp-after_filtering_gc_content': 'GC (%)', 'fastp-pct_surviving': 'Retained (%)', 'fastp-pct_adapter': 'Adapter (%)'}
+qc_frame = qc_frame[[c for c in columns if c in qc_frame]].rename(columns=columns)
+sample_path = input_files.get('sample_file')
+if sample_path:
+    from bioreport.utils.pdf_results import ordered_samples
+    sample_metadata = pd.read_csv(sample_path)
+    ordered = ordered_samples(sample_metadata)
+    name_map = dict(zip(sample_metadata['sample'].astype(str), sample_metadata['sample_name'].astype(str))) if 'sample' in sample_metadata and 'sample_name' in sample_metadata else {}
+    qc_frame['Sample'] = qc_frame['Sample'].astype(str).map(lambda value: name_map.get(value, value))
+    qc_frame = qc_frame.assign(_order=qc_frame['Sample'].map({s: i for i, s in enumerate(ordered)})).sort_values('_order', kind='stable').drop(columns='_order')
+qc_limit = qc_config.get('report', {}).get('pdf', {}).get('qc_rows', 30)
+show_print_table(qc_frame, limit=qc_limit, caption='fastp Sequencing Quality Statistics')
+typst_note(f'fastp preview {min(qc_limit, len(qc_frame))} / {len(qc_frame)} rows; units are percent and missing values are NA. Full results (relative to data directory): {display_path(data_path)}')
+display_result_ai('rna.qc.fastp__table')
+```
+
+```{python}
+#| label: fastp-viz
+#| results: asis
+visualize_multiqc_logs(analysis_dir=input_files['fastp_report_dir'], target_modules=['fastp'])
+display_result_ai('rna.qc.fastp__figure')
+```

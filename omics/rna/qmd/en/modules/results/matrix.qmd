@@ -1,0 +1,14 @@
+
+## Gene Expression Matrix
+
+The expression matrix contains TPM values supplied by the upstream analysis. Gene identifiers and sample names retain their input values. The report provides a preview; complete results remain in the delivered data directory.
+
+```{python}
+#| label: table-tpm-preview
+#| output: asis
+if tpm_file and os.path.exists(tpm_file):
+    display_gene_expression_table(tpm_file, top_n=analysis.get('expression', {}).get('preview_rows', 100))
+    display_result_ai('rna.results.matrix__table')
+else:
+    raise FileNotFoundError(f'TPM matrix is missing: {tpm_file}')
+```

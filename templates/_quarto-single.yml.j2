@@ -12,7 +12,7 @@ format:
     toc: true
     toc-depth: 3
     toc-location: left
-    toc-title: 导航目录
+    toc-title: Contents
     number-sections: true
     code-copy: true
     smooth-scroll: true
@@ -22,7 +22,8 @@ format:
     include-after-body:
       - theme/load-mermaid.html
     theme:
-      - {{ (report.get('theme') or {}).get('light', 'theme/bioreport.scss') }}
+      light: {{ (report.get('theme') or {}).get('light', 'theme/bioreport.scss') }}
+      dark: {{ (report.get('theme') or {}).get('dark', 'darkly') if (report.get('theme') or {}).get('dark') != (report.get('theme') or {}).get('light') else 'darkly' }}
     css:
 {% if staged_fonts %}
       - {{ staged_fonts }}

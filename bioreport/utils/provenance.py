@@ -109,6 +109,23 @@ def input_manifest(config):
     return list(entries.values())
 
 
+def expected_report_paths(config):
+    """Paths required by the requested formats and RNA language editions."""
+    from bioreport.i18n import languages
+    from bioreport.modules import output_formats
+    from bioreport.config import report_artifact_name
+    website = config.get('report', {}).get('layout') == 'website'
+    paths = []
+    for fmt in output_formats(config):
+        if fmt == 'html' and not website:
+            paths.append(report_artifact_name(config, fmt))
+            continue
+        paths.extend(('en/index.html' if lang == 'en' else 'index.html') if website
+                     else report_artifact_name(config, fmt, lang)
+                     for lang in languages(config))
+    return list(dict.fromkeys(paths))
+
+
 def write_delivery_manifests(config, provenance, output_dir):
     """External report hashes avoid the self-referential hash of an embedded PDF."""
     import platform
@@ -116,8 +133,13 @@ def write_delivery_manifests(config, provenance, output_dir):
     import subprocess
     directory = Path(output_dir)
     directory.mkdir(parents=True, exist_ok=True)
-    reports = [artifact_record(p, 'report', p.name) for p in sorted(directory.glob('*_report.*'))
-               if p.suffix in ('.pdf','.html')]
+    from bioreport.i18n import is_rna
+    paths = [directory / name for name in expected_report_paths(config)] if is_rna(config) else sorted(directory.glob('*_report*.*'))
+    reports = [artifact_record(p, 'report', str(p.relative_to(directory))) for p in paths
+               if p.is_file() and p.suffix in ('.pdf', '.html')]
+    for record in reports:
+        record['language'] = ('zh+en' if record['path'].endswith('_report.html') and is_rna(config)
+                              else 'en' if '.en.' in record['path'] or record['path'].startswith('en/') else 'zh')
     artifacts = [artifact_record(p, 'supplementary', str(p.relative_to(directory)))
                  for p in sorted((directory/'supplementary').rglob('*')) if p.is_file()]
     for name, role in [('report-plan.json','semantic_report'),('report-blocks-pdf.jsonl','rendered_blocks'),
@@ -125,6 +147,12 @@ def write_delivery_manifests(config, provenance, output_dir):
                        ('content-validation.json','content_validation')]:
         path=directory/name
         if path.is_file():artifacts.append(artifact_record(path,role,name))
+    for lang in ('zh', 'en'):
+        for stem in ('report-plan', 'report-blocks-pdf', 'layout-observations', 'pdf-validation', 'content-validation'):
+            suffix = '.jsonl' if stem == 'report-blocks-pdf' else '.json'
+            path = directory / (stem + '.' + lang + suffix)
+            if path.is_file():
+                artifacts.append(artifact_record(path, stem, path.name))
     config_path = config.get('_config_path')
     reproduction = []
     config_path = config.get('_config_path')
@@ -178,6 +206,9 @@ def validate_delivery_manifests(config, output_dir):
         if name=='input' and {r['path'] for r in records} != input_expected:
             errors.append({'manifest':name,'error':'input_coverage'})
         if name=='report':
+            from bioreport.i18n import is_rna
+            if is_rna(config) and {r['path'] for r in records} != set(expected_report_paths(config)):
+                errors.append({'manifest': name, 'error': 'report_language_coverage', 'expected': expected_report_paths(config)})
             if not manifest.get('generated_at') or not manifest.get('report_version'):
                 errors.append({'manifest':name,'error':'missing_generation_metadata'})
         for record in records:

@@ -1,6 +1,6 @@
 # Docker 与 PDF 部署说明（草案）
 
-> 本文档集中记录 Docker 运行和 RNA-seq PDF 交付的操作说明。Docker 作为正式交付方式仍在持续完善；当前开发和验证建议优先使用仓库根目录 README 中的本地 Python/Quarto 命令。
+> 镜像固定使用 Quarto 1.8.26 Linux amd64 安装包，构建时下载并校验 SHA-256；镜像包含 Chromium、中文字体及 RNA / AI / PDF Python 依赖。构建期间执行 RNA HTML/PDF 冒烟检查。
 
 ## Docker 生成报告
 
@@ -9,10 +9,14 @@
 在仓库根目录执行：
 
 ```bash
-docker build -f deploy/Dockerfile -t bioreport:latest .
+docker build --platform linux/amd64 -f deploy/Dockerfile -t bioreport:latest .
 ```
 
 ### 2. 准备配置
+
+镜像入口为 `bioreport`，因此生成报告需要显式写 `run`，也可直接使用 `validate` 或 `--help`。构建需要 apt / pip 网络，并需要访问 GitHub 下载固定版本的 Quarto 安装包。
+
+构建保存 Python 版本清单到 `/opt/bioreport-python-packages.txt`。依赖尚未全部锁定，重新构建可能解析到不同版本；建议复用验证后的镜像或 digest。
 
 项目提供以下配置示例：
 
@@ -34,14 +38,14 @@ docker run --rm \
   -v /你的/本地/数据目录:/data:ro \
   -v /你的/本地/输出目录:/workspace \
   -v "$(pwd)/configs/report.example.json:/app/configs/report.example.json:ro" \
-  bioreport:latest -c /app/configs/report.example.json -o /workspace
+  bioreport:latest run -c /app/configs/report.example.json -o /workspace
 
 # 通用 assay 报告
 docker run --rm \
   -v "$(pwd)/examples/generic-assay:/app/examples/generic-assay:ro" \
   -v "$(pwd)/configs:/app/configs:ro" \
   -v /你的/本地/输出目录:/workspace \
-  bioreport:latest -c /app/configs/report.generic.json -o /workspace
+  bioreport:latest run -c /app/configs/report.generic.json -o /workspace
 ```
 
 `report.layout: single` 生成单文件 HTML；按需设置 `report.output_format` 为 `"html"`、`"pdf"` 或 `["html", "pdf"]`。`website` 布局生成多页 HTML，不能与 PDF 同时使用。报告文件名以 `project.project_id` 为前缀，形如 `<project_id>_report.html` 或 `<project_id>_report.pdf`。
@@ -52,8 +56,18 @@ docker run --rm \
 
 ```bash
 docker run --rm \
+  -v /你的/本地/数据目录:/data:ro \
   -v "$(pwd)/configs/report.example.json:/app/configs/report.example.json:ro" \
-  bioreport:latest -c /app/configs/report.example.json -o /workspace --dry-run
+  bioreport:latest run -c /app/configs/report.example.json -o /workspace --dry-run
+```
+
+可添加 `--user "$(id -u):$(id -g)"` 让输出归当前用户所有，宿主输出目录必须可写。镜像提供可写临时 HOME，支持任意 UID。项目数据、`.env` 和本地凭证目录已从构建上下文排除。
+
+构建后可独立重跑完整冒烟检查（包括 Kaleido 静态导出、RNA HTML/PDF 和交付校验）：
+
+```bash
+docker run --rm --user "$(id -u):$(id -g)" \
+  --entrypoint python bioreport:latest /opt/bioreport-smoke-test.py
 ```
 
 ## RNA-seq PDF 模板

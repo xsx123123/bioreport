@@ -1,0 +1,126 @@
+// Project-specific cover. Values are quoted as Typst strings by the composer.
+// Layout: masthead (logos | project id + version) / title block with scale
+// pills / structured metadata card / decorative footer bar.
+// Everything lives inside the code block below so the header/footer override
+// stays scoped to the cover page; content blocks inside it re-enter markup.
+#{
+// 封面眉栏上移，避免沿用正文页较大的顶部留白。
+set page(
+  margin: (top: 10mm, bottom: 18mm, left: 22mm, right: 22mm),
+  header: none, footer: none)
+
+// Theme tint reused by the metadata card and the rule work.
+let accent = rgb("#24476a")
+let muted = rgb("#68788a")
+// Latin binomials render in the Latin-first stack, so #emph resolves to a real
+// italic instead of a synthesized slant.
+let sci(body) = emph(body)
+let pill(body) = box(
+  inset: (x: 3.2mm, y: 1.1mm), radius: 2mm, fill: rgb("#eaf0f7"),
+  text(size: 9pt, fill: accent, body))
+
+v(0mm)
+// 顶部眉栏：左侧机构/软件徽标组合，右侧项目编号与版本标签。
+grid(
+  columns: (1fr, auto),
+  align: (left + horizon, right + horizon),
+  gutter: 6mm,
+  grid(columns: (auto, auto, auto), gutter: 5mm, align: horizon,
+    image("../logo/logo.png", height: 13mm),
+    line(angle: 90deg, length: 11mm, stroke: .6pt + rgb("#dce3ec")),
+    image("../logo/Huazhong_Agricultural_University_logo.svg", height: 13mm)),
+  // 项目编号与 BioReport 版本放在同一行，右边缘统一；RNAFlow 版本单独置于下一行。
+  align(right)[
+    #grid(
+      columns: (auto, auto), column-gutter: 3mm,
+      align: (right + horizon, right + horizon),
+      text(size: 9pt, weight: "medium", fill: muted, {{ project_id }}),
+      pill({{ bioreport_version_label }}),
+    )
+    #v(2mm)
+    #align(right)[#pill({{ pipeline_version_label }})]
+  ],
+)
+v(2.5mm)
+line(length: 100%, stroke: .7pt + rgb("#dce3ec"))
+
+// 主标题区：中文主标题、英文副标题与实验规模速览胶囊。
+v(16mm)
+align(center)[
+  #text(size: 27pt, weight: "bold", fill: rgb("#1c3853"), {{ title }})
+  #v(4mm)
+  #text(size: 11.5pt, fill: muted, {{ english_subtitle }})
+  #v(7mm)
+  #grid(columns: (auto,) * {{ pills | length }}, gutter: 3mm, align: center,
+{% for pill_text in pills %}
+    pill({{ pill_text }}),
+{% endfor %}
+  )
+]
+
+// Scientific Project Overview Panel. Scoped to the cover, with natural heights.
+let report-primary = rgb("#1E3A56")
+let report-text = rgb("#29445F")
+let report-muted = rgb("#71839A")
+let report-panel = rgb("#F7FAFD")
+let report-divider = rgb("#DFE8F1")
+let report-accent = rgb("#477EB2")
+let overview-field(label, value, italic: false) = block(width: 100%)[
+  #set par(leading: .55em)
+  #text(size: 8.5pt, fill: report-muted, label)
+  #v(1.8mm, weak: false)
+  #text(size: 10pt, weight: "medium", fill: report-primary,
+    if italic { sci(value) } else { value })
+]
+let overview-heading(en, zh) = block(width: 100%)[
+  #text(size: 8pt, weight: "bold", tracking: .65pt, fill: report-accent, en)
+  #v(1.5mm, weak: false)
+  #text(size: 11pt, weight: "bold", fill: report-text, zh)
+]
+v(14mm)
+block(width: 100%, inset: 6mm, radius: 1.5mm, fill: report-panel)[
+  #set par(first-line-indent: 0pt, justify: false, spacing: 0pt)
+  #set align(left)
+  #grid(
+    columns: (1fr, .5pt, 1fr), column-gutter: 6mm, row-gutter: 4.5mm,
+    align: left + top,
+    overview-heading("STUDY INFORMATION", "Study Information"),
+    grid.cell(rowspan: 5, fill: report-divider, inset: 0pt)[],
+    overview-heading("ANALYSIS PROVENANCE", "Analysis Provenance"),
+{% for i in range(4) %}
+{% set left = study_fields[i] %}
+{% set right = analysis_fields[i] %}
+    overview-field({{ left[0] }}, {{ left[1] }}, italic: {{ 'true' if left[2] else 'false' }}),
+    overview-field({{ right[0] }}, {{ right[1] }}),
+{% endfor %}
+  )
+  #v(4mm)
+  #line(length: 100%, stroke: .5pt + report-divider)
+  #v(2mm)
+  #align(center)[
+    #text(size: 8.5pt, fill: report-muted, "Report Date")
+    #h(4mm)
+    #text(size: 9pt, fill: report-text, {{ report_date }})
+  ]
+]
+
+// 底部装饰条与品牌行。
+v(1fr)
+line(length: 100%, stroke: 1.6pt + rgb("#dce3ec"))
+v(3mm)
+align(center)[
+  #text(size: 9pt, fill: muted)[Powered by JZHANG | CygnusX BioOps · BioReport]
+  #v(2mm)
+  #text(size: 8.5pt, fill: rgb("#8b98a8"), tracking: 1.2pt)[FROM STARDUST, TO DISCOVERY]
+]
+pagebreak()
+}
+
+// Match the cover metadata values, including entry numbers, leaders and pages.
+// Scope the override to entries so the directory heading keeps its hierarchy.
+#{
+  show outline.entry: set text(
+    font: report-fonts, size: 10pt, weight: "medium", fill: rgb("#1E3A56"))
+  outline(title: "Contents", depth: 2)
+}
+#pagebreak()

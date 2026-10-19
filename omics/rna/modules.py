@@ -7,7 +7,7 @@ from bioreport.registry import Module
 
 _ROOT = str(Path(__file__).resolve().parent)
 MODULES = [
-    Module("rna.workflow", "qmd/workflow.qmd", "分析流程", "workflow", package_root=_ROOT, optional_inputs=("software_versions_file",), icon="signpost-split"),
+    Module("rna.workflow", "qmd/workflow.qmd", "分析流程", "workflow", required_inputs=("software_versions_file",), package_root=_ROOT, icon="signpost-split"),
     Module("rna.qc", "qmd/qc.qmd", "质量控制", "qc", ("fastp_stats_file", "fastp_report_dir", "fastq_screen_r1_dir", "fastq_screen_r2_dir", "qualimap_dir"), package_root=_ROOT, icon="clipboard2-check"),
     Module("rna.qc.fastp", "qmd/modules/qc/fastp.qmd", "fastp 质控", "qc", ("fastp_stats_file", "fastp_report_dir"), package_root=_ROOT, parent="rna.qc", setup_qmd="qmd/modules/qc/setup.qmd"),
     Module("rna.qc.screen", "qmd/modules/qc/screen.qmd", "污染检测", "qc", ("fastq_screen_r1_dir", "fastq_screen_r2_dir"), package_root=_ROOT, parent="rna.qc", setup_qmd="qmd/modules/qc/setup.qmd"),

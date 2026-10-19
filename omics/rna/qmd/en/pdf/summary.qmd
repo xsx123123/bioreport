@@ -1,0 +1,73 @@
+
+
+```{python}
+#| label: pdf-executive-summary
+#| output: asis
+from IPython.display import display, Markdown
+import pandas as pd
+from bioreport.config import load_config
+from bioreport.utils.pdf_results import summary_metrics, comparison_summaries, deg_metric_label
+from bioreport.utils.render_output import show_metric_grid, show_print_table, typst_note
+def summary_heading(title):
+    display(Markdown('```{=typst}\n#heading(level: 2, numbering: none, outlined: false)[' + title + ']\n```'))
+summary_config = load_config()
+metrics = summary_metrics(summary_config)
+comparisons_summary = comparison_summaries(summary_config)
+cards = [(row['项目'], row['数值']) for _, row in metrics.iterrows()]
+if not comparisons_summary.empty:
+    for _, row in comparisons_summary.iterrows():
+        cards.append((deg_metric_label(row['比较组']), str(row['上调'] + row['下调'])))
+values = {row['项目']: row['数值'] for _, row in metrics.iterrows()}
+
+def metric(name):
+    """MetricValue；缺失回退 N/A，下划线转义避免 Typst 下标解析 . """
+    return str(values.get(name, 'N/A')).replace('_', '\\_')
+lead = f"This section summarizes RNA-seq QC and quantification. The project includes #strong[{metric('样本数')}] sequencing samples in #strong[{metric('分组数')}] experimental groups. Mean post-filtering Q30: #strong[{metric('平均 Q30')}]; mean reference mapping rate: #strong[{metric('平均比对率')}]; detected genes across samples: #strong[{metric('检出基因数')}]. "
+if not comparisons_summary.empty:
+    main = comparisons_summary.iloc[0]
+    deg_count = int(main['上调']) + int(main['下调'])
+    comparison = str(main['比较组']).replace('_', '\\_')
+    deg_settings = summary_config.get('analysis', {}).get('deg', {})
+    p_thr = deg_settings.get('pvalue_threshold', 0.05)
+    fc_thr = deg_settings.get('log2fc_threshold', 1.0)
+    lead += f"For the primary comparison (#strong[{comparison}]) at raw P < {p_thr:g} and |log2FC| > {fc_thr:g} yields #strong[{deg_count}] DEGs (upregulated {int(main['上调'])}, downregulated {int(main['下调'])}). "
+    padj_n = main.get('padj<0.05 基因数')
+    if padj_n not in (None, 'NA'):
+        lead += f'With padj < 0.05 and no log2FC cutoff, #strong[{padj_n}] genes. '
+    lead += 'Raw-P classification is distinct from FDR control. '
+lead += 'Key metrics follow:'
+display(Markdown('```{=typst}\n' + lead + '\n```'))
+show_metric_grid(cards, block_id='executive-metrics')
+typst_note('Detected genes use TPM > 1 in at least one sample. PCA and expression distributions instead use mean TPM > 1 across samples; the definitions serve different purposes.')
+summary_heading('Differential Expression Summary')
+display(Markdown('Descriptive statistics from input results. Comparisons are counted independently without deduplication; these totals do not establish biological mechanisms.'))
+if not comparisons_summary.empty:
+    show_print_table(comparisons_summary, limit=None, block_id='executive-contrasts', caption='Differential Gene Counts by Comparison', evidence={'kind': 'deg_summary'})
+summary_heading('Results Overview (Descriptive Summary)')
+overview = []
+overview.append(f"Samples and QC: {metric('样本数')} samples / {metric('分组数')} groups; mean Q30 {metric('平均 Q30')}, mean mapping rate {metric('平均比对率')} . ")
+if not comparisons_summary.empty:
+    for _, result in comparisons_summary.iterrows():
+        overview.append(f"Differential expression: {result['比较组']} at raw P<{summary_config.get('analysis', {}).get('deg', {}).get('pvalue_threshold', 0.05):g}, |log2FC|>{summary_config.get('analysis', {}).get('deg', {}).get('log2fc_threshold', 1.0):g} criteria: {result['满足阈值差异基因']} (upregulated {result['上调']}, downregulated {result['下调']}); additionally {result['padj<0.05 基因数']} genes meet padj<0.05 without a log2FC cutoff.")
+    from pathlib import Path
+    from bioreport.utils.report_utils import get_file_path
+    enrich_dir = summary_config['input_files'].get('enrichment_dir')
+    cues = []
+    if enrich_dir:
+        for direction, label in [('UP', 'Upregulated'), ('DOWN', 'Downregulated')]:
+            path = get_file_path({'files': summary_config.get('files', {})}, f"{comparisons_summary.iloc[0]['比较组']}_{direction}.csv", local_base_dir=enrich_dir)
+            if path and Path(path).is_file():
+                frame = pd.read_csv(path)
+                if not frame.empty and {'Description', 'p.adjust'} <= set(frame.columns):
+                    top = frame.sort_values('p.adjust', kind='stable').head(3)
+                    names = ', '.join(top.Description.astype(str))
+                    min_p = pd.to_numeric(frame['p.adjust'], errors='coerce').min()
+                    cues.append(f'{label} enrichment terms: {names}; minimum p.adjust {min_p:.2e}). ')
+    overview.extend(cues)
+overview.append('These are descriptive statistics and input term names, not mechanistic conclusions. Review sample consistency and sequencing depth in the corresponding sections.')
+display(Markdown('\n'.join((f'- {line}' for line in overview))))
+summary_heading('Data Scope and Provenance')
+display(Markdown('The report reads upstream outputs to summarize and visualize selected modules; it does not rerun alignment or statistical testing. Source paths and SHA256 fingerprints appear in Provenance. Metric definitions and cutoffs appear in the relevant result sections.'))
+if summary_config.get('ai', {}).get('enabled'):
+    display(Markdown('**Evidence-grounded Interpretation**: Optional AI interpretation provides auxiliary context and does not replace statistical evidence.'))
+```

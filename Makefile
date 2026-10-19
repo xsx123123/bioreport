@@ -3,6 +3,9 @@
 CONFIG ?= configs/report.example.json
 DATA ?= examples/rna-seq/data
 OUT ?= output
+VERSION := $(shell awk -F '"' '/^\[project\][[:space:]]*$$/ {project=1; next} project && /^\[/ {exit} project && /^[[:space:]]*version[[:space:]]*=/ {print $$2; exit}' pyproject.toml)
+IMAGE ?= bioreport:$(VERSION)
+PLATFORM ?= linux/amd64
 
 install:
 	pip install -e .
@@ -29,10 +32,10 @@ lint-imports:
 	! rg --pcre2 -n "from omics\\.(?!rna)|import omics\\.(?!rna)" omics --glob '*.py'
 
 docker-build:
-	docker build --platform linux/amd64 -f deploy/Dockerfile -t bioreport:latest .
+	docker build --platform $(PLATFORM) -f deploy/Dockerfile -t $(IMAGE) .
 
 docker-test:
-	docker run --rm --entrypoint python bioreport:latest /opt/bioreport-smoke-test.py
+	docker run --rm --entrypoint python $(IMAGE) /opt/bioreport-smoke-test.py
 
 docker-run:
 	mkdir -p "$(OUT)"
@@ -40,7 +43,7 @@ docker-run:
 	  -v "$(abspath $(CONFIG)):/config/report.json:ro" \
 	  -v "$(abspath $(DATA)):/data:ro" \
 	  -v "$(abspath $(OUT)):/workspace" \
-	  bioreport:latest run -c /config/report.json -o /workspace
+	  $(IMAGE) run -c /config/report.json -o /workspace
 
 clean:
 	rm -rf output _deploy_temp dist *.egg-info

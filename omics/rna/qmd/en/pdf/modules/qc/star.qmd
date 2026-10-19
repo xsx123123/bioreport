@@ -1,0 +1,57 @@
+
+## STAR Alignment Statistics
+
+STAR reports uniquely mapped, multiply mapped and unmapped reads [@dobin2013star].  Unmapped categories include excessive mismatches, short sequences and other failures. Percentages and read units follow the source statistics. The key PDF table excludes first-pass STAR records. Review reference compatibility, library quality and read depth when alignment or depth differs across samples.
+
+```{python}
+#| label: qc-star
+#| results: asis
+from bioreport.utils.render_output import show_print_table, typst_note
+from bioreport.config import load_config, display_path
+star_config = load_config()
+star_pdf = star_config.get('report', {}).get('pdf', {})
+mapping_path = input_files.get('mapping_file')
+if not mapping_path:
+    visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['STAR'])
+    display_result_ai('rna.qc.star__figure')
+else:
+    mapping = pd.read_csv(mapping_path, sep='\t')
+    star_columns = [c for c in mapping if c.lower().startswith('star-')]
+    if not star_columns:
+        raise ValueError(f'No STAR statistics found in {mapping_path}')
+    mapping = mapping[['Sample', *star_columns]].dropna(subset=star_columns, how='all')
+    if star_pdf.get('qc_detail', 'key') == 'key':
+        mapping = mapping[~mapping.Sample.astype(str).str.contains('_STARpass1', regex=False)]
+    sample_path = input_files.get('sample_file')
+    if sample_path:
+        from bioreport.utils.pdf_results import ordered_samples
+        metadata = pd.read_csv(sample_path)
+        order = ordered_samples(metadata)
+        if 'sample' in metadata and 'sample_name' in metadata:
+            aliases = dict(zip(metadata['sample'].astype(str), metadata['sample_name'].astype(str)))
+
+            def normalize(value):
+                for source in sorted(aliases, key=len, reverse=True):
+                    if str(value).startswith(source):
+                        return aliases[source] + str(value)[len(source):]
+                return str(value)
+            mapping['Sample'] = mapping['Sample'].map(normalize)
+        mapping = mapping.assign(_order=mapping.Sample.map(lambda s: next((i for i, name in enumerate(order) if s.startswith(name)), len(order)))).sort_values('_order', kind='stable').drop(columns='_order')
+    mapping = mapping.rename(columns={'star-total_reads': 'Total reads', 'star-mapped': 'Mapped reads', 'star-mapped_percent': 'Mapped (%)', 'star-uniquely_mapped': 'Unique reads', 'star-uniquely_mapped_percent': 'Unique (%)', 'star-multimapped': 'Multi reads'})
+    limit = star_pdf.get('qc_rows', 30)
+    show_print_table(mapping, limit=limit, caption='STAR Alignment Statistics')
+    notes = [f'STAR final samples ({min(limit, len(mapping))}/{len(mapping)}); STARpass1 excluded; reads in millions; source: {display_path(mapping_path)}。']
+    cutoff = star_config.get('analysis', {}).get('depth', {}).get('ratio_cutoff', 1.5)
+    depth_rows = mapping[~mapping['Sample'].astype(str).str.contains('_STARpass1', regex=False)]
+    if 'Total reads' in depth_rows:
+        totals = pd.to_numeric(depth_rows['Total reads'], errors='coerce')
+        valid_totals = totals.dropna()
+        if len(valid_totals) >= 2 and valid_totals.min() > 0:
+            ratio = float(valid_totals.max() / valid_totals.min())
+            if ratio > cutoff:
+                hi, lo = (totals.idxmax(), totals.idxmin())
+                notes.append(f"Read-depth imbalance: {depth_rows.loc[hi, 'Sample']} {totals.loc[hi]:.2f}M / {depth_rows.loc[lo, 'Sample']} {totals.loc[lo]:.2f}M = {ratio:.1f} fold (reference {cutoff:g}); review library loading and sequencing yield.")
+    typst_note(' '.join(notes))
+    if star_pdf.get('qc_detail', 'key') == 'all':
+        visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['STAR'])
+```

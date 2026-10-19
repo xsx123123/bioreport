@@ -11,7 +11,7 @@
   },
   footer: align(center, context text(size: 9pt, counter(page).display("1"))),
 )
-#set text(font: report-fonts, size: 10.5pt, lang: "zh", region: "cn")
+#set text(font: report-fonts, size: 10.5pt, lang: report-language)
 // CJK glyphs need visibly more leading than Typst's Latin-tuned default.
 // 正文两端对齐（justify）+ 首行缩进；标题、列表、代码与表格沿用默认左对齐。
 // 不整体 set align —— 保持段落样式为默认，all:true 的首段缩进才在标题后生效。
@@ -26,7 +26,7 @@
   let chapter = counter(heading).at(here()).first()
   numbering("1-1", chapter, nums.pos().first())
 }
-#set figure(numbering: report-figure-numbering, supplement: [图#h(-0.33em)])
+#set figure(numbering: report-figure-numbering, supplement: [#(if report-language == "en" {"Figure"} else {"图"})#h(.25em)])
 #show heading.where(level: 1): it => {
   // 一级章节开始时重置图计数，形成“图 章节-序号”（如图 8-1）。
   counter(figure.where(kind: image)).update(0)
@@ -62,30 +62,29 @@
   let rows = query(<bioreport-layout>).filter(it => it.value.kind == "table" and it.value.id == id and it.value.part.starts-with("row-"))
   if rows.len() > 0 and here().position().page > calc.min(..rows.map(it => it.value.page)) {
     report-observation(id, "table", "continuation")
-    text("（续表）")
+    text(if report-language == "en" {"(continued)"} else {"（续表）"})
   }
 }
 #let report-table(headers, rows, numeric, keep-together: true, note: none, caption: "数据概览", id: "table") = layout(size => {
-  let widths = headers.map(h => if h == "SHA256" { 4fr } else if h in ("Description", "通路名称", "数据目录内路径", "统计口径") { 3fr } else if h in ("Gene ID", "Sample", "样本", "项目", "比较组") { 1.8fr } else { 1fr })
+  let widths = headers.map(h => if h == "SHA256" { 4fr } else if h in ("Description", "通路名称", "数据目录内路径", "统计口径", "Path Relative to Data Directory", "Definition") { 3fr } else if h in ("Gene ID", "Sample", "样本", "项目", "比较组", "Item", "Comparison") { 1.8fr } else { 1fr })
   let body = [
     #report-table-counter.step()
     #block(width: 100%, sticky: true, below: 2mm)[
       #set par(first-line-indent: 0pt, justify: false)
-      #align(center, context [
+      #align(left, context [
         #report-observation(id, "table", "caption")
-        #text(size: 9.5pt, weight: "medium", fill: rgb("#29445F"))[
-          表 #counter(heading).at(here()).first()-#report-table-counter.display("1") #h(.5em)#caption
+        #text(size: 9.5pt, weight: "semibold", fill: rgb("#29445F"))[
+          #{if report-language == "en" {"Table"} else {"表"}} #counter(heading).at(here()).first()-#report-table-counter.display("1") #h(.5em)#caption
         ]
       ])
     ]
-    #set text(size: 9pt)
+    #set text(size: 8.8pt)
     #table(
-      columns: widths, inset: (x: 5pt, y: 5.5pt),
-      // 科研交付表格统一居中，避免不同列类型造成视觉错位。
-      align: center,
+      columns: widths, inset: (x: 6pt, y: 5pt),
+      align: (x, y) => if y == 0 { center } else if numeric.at(x) { right } else { left },
       stroke: (x, y) => (bottom: .35pt + rgb("#dce3ec")),
-      fill: (x, y) => if y == 0 { rgb("#eaf0f7") } else if calc.even(y) { rgb("#f6f9fc") } else { none },
-      table.header(repeat: true, ..headers.enumerate().map(((j, h)) => [#if j == 0 { report-observation(id, "table", "header") }#text(weight: "bold", report-cell(h))#if j == 0 { report-continuation(id) }])),
+      fill: (x, y) => if y == 0 { rgb("#315f65") } else if calc.even(y) { rgb("#f1f6f5") } else { rgb("#ffffff") },
+      table.header(repeat: true, ..headers.enumerate().map(((j, h)) => [#if j == 0 { report-observation(id, "table", "header") }#text(weight: "bold", fill: rgb("#ffffff"), report-cell(h))#if j == 0 { report-continuation(id) }])),
       ..rows.enumerate().map(((i, row)) => row.enumerate().map(((j, cell)) =>
         [#if j == 0 { report-observation(id, "table", "row-" + str(i)) }#if headers.at(j) == "SHA256" { text(font: report-mono-fonts, cell) } else { report-cell(cell) }])).flatten(),
     )
@@ -103,14 +102,14 @@
     #report-table-counter.step()
     #block(width: 100%, sticky: true, below: 2mm)[
       #set par(first-line-indent: 0pt, justify: false)
-      #align(center, context [#report-observation(id, "table", "caption")
-        #text(size: 9.5pt, weight: "medium", fill: rgb("#29445F"))[表 #counter(heading).at(here()).first()-#report-table-counter.display("1") #h(.5em)#caption]])
+      #align(left, context [#report-observation(id, "table", "caption")
+        #text(size: 9.5pt, weight: "semibold", fill: rgb("#29445F"))[#{if report-language == "en" {"Table"} else {"表"}} #counter(heading).at(here()).first()-#report-table-counter.display("1") #h(.5em)#caption]])
     ]
     #set text(size: 8pt)
-    #table(columns: (40mm, 58mm, 68mm), inset: (x: 4pt, y: 5pt), align: center,
+    #table(columns: (40mm, 58mm, 68mm), inset: (x: 6pt, y: 5pt), align: left,
       stroke: (x, y) => (bottom: .35pt + rgb("#dce3ec")),
-      fill: (x, y) => if y == 0 { rgb("#eaf0f7") } else if calc.even(y) { rgb("#f6f9fc") } else { none },
-      table.header(repeat: true, ..headers.enumerate().map(((j, h)) => [#if j == 0 { report-observation(id, "table", "header") }#text(weight: "bold", report-cell(h))#if j == 0 { report-continuation(id) }])),
+      fill: (x, y) => if y == 0 { rgb("#315f65") } else if calc.even(y) { rgb("#f1f6f5") } else { rgb("#ffffff") },
+      table.header(repeat: true, ..headers.enumerate().map(((j, h)) => [#if j == 0 { report-observation(id, "table", "header") }#text(weight: "bold", fill: rgb("#ffffff"), report-cell(h))#if j == 0 { report-continuation(id) }])),
       ..rows.enumerate().map(((i, row)) => row.enumerate().map(((j, cell)) =>
         [#if j == 0 { report-observation(id, "table", "row-" + str(i)) }#if j == 0 { text(size: 6.5pt, report-cell(cell)) } else if j == 2 { text(font: report-mono-fonts, size: 8pt, cell) } else { report-cell(cell) }])).flatten(),
     )

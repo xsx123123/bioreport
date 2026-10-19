@@ -1,0 +1,16 @@
+Module	Section	Sample Name	Source
+FastQ Screen	all_sections	AC1_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/AC1_R2_screen.txt
+FastQ Screen	all_sections	AC2_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/AC2_R2_screen.txt
+FastQ Screen	all_sections	AC3_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/AC3_R2_screen.txt
+FastQ Screen	all_sections	AC4_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/AC4_R2_screen.txt
+FastQ Screen	all_sections	AC5_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/AC5_R2_screen.txt
+FastQ Screen	all_sections	AC6_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/AC6_R2_screen.txt
+FastQ Screen	all_sections	Salt1_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/Salt1_R2_screen.txt
+FastQ Screen	all_sections	Salt2_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/Salt2_R2_screen.txt
+FastQ Screen	all_sections	Salt3_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/Salt3_R2_screen.txt
+FastQ Screen	all_sections	Salt4_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/Salt4_R2_screen.txt
+FastQ Screen	all_sections	Salt5_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/Salt5_R2_screen.txt
+FastQ Screen	all_sections	Salt6_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/Salt6_R2_screen.txt
+FastQ Screen	all_sections	Salt7_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/Salt7_R2_screen.txt
+FastQ Screen	all_sections	Salt8_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/Salt8_R2_screen.txt
+FastQ Screen	all_sections	Salt9_R2_screen	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/fastq_screen_r2/Salt9_R2_screen.txt

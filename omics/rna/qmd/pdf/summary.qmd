@@ -6,6 +6,8 @@ import pandas as pd
 from bioreport.config import load_config
 from bioreport.utils.pdf_results import summary_metrics, comparison_summaries, deg_metric_label
 from bioreport.utils.render_output import show_metric_grid, show_print_table, typst_note
+def summary_heading(title):
+    display(Markdown('```{=typst}\n#heading(level: 2, numbering: none, outlined: false)[' + title + ']\n```'))
 summary_config = load_config()
 metrics = summary_metrics(summary_config)
 comparisons_summary = comparison_summaries(summary_config)
@@ -44,10 +46,11 @@ lead += '各环节关键指标概览如下：'
 display(Markdown('```{=typst}\n' + lead + '\n```'))
 show_metric_grid(cards, block_id='executive-metrics')
 typst_note('检出基因数为表达矩阵中至少 1 个样本 TPM > 1 的基因并集；PCA 与表达分布图采用全样本平均 TPM > 1 的口径，两口径不同，不构成矛盾。')
-display(Markdown('## 差异表达客观统计汇总\n\n以下为输入结果的客观统计汇总；各比较组独立计数，不合并去重，不由此推断生物学机制。'))
+summary_heading('差异表达客观统计汇总')
+display(Markdown('以下为输入结果的客观统计汇总；各比较组独立计数，不合并去重，不由此推断生物学机制。'))
 if not comparisons_summary.empty:
     show_print_table(comparisons_summary, limit=None, block_id='executive-contrasts', caption='各比较组差异表达基因数量汇总', evidence={'kind':'deg_summary'})
-display(Markdown('## 结果概览（客观汇总，非机制推断）'))
+summary_heading('结果概览（客观汇总，非机制推断）')
 overview = []
 overview.append(f"样本与质控：{metric('样本数')} 个样本 / {metric('分组数')} 组；平均 Q30 {metric('平均 Q30')}，平均比对率 {metric('平均比对率')}。")
 if not comparisons_summary.empty:
@@ -70,7 +73,8 @@ if not comparisons_summary.empty:
     overview.extend(cues)
 overview.append('以上为上游结果文件中的客观统计与条目名称，不据此推断生物学机制；样本一致性和测序深度提示见对应章节。')
 display(Markdown('\n'.join(f'- {line}' for line in overview)))
-display(Markdown('## 数据范围与溯源说明\n\n本报告直接读取上游分析产物以生成所选模块的统计汇总与可视化图表，不重新执行序列比对或差异统计检验。完整的原始数据、文件路径及 SHA256 校验值请参阅「溯源及交付」章节；各项统计指标的计算分母与筛选阈值详见「项目概况」及后续对应结果章节。'))
+summary_heading('数据范围与溯源说明')
+display(Markdown('本报告直接读取上游分析产物以生成所选模块的统计汇总与可视化图表，不重新执行序列比对或差异统计检验。完整的原始数据、文件路径及 SHA256 校验值请参阅「溯源及交付」章节；各项统计指标的计算分母与筛选阈值详见「项目概况」及后续对应结果章节。'))
 if summary_config.get('ai', {}).get('enabled'):
     display(Markdown('**Evidence-grounded Interpretation**：可选辅助解释见 AI 章节。Auxiliary interpretation; not a replacement for statistical evidence.'))
 ```

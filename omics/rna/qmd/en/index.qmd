@@ -1,0 +1,66 @@
+---
+title: "Project Overview"
+analysis_type: RNA-seq
+subtitle: "RNA-seq Analysis Report"
+date: last-modified
+execute:
+  echo: false
+  warning: false
+---
+
+```{python}
+#| label: load-metadata
+import pandas as pd
+import datetime
+import os
+from bioreport.utils.report_utils import get_project_summary_stats, Sample_Info_table, Sample_Info_table_modern
+from bioreport.config import load_project_metadata
+project_info = load_project_metadata()
+input_files = project_info['input_files']
+stats, df_final = get_project_summary_stats(data_dir=input_files.get('data_dir', '.'), qc_filename=input_files['qc_file'], mapping_filename=input_files['mapping_file'], tpm_filename=input_files['tpm_file'], sample_filename=input_files['sample_file'])
+total_samples_count = stats['total_samples']
+total_groups = stats['total_groups']
+total_data_gb = stats['total_data_gb']
+avg_q30 = stats['avg_q30']
+mapping_rate = stats['mapping_rate']
+unique_mapping_rate = stats['unique_mapping_rate']
+avg_dup = stats['avg_dup']
+genes_detected = stats['genes_detected']
+from bioreport.i18n import translate
+qc_status_text = translate(stats['qc_status'])
+mapping_status_text = translate(stats['mapping_status'])
+unique_status_text = translate(stats['unique_status'])
+avg_data_per_sample = total_data_gb / total_samples_count if total_samples_count > 0 else 0
+current_date = datetime.date.today().strftime('%Y-%m-%d')
+```
+## Project Background
+
+This RNA-seq report summarizes the supplied quality-control, alignment and expression results. Project metadata and statistics below are read from the configured input files.
+
+## Key Metrics
+
+Sample and group counts describe the experimental design. Q30 is the percentage of bases with Phred quality at least 30. Mapping and unique mapping rates describe alignment to the configured reference genome. Detected genes have TPM > 1 in at least one sample.
+
+```{python}
+#| label: project-kpi-cards
+#| echo: false
+from html import escape
+from IPython.display import HTML, display
+
+def _kpi_card(title, number, unit, note, danger=False):
+    classes = 'kpi-card kpi-danger' if danger else 'kpi-card'
+    unit_html = "<span class='report-metric-unit'>" + escape(str(unit)) + '</span>' if unit else ''
+    return "<div class='" + classes + "'><div class='kpi-title'>" + escape(str(title)) + "</div><div class='report-metric'>" + escape(str(number)) + unit_html + "</div><div class='kpi-note'>" + str(note) + '</div></div>'
+_kpis = [_kpi_card('Samples', total_samples_count, 'Samples', f'Includes <strong>{total_groups}</strong> experimental groups'), _kpi_card('Total Data', f'{total_data_gb:.1f}', 'Gb', f'Mean {avg_data_per_sample:.1f} Gb / Sample'), _kpi_card('Sequencing Quality (Q30)', f'{avg_q30:.1f}', '%', escape(str(qc_status_text)), danger=avg_q30 < 80), _kpi_card('Detected Genes', genes_detected, '', 'Genes with TPM &gt; 1'), _kpi_card('Mapping Rate', f'{mapping_rate:.1f}', '%', escape(str(mapping_status_text)), danger=mapping_rate < 70), _kpi_card('Unique Mapping Rate', f'{unique_mapping_rate:.1f}', '%', escape(str(unique_status_text)), danger=unique_mapping_rate < 60), _kpi_card('Duplication Rate', f'{avg_dup:.1f}', '%', 'Sequence duplication', danger=avg_dup > 50)]
+display(HTML("<div class='report-kpi-grid'>" + ''.join(_kpis) + '</div>'))
+```
+
+## Sample Information
+
+Sample sequencing and alignment statistics follow the configured input files. Clean reads are reported in millions; insert size applies to paired-end libraries.
+
+```{python}
+#| label: tbl-samples
+#| tbl-cap: "Sample Sequencing Statistics"
+Sample_Info_table_modern(df_final)
+```

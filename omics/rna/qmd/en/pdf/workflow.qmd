@@ -1,0 +1,88 @@
+---
+title: Methods and Software Versions
+bibliography: ../reference/qc_references.bib
+csl: ../reference/china-national-standard-gb-t-7714-2015-numeric.csl
+---
+
+The report reads existing upstream statistics and result matrices, then redraws figures and formats them for delivery. It does not rerun alignment, differential testing or enrichment. Method descriptions apply to enabled report modules; software versions are taken from the supplied run records.
+
+## Analysis Workflow
+
+Typical stages include fastp, FastQ Screen, STAR, RSEM, DESeq2 and clusterProfiler. The diagram does not establish that every optional step was executed.
+
+```{python}
+#| label: pdf-workflow-intro
+from bioreport.config import load_config
+from IPython.display import display, Markdown
+project = load_config().get('project', {})
+pipeline_version = project.get('pipeline_version') or project.get('software') or 'RNA-seq Pipeline'
+display(Markdown(f'The upstream pipeline is RNAFlow (version: {pipeline_version}). Core analysis stages and tools are shown below:'))
+```
+
+```{=typst}
+#block(breakable: false)[
+  #grid(columns: (1fr, 1fr, 1fr, 1fr), gutter: 3mm,
+    ..("Raw Reads", "fastp", "FastQ Screen", "STAR", "RSEM", "DESeq2", "clusterProfiler").enumerate().map(((i, name)) =>
+      block(width: 100%, inset: 3mm, fill: rgb("#eaf0f7"))[
+        #text(weight: "bold", fill: rgb("#24476a"))[#(i+1). #name]
+      ]))
+]
+```
+
+```{python}
+#| label: pdf-methods
+#| output: asis
+from bioreport.config import load_config, display_path
+from bioreport.modules import selected_modules
+from bioreport.registry import get_registry
+from bioreport.utils.visualize_utils import load_software_data
+from bioreport.utils.render_output import show_print_table, typst_note
+from IPython.display import display, Markdown
+import os
+cfg = load_config()
+selected = [get_registry().canonical(m) for m in selected_modules(cfg)]
+path = cfg['input_files'].get('software_versions_file')
+records = load_software_data(path) if path and os.path.isfile(path) else None
+
+def uses(name):
+    return any((m == name or m.startswith(name + '.') for m in selected))
+method_details = []
+
+def emit(body):
+    method_details.append('\n\n' + body.strip() + '\n\n')
+software = set()
+if uses('rna.qc'):
+    emit('## Quality Control and Alignment Methods\n\nSelected QC modules read upstream summaries. Figures use standardized **MultiQC** output [@MultiQC]:')
+    modules = [('fastp', 'fastp', '1. **Read filtering and base quality**: Upstream **fastp** [@chen2018fastp] detects and trims adapters, removes low-quality and short reads, and records Q20/Q30, GC content and duplication before and after filtering.'), ('screen', 'FastQ Screen', '2. **Cross-species screening**: **FastQ Screen** [@wingett2018fastq] aligns sampled reads to a reference panel to summarize species-specific and shared alignments.'), ('qualimap', 'QualiMap', '3. **Alignment and transcript quantification**: Splice-aware **STAR** [@dobin2013star] aligns clean reads and reports unique/multiple alignments. **QualiMap** [@okonechnikov2016qualimap] summarizes coverage and alignment quality.')]
+    for child, name, prose in modules:
+        if 'rna.qc' in selected or 'rna.qc.' + child in selected:
+            software.add(name)
+            emit(prose)
+if uses('rna.results'):
+    emit('## Quantification and Downstream Methods\n\nOnly enabled result modules are described. Figure captions provide filters and plotting parameters:')
+    if any((m in selected for m in ['rna.results', 'rna.results.samples', 'rna.results.matrix', 'rna.results.heatmap'])):
+        emit('1. **Expression quantification and sample relationships**: Upstream **RSEM** supplies gene-level TPM expression. PCA, distribution plots and HVG heatmaps retain genes with mean TPM > 1 and use log2(TPM + 1). TPM normalizes for gene length and sequencing depth.')
+    if 'rna.results' in selected or 'rna.results.deg' in selected:
+        emit('2. **Differential expression**: Upstream **DESeq2** [@love2014moderated] provides negative-binomial GLM test results. The report colors genes using configured raw-P and log2FoldChange cutoffs without changing upstream statistics.')
+    if 'rna.results' in selected or 'rna.results.enrichment' in selected:
+        emit('3. **Functional enrichment**: Upstream **clusterProfiler** [@yu2012clusterprofiler] supplies GO/KEGG enrichment for upregulated and downregulated sets. Plots use GeneRatio, Count and p.adjust. Categories follow input fields; missing ontology subclasses are not inferred.')
+display(Markdown('## Supplied Software Versions\n'))
+if records is not None:
+    wanted = {'multiqc'} if uses('rna.qc') else set()
+    wanted |= {name.casefold().replace(' ', '') for name in software}
+    if uses('rna.results'):
+        if any((m in selected for m in ['rna.results', 'rna.results.samples', 'rna.results.matrix', 'rna.results.heatmap'])):
+            wanted.add('rsem')
+        if 'rna.results' in selected or 'rna.results.deg' in selected:
+            wanted.add('deseq2')
+        if 'rna.results' in selected or 'rna.results.enrichment' in selected:
+            wanted.add('clusterprofiler')
+    shown_records = records[records['Software'].astype(str).str.casefold().str.replace(' ', '').isin(wanted)] if 'Software' in records else records.iloc[:0]
+    if not shown_records.empty:
+        show_print_table(shown_records.drop(columns=['Link'], errors='ignore'), limit=None, caption='Analysis Software and Versions', evidence={'kind': 'software_versions'})
+    else:
+        typst_note('No version records match the enabled modules; example versions are not substituted.')
+    typst_note(f'Software versions source (relative to data directory): {display_path(path)}. Only supplied versions relevant to selected modules are shown; the complete record remains in the source file. Optional analyses are not inferred from this record.')
+else:
+    typst_note('No software version record supplied; example versions are not substituted.')
+```

@@ -10,6 +10,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 output/
+/pdf-figures/
 report.html
 dist/
 build/
@@ -24,3 +25,4 @@ legacy-old-*/
 .codex
 .github
 .pytest_cache
+quarto-1.10.19-linux-amd64.tar.gz

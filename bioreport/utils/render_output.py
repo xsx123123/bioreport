@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from contextlib import contextmanager
 from bioreport.report.recording import record_block
+from bioreport.i18n import translate, language
 
 from IPython.display import HTML, Image, Markdown, display
 from itables import init_notebook_mode, show as show_interactive_table
@@ -31,6 +32,9 @@ def is_pdf() -> bool:
 
 def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
     global _plotly_loaded, _figure_count
+    if language() == "en":
+        from bioreport.i18n import localize_figure
+        figure = localize_figure(figure)
     if is_pdf():
         if figure is None:
             raise ValueError("Cannot export an empty figure")
@@ -59,7 +63,7 @@ def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
             record_block(block)
             # Typst owns the complete image/caption block and figure numbering.
             expression = ("#report-figure(" + json.dumps(str(path), ensure_ascii=False)
-                          + ", " + json.dumps(label, ensure_ascii=False)
+                          + ", " + json.dumps(translate(label), ensure_ascii=False)
                           + f", {ratio:.5f}, preferred-height: {block.preferred_height:.2f}mm, id: " + typst_literal(block.id) + ")")
             if _figure_group is not None:
                 _figure_group.append((block, expression))
@@ -189,7 +193,7 @@ def show_table(table, **kwargs) -> None:
 
 def typst_note(text):
     expression = ('#text(size: 9pt, fill: rgb("#53636a"), '
-                  + json.dumps(str(text), ensure_ascii=False) + ')')
+                  + json.dumps(translate(str(text)), ensure_ascii=False) + ')')
     if _figure_group is not None:
         from bioreport.report import Paragraph
         _figure_group.append((Paragraph(id='group-note', content=str(text)), expression))
@@ -239,12 +243,20 @@ def show_print_table(frame, limit=10, *, block_id="table", allow_split=False, ev
     block = LayoutPlanner().plan(TableBlock(id=block_id, caption=caption or "数据概览", headers=headers, rows=rows,
                                             numeric=numeric, allow_split=allow_split, content=evidence))
     record_block(block)
+    visible_headers = [translate(h) for h in headers]
+    visible_rows = [list(row) for row in rows]
+    # Only generated description/status columns are localized; identifiers,
+    # expression values, source paths and hashes remain verbatim.
+    for i, header in enumerate(headers):
+        if header in ('项目', '指标', '统计口径', '是否在常见范围', '常见参考范围', 'Function'):
+            for row in visible_rows:
+                row[i] = translate(row[i])
     table_function = "report-sha256-table" if (evidence or {}).get('kind') == 'sha256' else "report-table"
-    expression = ("#" + table_function + "(" + typst_literal(headers)
-                  + ", " + typst_literal(rows) + ", " + typst_literal(numeric)
-                  + ", caption: " + typst_literal(caption or "数据概览")
+    expression = ("#" + table_function + "(" + typst_literal(visible_headers)
+                  + ", " + typst_literal(visible_rows) + ", " + typst_literal(numeric)
+                  + ", caption: " + typst_literal(translate(caption or "数据概览"))
                   + ", keep-together: " + typst_literal(block.keep_together)
-                  + (", note: " + typst_literal(note) if note else "")
+                  + (", note: " + typst_literal(translate(note)) if note else "")
                   + ", id: " + typst_literal(block.id) + ")")
     if _figure_group is not None:
         _figure_group.append((block, expression))
@@ -265,7 +277,7 @@ def show_metric_grid(metrics, *, block_id='metrics'):
     record_block(block)
     if is_pdf():
         display(Markdown('```{=typst}\n#report-metrics('
-                         + typst_literal(block.content) + ')\n```'))
+                         + typst_literal([(translate(label), value) for label, value in block.content]) + ')\n```'))
     else:
         import html
         display(HTML('<dl class="report-metrics">' + ''.join(

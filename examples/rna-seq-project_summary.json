@@ -13,6 +13,7 @@
   },
   "input_files": {
     "data_dir": "/data/index/",
+    "software_versions_file": "/data/index/software_versions.yaml",
     "qc_file": "/data/index/multiqc_qc_general_stats.txt",
     "mapping_file": "/data/index/multiqc_mapping_general_stats.txt",
     "tpm_file": "/data/index/merge_rsem_tpm.tsv",

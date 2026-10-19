@@ -259,3 +259,28 @@ def test_clean_ai_markdown_removes_unmatched_wrappers_and_callout_fences():
 
 def test_clean_ai_markdown_removes_raw_html_wrappers():
     assert _clean_ai_markdown("<bio_report><p>Finding</p></bio_report>") == "Finding"
+
+
+def test_rna_ai_pipeline_stages_english_translation_separately(tmp_path, monkeypatch):
+    from bioreport.pipeline import _stage_english_interpretations
+    template = tmp_path / "templates"
+    source = template / "data" / "ai_interpretations"
+    source.mkdir(parents=True)
+    (source / "rna.results.deg__A_vs_B.md").write_text("上调基因 G1 为 5。", encoding="utf-8")
+    calls = []
+
+    class FakeInterpreter:
+        def __init__(self, **kwargs):
+            pass
+
+        def execute_inference(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(content="Upregulated gene G1: 5.")
+
+    monkeypatch.setattr("bioreport.ai.AIInterpreter", FakeInterpreter)
+    _stage_english_interpretations({"ai": {}}, template, "test-model", "mock")
+
+    english = template / "data" / "ai_interpretations" / "en" / "rna.results.deg__A_vs_B.md"
+    assert "Upregulated gene G1: 5." in english.read_text(encoding="utf-8")
+    assert "上调基因" in (source / "rna.results.deg__A_vs_B.md").read_text(encoding="utf-8")
+    assert len(calls) == 1

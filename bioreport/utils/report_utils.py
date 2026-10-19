@@ -73,7 +73,7 @@ def get_project_summary_stats(
                 stats['total_groups'] = len(df_sample_info['group'].unique())
             stats['total_samples'] = len(df_sample_info)
         except Exception as e:
-            print(f"⚠️ 读取样本表失败: {e}")
+            print(f"Warning: failed to read sample table: {e}")
             df_sample_info = pd.DataFrame()
     else:
         df_sample_info = pd.DataFrame()
@@ -118,7 +118,7 @@ def get_project_summary_stats(
                 
                 df_final = df_qc_core
         except Exception as e:
-            print(f"⚠️ 读取 QC 统计失败: {e}")
+            print(f"Warning: failed to read QC statistics: {e}")
 
     # 3. 读取 Mapping 统计
     if os.path.exists(mapping_file):
@@ -144,7 +144,7 @@ def get_project_summary_stats(
                 else:
                     df_final = df_map_sub
         except Exception as e:
-            print(f"⚠️ 读取 Mapping 统计失败: {e}")
+            print(f"Warning: failed to read mapping statistics: {e}")
 
     # 4. 合并分组信息
     if not df_final.empty and not df_sample_info.empty:
@@ -152,7 +152,7 @@ def get_project_summary_stats(
             df_final = pd.merge(df_final, df_sample_info[['sample', 'group']], 
                               left_on='Sample', right_on='sample', how='left')
         except Exception as e:
-            print(f"⚠️ 合并分组信息失败: {e}")
+            print(f"Warning: failed to merge group information: {e}")
 
     # 5. 计算汇总指标
     if not df_final.empty:
@@ -196,7 +196,7 @@ def get_project_summary_stats(
     try:
         df = pd.read_csv(file_path, sep="\t")
     except FileNotFoundError:
-        return print(f"❌ 错误: 找不到文件 {file_path}")
+        return print(f"Error: file not found: {file_path}")
 
     # 2. 统一修改列名格式 (去掉 fastp-，下划线变空格，首字母大写)
     df.columns = [c.replace('fastp-', '').replace('_', ' ').title() for c in df.columns]
@@ -503,7 +503,7 @@ def Sample_Info_table(df_final) -> None:
             allow_html=True
         )
     else:
-        print("❌ 未能加载样本统计信息。")
+        print("Error: could not load sample statistics.")
 
 
 def Sample_Info_table_modern(df_final: pd.DataFrame) -> None:
@@ -516,7 +516,7 @@ def Sample_Info_table_modern(df_final: pd.DataFrame) -> None:
     4. 整体 UI 与 Software 表格完全统一。
     """
     if df_final.empty:
-        print("❌ 未能加载样本统计信息。")
+        print("Error: could not load sample statistics.")
         return
 
     # ==========================================

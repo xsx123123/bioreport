@@ -22,10 +22,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
-def render(config_path: Path, output: Path, output_format: str):
+def render(config_path: Path, output: Path, output_format: str, language=None):
     config_path, output = config_path.resolve(), output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     os.environ['REPORT_CONFIG'] = str(config_path)
+    if language:
+        os.environ['BIOREPORT_LANGUAGE'] = language
     os.environ['BIOREPORT_OUTPUT_FORMAT'] = output_format
     os.environ['BIOREPORT_DELIVERY_DIR'] = str(output)
     block_manifest = output / f'report-blocks-{output_format}.jsonl'
@@ -39,6 +41,9 @@ def render(config_path: Path, output: Path, output_format: str):
     from bioreport.config import load_config, report_artifact_name
     from bioreport.renderer import render_templates
     config = load_config(config_path)
+    if language:
+        from bioreport.i18n import localized_config
+        config = localized_config(config, language)
     # The in-process utility renders one format at a time; align the composer's
     # format selection with the requested output even for configs pinned to pdf.
     config['report']['output_format'] = output_format
@@ -111,13 +116,18 @@ def render(config_path: Path, output: Path, output_format: str):
         print((output / 'render.log').read_text(), file=sys.stderr)
         raise RuntimeError(f'Quarto failed: {output / "render.log"}')
     artifact = output / 'rendered' / 'qmd' / f'{source.stem}.{output_format}'
-    final = output / report_artifact_name(config, output_format)
+    final = output / report_artifact_name(config, output_format, language)
     shutil.copyfile(artifact, final)
+    if output_format == "html" and language:
+        from bioreport.i18n import add_language_switch
+        add_language_switch(final, config, language)
     if output_format == 'pdf':
         from bioreport.utils.pdf_metadata import set_pdf_metadata
         set_pdf_metadata(final, config)
         from bioreport.report.validation import write_validation
-        write_validation(final, source.with_suffix(".typ"), config)
+        validation = write_validation(final, source.with_suffix(".typ"), config)
+        if validation["errors"]:
+            raise RuntimeError(f"PDF validation failed: {output / 'pdf-validation.json'}")
     from bioreport.utils.provenance import write_delivery_manifests
     write_delivery_manifests(config, provenance, output)
     from bioreport.utils.provenance import validate_delivery_manifests
@@ -183,9 +193,10 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', type=Path, required=True)
     parser.add_argument('-o', '--output', type=Path, required=True)
     parser.add_argument('--format', choices=['html','pdf'], default='pdf')
+    parser.add_argument('--language', choices=['zh','en'])
     parser.add_argument('--pages', action='store_true')
     args = parser.parse_args()
-    artifact = render(args.config, args.output, args.format)
+    artifact = render(args.config, args.output, args.format, args.language)
     if args.pages:
         if args.format != 'pdf': parser.error('--pages requires PDF')
         review_pdf(artifact)

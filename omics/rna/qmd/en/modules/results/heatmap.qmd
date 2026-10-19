@@ -1,0 +1,18 @@
+
+## Highly Variable Gene Expression Patterns
+
+Genes with mean TPM > 1 and nonzero variance are ranked by the variance of log2(TPM + 1). Rows are standardized as Z-scores. Red indicates expression above a gene's mean and blue below it. The sample annotation bar identifies the original groups.
+
+Clustering reorders rows and columns by expression similarity. Interpret sample separation with PCA and QC; clustering alone does not prove a treatment effect. PDF shows a compact main heatmap and supplies the full configured heatmap as an SVG supplement.
+
+```{python}
+#| label: plot-heatmap
+#| fig-cap: "TPM Expression Heatmap (Highly Variable Genes)"
+#| out-width: 100%
+if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
+    fig, config_plot = draw_interactive_heatmap(input_file=tpm_file, metadata_file=meta_file, top_n=heatmap_settings.get('top_n', 1000), do_cluster=True)
+    show_figure(fig, config=config_plot)
+    display_result_ai('rna.results.heatmap__figure')
+else:
+    raise FileNotFoundError(f'Heatmap requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}')
+```

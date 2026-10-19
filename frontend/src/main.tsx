@@ -99,6 +99,10 @@ type Provenance = {
 };
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
+type Language = "en" | "zh";
+const translations: Record<string, string> = {
+  HISTORY: "历史记录", Reports: "报告", "Filter project or module": "筛选项目或模块", "Loading history": "正在加载历史记录", Retry: "重试", "No reports match this filter.": "没有符合筛选条件的报告。", " modules": " 个模块", "Artifacts available": "结果文件可用", "Output missing": "缺少输出文件", "Load more history": "加载更多记录", "Refresh reports": "刷新报告", "Toggle theme": "切换主题", "Toggle language": "切换语言", Provenance: "溯源信息", Modules: "分析模块", "Show modules": "显示模块", "Hide modules": "隐藏模块", "Resize module panel": "调整模块面板宽度", Evidence: "分析证据", "Read-only": "只读", Comparison: "比较组", Load: "加载", "Loading evidence": "正在加载证据", "Evidence unavailable": "证据不可用", "Choose a module to inspect evidence": "选择模块查看证据", "Unavailable artifacts stay visible and are never inferred.": "不可用的结果文件仍会显示，不会推测缺失数据。", "No module metadata": "暂无模块信息", "Interpretation Agent": "结果解读助手", "Deterministic mock": "确定性模拟", "Show agent": "显示助手", "Hide agent": "隐藏助手", "Cancel operation": "取消任务", "Generating...": "生成中...", "Generate interpretation": "生成解读", Operation: "任务", "Validated interpretation stored.": "已保存经过校验的解读。", "Evidence-backed interpretation": "基于证据的解读", "Generate a deterministic interpretation after evidence is available.": "证据就绪后生成确定性解读。", "Ask about this module evidence.": "询问有关此模块证据的问题。", "Ask a scoped question": "输入相关问题", "Send question": "发送问题", You: "你", Agent: "助手", "Registered figures": "已登记图表", "Report artifacts": "报告文件", "No manifest-backed artifacts available.": "没有可用的清单记录文件。", "Open artifact": "打开文件", "Select a report to inspect its modules and evidence.": "选择报告以查看分析模块和证据。", "Evidence hash": "证据哈希", "format unknown": "格式未知", partial: "部分可用", available: "可用", " artifacts": " 个文件", "No verified evidence is available for this module.": "此模块没有经过验证的证据。", unavailable: "不可用",
+};
 async function getReports(
   signal: AbortSignal,
   cursor?: string | null,
@@ -168,9 +172,12 @@ function App() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dark, setDark] = useState(
-    () => window.matchMedia("(prefers-color-scheme: dark)").matches,
-  );
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem("bioreport.theme");
+    return saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+  const [language, setLanguage] = useState<Language>(() => localStorage.getItem("bioreport.language") === "zh" ? "zh" : "en");
+  const t = (text: string) => language === "zh" ? (translations[text] ?? text) : text;
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [comparison, setComparison] = useState("2_vs_1");
   const [comparisonInput, setComparisonInput] = useState("2_vs_1");
@@ -260,6 +267,12 @@ function App() {
     }
   };
   useEffect(load, []);
+
+  useEffect(() => {
+    localStorage.setItem("bioreport.theme", dark ? "dark" : "light");
+    document.documentElement.style.colorScheme = dark ? "dark" : "light";
+  }, [dark]);
+  useEffect(() => localStorage.setItem("bioreport.language", language), [language]);
 
   useEffect(() => {
     setSelectedModule((current) =>
@@ -464,26 +477,27 @@ function App() {
         <div className="top-actions">
           <button
             className="icon-button"
-            title="Refresh reports"
+            title={t("Refresh reports")}
             onClick={load}
           >
             <RefreshCw size={17} />
           </button>
           <button
             className="icon-button"
-            title="Toggle theme"
+            title={t("Toggle theme")}
             onClick={() => setDark((value) => !value)}
           >
             {dark ? <Sun size={17} /> : <Moon size={17} />}
           </button>
+          <button className="small-button" title={t("Toggle language")} onClick={() => setLanguage((value) => value === "en" ? "zh" : "en")}>{language === "en" ? "中文" : "EN"}</button>
         </div>
       </header>
       <main className="workspace">
         <aside className="library panel">
           <div className="panel-heading">
             <div>
-              <span className="eyebrow">HISTORY</span>
-              <h1>Reports</h1>
+              <span className="eyebrow">{t("HISTORY")}</span>
+              <h1>{t("Reports")}</h1>
             </div>
             <span className="count">{reports.length}</span>
           </div>
@@ -492,13 +506,13 @@ function App() {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Filter project or module"
+              placeholder={t("Filter project or module")}
             />
           </label>
           {loading && (
             <div className="state">
               <RefreshCw className="spin" size={18} />
-              Loading history
+              {t("Loading history")}
             </div>
           )}
           {error && (
@@ -507,7 +521,7 @@ function App() {
               <span>
                 {error}
                 <button className="text-button" onClick={load}>
-                  Retry
+                  {t("Retry")}
                 </button>
               </span>
             </div>
@@ -515,7 +529,7 @@ function App() {
           {!loading && !error && visible.length === 0 && (
             <div className="state">
               <FileWarning size={18} />
-              No reports match this filter.
+              {t("No reports match this filter.")}
             </div>
           )}
           <div className="report-list">
@@ -538,13 +552,13 @@ function App() {
                   <Status status={report.status} />
                 </div>
                 <div className="row-meta">
-                  <span>{report.modules.length} modules</span>
+                  <span>{report.modules.length}{t(" modules")}</span>
                   <span>
                     {report.artifact_availability === "AVAILABLE"
-                      ? "Artifacts available"
+                      ? t("Artifacts available")
                       : report.output_available
                         ? `Artifacts ${report.artifact_availability?.toLowerCase() ?? "partial"}`
-                        : "Output missing"}
+                        : t("Output missing")}
                   </span>
                 </div>
               </button>
@@ -552,7 +566,7 @@ function App() {
           </div>
           {nextCursor && !loading && !error && (
             <button className="load-more" onClick={() => void loadMore()}>
-              Load more history
+              {t("Load more history")}
             </button>
           )}
         </aside>
@@ -588,18 +602,18 @@ function App() {
               >
                 <section className={modulesCollapsed ? "module-pane collapsed" : "module-pane"}>
                   <div className="pane-heading">
-                    <h3>Modules</h3>
+                  <h3>{t("Modules")}</h3>
                     <button
                       className="icon-button"
-                      title={modulesCollapsed ? "Show modules" : "Hide modules"}
-                      aria-label={modulesCollapsed ? "Show modules" : "Hide modules"}
+                      title={t(modulesCollapsed ? "Show modules" : "Hide modules")}
+                      aria-label={t(modulesCollapsed ? "Show modules" : "Hide modules")}
                       onClick={() => setModulesCollapsed((value) => !value)}
                     >
                       {modulesCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
                     </button>
                   </div>
                   {selected.modules.length === 0 ? (
-                    <div className="empty-small">No module metadata</div>
+                    <div className="empty-small">{t("No module metadata")}</div>
                   ) : (
                     selected.modules.map((module) => (
                       <button
@@ -635,12 +649,12 @@ function App() {
                 />
                 <section className="evidence-pane">
                   <div className="section-head">
-                    <h3>Evidence</h3>
-                    <span className="pill">Read-only</span>
+                    <h3>{t("Evidence")}</h3>
+                    <span className="pill">{t("Read-only")}</span>
                   </div>
                   {selectedModule?.id === "rna.results.deg" && (
                     <div className="comparison-control">
-                      <label htmlFor="comparison">Comparison</label>
+                      <label htmlFor="comparison">{t("Comparison")}</label>
                       <input
                         id="comparison"
                         value={comparisonInput}
@@ -654,14 +668,14 @@ function App() {
                           setComparison(comparisonInput.trim() || "2_vs_1")
                         }
                       >
-                        Load
+                        {t("Load")}
                       </button>
                     </div>
                   )}
                   {evidenceLoading && (
                     <div className="state">
                       <RefreshCw className="spin" size={18} />
-                      Loading evidence
+                      {t("Loading evidence")}
                     </div>
                   )}
                   {evidenceError && (
@@ -671,19 +685,18 @@ function App() {
                     </div>
                   )}
                   {!evidenceLoading && !evidenceError && evidence && (
-                    <EvidenceCard evidence={evidence} />
+                    <EvidenceCard evidence={evidence} t={t} />
                   )}
                   {!evidenceLoading && !evidenceError && !evidence && (
                     <div className="evidence-empty">
                       <FileWarning size={26} />
                       <strong>
                         {selectedModule
-                          ? "Evidence unavailable"
-                          : "Choose a module to inspect evidence"}
+                          ? t("Evidence unavailable")
+                          : t("Choose a module to inspect evidence")}
                       </strong>
                       <span>
-                        Unavailable artifacts stay visible and are never
-                        inferred.
+                        {t("Unavailable artifacts stay visible and are never inferred.")}
                       </span>
                     </div>
                   )}
@@ -691,19 +704,19 @@ function App() {
                 <div
                   className="pane-resizer"
                   role="separator"
-                  aria-label="Resize agent panel"
+                  aria-label={t("Resize agent panel")}
                   aria-orientation="vertical"
                   onPointerDown={startPaneDrag("agent")}
                 />
                 <section className={agentCollapsed ? "agent-pane collapsed" : "agent-pane"}>
                   <div className="section-head">
-                    <h3>Interpretation Agent</h3>
+                    <h3>{t("Interpretation Agent")}</h3>
                     <div className="agent-heading-actions">
-                      <span className="pill muted">Deterministic mock</span>
+                      <span className="pill muted">{t("Deterministic mock")}</span>
                       <button
                         className="icon-button"
-                        title={agentCollapsed ? "Show agent" : "Hide agent"}
-                        aria-label={agentCollapsed ? "Show agent" : "Hide agent"}
+                        title={t(agentCollapsed ? "Show agent" : "Hide agent")}
+                        aria-label={t(agentCollapsed ? "Show agent" : "Hide agent")}
                         onClick={() => setAgentCollapsed((value) => !value)}
                       >
                         {agentCollapsed ? <PanelRightOpen size={15} /> : <PanelRightClose size={15} />}
@@ -718,13 +731,13 @@ function App() {
                         onClick={() => void generateInterpretation()}
                       >
                         {agentLoading
-                          ? "Generating..."
-                          : "Generate interpretation"}
+                          ? t("Generating...")
+                          : t("Generate interpretation")}
                       </button>
                       {agentLoading && (
                         <button
                           className="icon-button"
-                          title="Cancel operation"
+                          title={t("Cancel operation")}
                           onClick={() => void cancelOperation()}
                         >
                           <XCircle size={16} />
@@ -734,7 +747,7 @@ function App() {
                   )}
                   {operationStatus && (
                     <div className="operation-status">
-                      <span>Operation</span>
+                      <span>{t("Operation")}</span>
                       <Status status={operationStatus} />
                     </div>
                   )}
@@ -754,7 +767,7 @@ function App() {
                         <p>
                           {item.output?.summary ??
                             item.output?.observations?.[0]?.text ??
-                            "Validated interpretation stored."}
+                            t("Validated interpretation stored.")}
                         </p>
                         <small>
                           {new Date(item.created_at).toLocaleString()} -{" "}
@@ -765,10 +778,9 @@ function App() {
                   ) : (
                     <div className="agent-empty">
                       <CheckCircle2 size={26} />
-                      <strong>Evidence-backed interpretation</strong>
+                      <strong>{t("Evidence-backed interpretation")}</strong>
                       <span>
-                        Generate a deterministic interpretation after evidence
-                        is available.
+                        {t("Generate a deterministic interpretation after evidence is available.")}
                       </span>
                     </div>
                   )}
@@ -776,7 +788,7 @@ function App() {
                     <div className="chat-messages">
                       {chatMessages.length === 0 ? (
                         <span className="chat-placeholder">
-                          Ask about this module evidence.
+                          {t("Ask about this module evidence.")}
                         </span>
                       ) : (
                         chatMessages.map((message, index) => (
@@ -785,7 +797,7 @@ function App() {
                             key={`${message.role}-${index}`}
                           >
                             <span>
-                              {message.role === "user" ? "You" : "Agent"}
+                              {t(message.role === "user" ? "You" : "Agent")}
                             </span>
                             <p>{message.content}</p>
                           </div>
@@ -799,12 +811,12 @@ function App() {
                         onKeyDown={(event) => {
                           if (event.key === "Enter") void sendChat();
                         }}
-                        placeholder="Ask a scoped question"
-                        aria-label="Ask a scoped question"
+                        placeholder={t("Ask a scoped question")}
+                        aria-label={t("Ask a scoped question")}
                       />
                       <button
                         className="icon-button"
-                        title="Send question"
+                        title={t("Send question")}
                         disabled={chatLoading || !chatInput.trim()}
                         onClick={() => void sendChat()}
                       >
@@ -814,9 +826,9 @@ function App() {
                   </div>
                 </section>
               </div>
-              <ArtifactPanel reportId={selected.id} artifacts={artifacts} />
+              <ArtifactPanel reportId={selected.id} artifacts={artifacts} t={t} />
               {showProvenance && provenance && (
-                <ProvenancePanel provenance={provenance} />
+                <ProvenancePanel provenance={provenance} t={t} />
               )}
               {selected.warnings.length > 0 && (
                 <div className="warning">
@@ -828,7 +840,7 @@ function App() {
           ) : (
             <div className="state detail-empty">
               <FlaskConical size={28} />
-              Select a report to inspect its modules and evidence.
+              {t("Select a report to inspect its modules and evidence.")}
             </div>
           )}
         </section>
@@ -840,7 +852,7 @@ function App() {
 function Status({ status }: { status: string }) {
   return <span className={`status ${status}`}>{status}</span>;
 }
-function EvidenceCard({ evidence }: { evidence: Evidence }) {
+function EvidenceCard({ evidence, t }: { evidence: Evidence; t: (text: string) => string }) {
   if (evidence.availability && !evidence.evidence_hash) {
     return (
       <div className="evidence-empty">
@@ -848,7 +860,7 @@ function EvidenceCard({ evidence }: { evidence: Evidence }) {
         <strong>{evidence.availability}</strong>
         <span>
           {evidence.warnings.join(" · ") ||
-            "No verified evidence is available for this module."}
+            t("No verified evidence is available for this module.")}
         </span>
       </div>
     );
@@ -869,7 +881,7 @@ function EvidenceCard({ evidence }: { evidence: Evidence }) {
         ))}
       </div>
       <p className="hash">
-        Evidence hash: <code>{evidence.evidence_hash ?? "unavailable"}</code>
+        {t("Evidence hash")}: <code>{evidence.evidence_hash ?? t("unavailable")}</code>
       </p>
       {table && (
         <div className="table-wrap">
@@ -895,7 +907,7 @@ function EvidenceCard({ evidence }: { evidence: Evidence }) {
       )}
       {evidence.figures && evidence.figures.length > 0 && (
         <div className="figure-list">
-          <div className="figure-list-heading">Registered figures</div>
+          <div className="figure-list-heading">{t("Registered figures")}</div>
           {evidence.figures.map((figure) => (
             <div className="figure-item" key={`${figure.figure_id}-${figure.sha256 ?? "unknown"}`}>
               <div>
@@ -910,11 +922,11 @@ function EvidenceCard({ evidence }: { evidence: Evidence }) {
     </div>
   );
 }
-function ProvenancePanel({ provenance }: { provenance: Provenance }) {
+function ProvenancePanel({ provenance, t }: { provenance: Provenance; t: (text: string) => string }) {
   return (
     <section className="provenance-panel">
       <div className="section-head">
-        <h3>Provenance</h3>
+        <h3>{t("Provenance")}</h3>
         <span className="pill">{provenance.availability ?? "available"}</span>
       </div>
       <div className="manifest-grid">
@@ -922,7 +934,7 @@ function ProvenancePanel({ provenance }: { provenance: Provenance }) {
           <div className="manifest-item" key={name}>
             <strong>{name}</strong>
             <Status status={String(manifest.availability)} />
-            <span>{manifest.artifacts?.length ?? 0} artifacts</span>
+            <span>{manifest.artifacts?.length ?? 0}{t(" artifacts")}</span>
             {Boolean(manifest.quarto) && (
               <span>Quarto {String(manifest.quarto)}</span>
             )}
@@ -935,19 +947,21 @@ function ProvenancePanel({ provenance }: { provenance: Provenance }) {
 function ArtifactPanel({
   reportId,
   artifacts,
+  t,
 }: {
   reportId: number;
   artifacts: Artifact[];
+  t: (text: string) => string;
 }) {
   return (
     <section className="artifact-panel">
       <div className="section-head">
-        <h3>Report artifacts</h3>
+        <h3>{t("Report artifacts")}</h3>
         <span className="pill">{artifacts.length}</span>
       </div>
       {artifacts.length === 0 ? (
         <span className="muted-copy">
-          No manifest-backed artifacts available.
+          {t("No manifest-backed artifacts available.")}
         </span>
       ) : (
         <div className="artifact-list">
@@ -967,7 +981,7 @@ function ArtifactPanel({
                       href={`/api/v1/reports/${encodeURIComponent(reportId)}/artifacts/${encodeURIComponent(artifact.artifact_id)}/content`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      title="Open artifact"
+                      title={t("Open artifact")}
                       aria-label={`Open ${artifact.artifact_id}`}
                     >
                       <ExternalLink size={14} />

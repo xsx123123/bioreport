@@ -1,0 +1,70 @@
+---
+title: "Report Provenance"
+---
+
+The report engine records the following provenance during generation.
+
+```{python}
+#| label: provenance-summary
+#| echo: false
+from datetime import datetime
+from html import escape
+from IPython.display import HTML, display
+import bioreport
+from bioreport.i18n import translate
+from bioreport.registry import get_registry
+from bioreport.utils.report_utils import load_provenance
+prov = load_provenance() or {}
+_BUILTIN_TITLES = {'ai': 'AI Interpretation', 'about': 'About', 'faq': 'FAQ', 'license': 'License', 'trademark': 'Trademarks', 'provenance': 'Provenance'}
+_LAYOUT_NAMES = {'single': 'single (one file)', 'website': 'website (multiple pages)'}
+_FORMAT_NAMES = {'html': 'HTML', 'pdf': 'PDF'}
+_REGISTRY = get_registry()
+
+def _esc(value):
+    return escape(str(value))
+
+def _module_chip(module_id):
+    canonical = _REGISTRY.canonical(module_id)
+    if canonical in _REGISTRY.modules:
+        title = _REGISTRY.modules[canonical].title
+    else:
+        title = _BUILTIN_TITLES.get(module_id, module_id)
+    return "<span class='prov-chip' title='Module ID: " + _esc(module_id) + "'>" + _esc(translate(title)) + '</span>'
+
+def _human_time(iso):
+    """ISO8601 -> 2026年10月15日 19:34 (UTC+8)，完整 ISO 存 title。"""
+    try:
+        parsed = datetime.fromisoformat(iso)
+    except Exception:
+        return _esc(iso)
+    offset = parsed.strftime('%z')
+    if parsed.tzinfo is not None and offset:
+        utc = 'UTC' + f'{int(offset[:3]):+d}'
+        text = f'{parsed.year}-{parsed.month:02d}-{parsed.day:02d} {parsed.hour:02d}:{parsed.minute:02d} ({utc})'
+    else:
+        text = iso
+    return "<span title='Full timestamp (ISO8601): " + _esc(iso) + "'>" + _esc(text) + '</span>'
+_ICONS = {'Project ID': 'bi-tag', 'Report Engine': 'bi-cpu', 'Generated At': 'bi-clock', 'Report Modules': 'bi-collection', 'Layout': 'bi-window', 'Output Formats': 'bi-file-earmark', 'Pipeline Version': 'bi-diagram-3'}
+
+def _item(label, value_html):
+    if not value_html:
+        return ''
+    icon = _ICONS.get(label, 'bi-dot')
+    return "<div class='prov-item'><span class='prov-ico'><i class='bi " + icon + "'></i></span><div class='prov-item-body'><div class='prov-label'>" + _esc(label) + "</div><div class='prov-value'>" + value_html + '</div></div></div>'
+_version = prov.get('bioreport_version') or bioreport.__version__
+_modules = prov.get('rendered_modules') or []
+_formats = prov.get('output_format') or []
+_layout = prov.get('layout', '')
+_items = [_item('Project ID', "<span class='prov-version' style='color:#4f46e5'>" + _esc(prov.get('project_id', '')) + '</span>'), _item('Report Engine', "<span class='prov-version'>BioReport v" + _esc(_version) + '</span>'), _item('Generated At', _human_time(prov['generated_at']) if prov.get('generated_at') else ''), _item('Report Modules', ''.join((_module_chip(m) for m in _modules))), _item('Layout', _esc(_LAYOUT_NAMES.get(_layout, _layout))), _item('Output Formats', ''.join(("<span class='prov-fmt'>" + _esc(_FORMAT_NAMES.get(fmt, fmt)) + '</span>' for fmt in _formats))), _item('Pipeline Version', _esc(prov.get('pipeline_version', '')))]
+_checksums = prov.get('input_checksums') or {}
+_fp_rows = ''
+for _key, _digest in _checksums.items():
+    _short = str(_digest)[:12] + '…'
+    _fp_rows += "<div class='prov-fp-row'><span class='prov-fp-name'>" + _esc(_key) + "</span><span class='prov-fp-right'><code class='prov-fp-hash' data-hash='" + _esc(_digest) + "' title='" + _esc(_digest) + "'>" + _esc(_short) + "</code><button type='button' class='prov-fp-copy' data-hash='" + _esc(_digest) + "' title='Copy full SHA256'><i class='bi bi-clipboard'></i><span>Copy</span></button></span></div>"
+if _fp_rows:
+    _fp_body = "<div class='prov-fp-list'>" + _fp_rows + "</div><div class='prov-fp-note'>Fingerprints support integrity verification. Use Copy to obtain the full SHA256.</div>"
+else:
+    _fp_body = "<div class='prov-fp-empty'>No input fingerprints collected. This report may use an earlier engine.</div>"
+_html = "<div class='prov-card'><div class='prov-head'><div class='prov-head-left'><span class='prov-shield'><i class='bi bi-shield-lock-fill'></i></span><div><div class='prov-title'>Report Provenance</div><div class='prov-subtitle'>Provenance</div></div></div><span class='prov-status'><i class='bi bi-check-circle-fill'></i>Automatically collected</span></div><p class='prov-desc'>BioReport records this information during report generation to support reproducibility and auditing.</p><div class='prov-grid'>" + ''.join(_items) + "</div><details class='prov-fp' open><summary class='prov-fp-summary'><i class='bi bi-fingerprint'></i>Input Fingerprints<span class='prov-fp-count'>Total: " + str(len(_checksums)) + " records</span><i class='bi bi-chevron-down prov-fp-chevron'></i></summary><div class='prov-fp-body'>" + _fp_body + "</div></details></div><style>.prov-card{background:#fff;border:1px solid #e6ebf2;border-radius:14px;box-shadow:0 1px 3px rgba(34,51,74,.06);padding:1.4rem 1.6rem 1.2rem;color:#22334a;font-size:.95rem;line-height:1.6}.prov-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}.prov-head-left{display:flex;align-items:center;gap:.8rem}.prov-shield{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;background:#eaf1fb;color:#2f6fb3;font-size:1.25rem}.prov-title{font-size:1.15rem;font-weight:700;color:#1d2c40}.prov-subtitle{font-size:.8rem;color:#7a8aa0;letter-spacing:.08em;text-transform:uppercase}.prov-status{display:inline-flex;align-items:center;gap:.35rem;background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:999px;padding:.25rem .8rem;font-size:.8rem;font-weight:600;white-space:nowrap}.prov-desc{margin:.9rem 0 1.1rem;color:#5b6b80;font-size:.9rem}.prov-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem 2.2rem;margin-bottom:1.2rem}.prov-item{display:flex;gap:.7rem;align-items:flex-start}.prov-ico{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:#eaf1fb;color:#2f6fb3;font-size:.9rem;margin-top:.05rem}.prov-item-body{min-width:0}.prov-label{color:#7a8aa0;font-size:.85rem;white-space:nowrap}.prov-value{color:#22334a;min-width:0}.prov-version{color:#2f6fb3;font-weight:700;font-family:'SF Mono',Menlo,Consolas,monospace}.prov-chip{display:inline-block;background:#eaf1fb;color:#2f6fb3;border-radius:999px;padding:.12rem .7rem;font-size:.82rem;font-weight:600;margin:0 .3rem .3rem 0}.prov-fmt{display:inline-block;border:1px solid #cfe0f5;color:#2f6fb3;border-radius:6px;padding:.05rem .55rem;font-size:.8rem;font-weight:600;margin-right:.35rem}.prov-fp{border-top:1px solid #edf1f6;padding-top:.9rem}.prov-fp-summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:.5rem;color:#1d2c40;font-weight:600;font-size:.95rem;user-select:none}.prov-fp-summary::-webkit-details-marker{display:none}.prov-fp-count{background:#f1f5f9;color:#64748b;border-radius:999px;padding:.05rem .6rem;font-size:.78rem;font-weight:500}.prov-fp-chevron{margin-left:auto;color:#7a8aa0;transition:transform .2s ease}.prov-fp[open] .prov-fp-chevron{transform:rotate(180deg)}.prov-fp-body{margin-top:.8rem}.prov-fp-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.42rem 0;border-bottom:1px dashed #eef2f7}.prov-fp-row:last-child{border-bottom:none}.prov-fp-name{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85rem;color:#40536b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto}.prov-fp-right{display:flex;align-items:center;gap:.6rem;flex:0 0 auto}.prov-fp-hash{display:inline-block;width:12em;text-align:center;background:#f1f5f9;border-radius:999px;padding:.15rem .8rem;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.82rem;color:#2f6fb3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.prov-fp-copy{display:inline-flex;align-items:center;gap:.3rem;border:1px solid #dbe4ee;background:#fff;color:#64748b;border-radius:6px;padding:.15rem .6rem;font-size:.78rem;transition:all .15s ease;flex:0 0 auto}.prov-fp-copy:hover{border-color:#2f6fb3;color:#2f6fb3}.prov-fp-copy.copied{border-color:#16a34a;color:#15803d;background:#f0fdf4}.prov-fp-note{margin-top:.7rem;color:#93a1b3;font-size:.8rem}.prov-fp-empty{color:#93a1b3;font-size:.88rem;padding:.4rem 0}@media (max-width:640px){.prov-grid{grid-template-columns:1fr}.prov-fp-hash{width:9.5em}}</style><script>(function(){var card=document.querySelector('.prov-card');if(!card){return;}card.addEventListener('click',function(ev){var btn=ev.target.closest('.prov-fp-copy');if(!btn){return;}var hash=btn.getAttribute('data-hash');var done=function(){btn.classList.add('copied');var label=btn.querySelector('span');var old=label?label.textContent:'';if(label){label.textContent='Copied';}setTimeout(function(){btn.classList.remove('copied');if(label){label.textContent=old;}},1500);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(hash).then(done).catch(function(){var ta=document.createElement('textarea');ta.value=hash;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);done();});}else{var ta=document.createElement('textarea');ta.value=hash;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);done();}});})();</script>"
+display(HTML(_html))
+```

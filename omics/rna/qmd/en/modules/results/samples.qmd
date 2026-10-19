@@ -1,0 +1,31 @@
+
+## Sample Relationships and Expression Distributions
+
+PCA uses genes with mean TPM > 1 across samples and log2(TPM + 1) expression. Each point is a sample, colors indicate groups, and axis percentages show explained variance. Check within-group consistency and possible outliers together with experimental metadata.
+
+Expression violin and box plots show the distribution of log2(TPM + 1). Comparable distributions support cross-sample comparability; they do not by themselves establish the absence of batch effects. The mean-TPM filter differs from the detected-gene union reported in the summary.
+
+```{python}
+#| label: plot-pca
+#| fig-cap: "Global PCA Analysis (PC1-PC3)"
+#| out-width: 100%
+if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
+    fig, config_plot = draw_pca_plotly(tpm_file=tpm_file, meta_file=meta_file, height_num=pca_settings.get('height', 500), width_num=pca_settings.get('width', 1000), scale_num=7)
+    show_figure(fig, config=config_plot)
+    display_result_ai('rna.results.samples__pca')
+else:
+    raise FileNotFoundError(f'PCA requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}')
+```
+
+```{python}
+#| label: plot-dist
+#| fig-cap: "Gene Distribution"
+#| out-width: 100%
+if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
+    fig, conf = draw_expression_distribution_plotly(tpm_file=tpm_file, meta_file=meta_file, threshold=distribution_settings.get('threshold', 1), width_num=distribution_settings.get('width', 1000), height_num=distribution_settings.get('height', 500))
+    if fig:
+        show_figure(fig, config=conf)
+        display_result_ai('rna.results.samples__distribution')
+else:
+    raise FileNotFoundError(f'Expression distribution requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}')
+```

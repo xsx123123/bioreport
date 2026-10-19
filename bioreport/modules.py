@@ -57,7 +57,7 @@ def _canonical(module_id: str) -> str:
     return get_registry().canonical(module_id)
 
 
-def _report_footer(template_dir: Path) -> str:
+def _report_footer(template_dir: Path, english: bool = False) -> str:
     """构建真实 HTML 页脚元素，内容取自自动生成的溯源信息。
 
     provenance.json 缺失时回退到引擎当前版本，保证旧流程不受影响。
@@ -74,7 +74,7 @@ def _report_footer(template_dir: Path) -> str:
         pass
     text = f"Powered by BioReport v{version}"
     if generated_at:
-        text += f" · 生成于 {generated_at}"
+        text += f" · {'Generated at' if english else '生成于'} {generated_at}"
     return (
         '```{=html}\n'
         f'<footer class="report-footer">{escape(text)}</footer>\n'
@@ -249,10 +249,11 @@ def _namespace_chunk_labels(body: str, module_id: str, position: int) -> str:
     return body
 
 
-def _module_ai_slot(module_id: str) -> str:
+def _module_ai_slot(module_id: str, english: bool = False) -> str:
     """Add a safe no-op-unless-present module interpretation slot to QMD."""
     safe_id = re.sub(r"[^A-Za-z0-9_.-]", "-", module_id)
-    return f'''\n\n```{{python}}\n#| echo: false\n#| warning: false\nfrom pathlib import Path as _BioReportPath\nfrom IPython.display import Markdown as _BioReportMarkdown, display as _BioReportDisplay\n_ai_root = _BioReportPath("../data/ai_interpretations")\n_ai_files = sorted(_ai_root.glob("{safe_id}__*.md")) + ([_ai_root / "{safe_id}.md"] if (_ai_root / "{safe_id}.md").is_file() else [])\nfor _ai_file in _ai_files:\n    if _ai_file.is_file() and not _ai_file.is_symlink():\n        _BioReportDisplay(_BioReportMarkdown(_ai_file.read_text(encoding="utf-8")))\n```\n'''
+    edition = "/en" if english else ""
+    return f'''\n\n```{{python}}\n#| echo: false\n#| warning: false\nfrom pathlib import Path as _BioReportPath\nfrom IPython.display import Markdown as _BioReportMarkdown, display as _BioReportDisplay\n_ai_root = _BioReportPath("../data/ai_interpretations{edition}")\n_ai_files = sorted(_ai_root.glob("{safe_id}__*.md")) + ([_ai_root / "{safe_id}.md"] if (_ai_root / "{safe_id}.md").is_file() else [])\nfor _ai_file in _ai_files:\n    if _ai_file.is_file() and not _ai_file.is_symlink():\n        _BioReportDisplay(_BioReportMarkdown(_ai_file.read_text(encoding="utf-8")))\n```\n'''
 
 
 def stage_module_interpretations(
@@ -261,6 +262,7 @@ def stage_module_interpretations(
     *,
     max_bytes: int = 2 * 1024 * 1024,
     execution_id: str | None = None,
+    language: str = "zh",
 ) -> list[Path]:
     """Write optional module Markdown into the Quarto staging tree.
 
@@ -274,6 +276,12 @@ def stage_module_interpretations(
         raise ValueError("ai.module_interpretations must be an object")
     data_dir = Path(template_dir) / "data"
     target_dir = data_dir / "ai_interpretations"
+    if language not in ("zh", "en"):
+        raise ValueError("Invalid interpretation language")
+    if target_dir.is_symlink():
+        raise ValueError("AI_INTERPRETATION_DIR_SYMLINK")
+    if language == "en":
+        target_dir = target_dir / "en"
     if any(candidate.is_symlink() for candidate in (data_dir, target_dir)):
         raise ValueError("AI_INTERPRETATION_DIR_SYMLINK")
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -312,7 +320,7 @@ def stage_module_interpretations(
     if manifest_dir.exists() and manifest_dir.is_symlink():
         raise ValueError("AI_INTERPRETATION_MANIFEST_DIR_SYMLINK")
     manifest_dir.mkdir(parents=True, exist_ok=True)
-    manifest = manifest_dir / "ai-interpretation-manifest.json"
+    manifest = manifest_dir / ("ai-interpretation-manifest.en.json" if language == "en" else "ai-interpretation-manifest.json")
     if manifest.is_symlink():
         raise ValueError("AI_INTERPRETATION_MANIFEST_SYMLINK")
     manifest.write_text(
@@ -384,16 +392,21 @@ def _cover_pills(config: dict) -> list[str]:
 
 def compose_report(config: dict, template_dir: Path, pdf: bool = False, website: bool = False) -> Path | list[dict]:
     """Compose selected chapters as one document or separate website pages."""
+    from .i18n import language, translate
     report = config.get("report", {})
+    english = language(config) == "en"
+    tr = lambda value: translate(value, language(config))
     metadata = {
         "title": report.get("title", "Report"),
-        "lang": report.get("language", "zh"),
+        "lang": report.get("language", "en"),
         "date": "last-modified",
         "execute": {"echo": False, "warning": False},
     }
     sections = []
+    cover_block = ""
     from .report.composition import ReportComposition
     composition = ReportComposition()
+    language_prelude = "```{python}\n#| label: report-language\nimport os\nos.environ[\"BIOREPORT_LANGUAGE\"] = " + repr("en" if english else "zh") + "\n```\n\n"
     pages = []
     website_pages = []
     module_ids = selected_modules(config)
@@ -413,6 +426,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         context += '#let report-mono-fonts = (' + ''.join(
             json.dumps(f, ensure_ascii=False)+',' for f in report.get('pdf', {}).get('mono_fonts') or MONO_STACK
         ) + ')\n'
+        context += '#let report-language = ' + json.dumps('en' if english else 'zh') + '\n'
         context += '#let report-project = ' + json.dumps(str(short_name), ensure_ascii=False) + '\n'
         (style_dir / 'print-context.typ').write_text(context, encoding='utf-8')
         metadata['format'] = {'typst': {
@@ -430,7 +444,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             "section-numbering": "1.1.1",
             "margin": {"x": "20mm", "y": "22mm"},
             "include-in-header": ['../pdf/print-context.typ', '../pdf/print-style.typ', '../pdf/rna-style.typ'],
-            "include-before-body": ['../pdf/print-body.typ', '../pdf/rna-cover.typ'],
+            "include-before-body": '../pdf/print-body.typ',
         })
         style_dir = template_dir / "pdf"
         style_dir.mkdir(exist_ok=True)
@@ -468,7 +482,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             ("委托单位", clean(lines[1]), False),
             ("研究物种", clean(lines[2]), True),
             ("参考基因组", clean(lines[3]), False),
-            ("核心比较组", "；".join(map(comparison_name, comparisons)), False),
+            ("核心比较组", ("; " if english else "；").join(map(comparison_name, comparisons)), False),
         ]
         analysis = [
             ("项目编号", clean(project.get('project_id') or project.get('id')), False),
@@ -477,13 +491,13 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             ("数据完整性校验状态", integrity, False),
         ]
         def quoted_fields(pairs):
-            return [(json.dumps(label, ensure_ascii=False),
-                     json.dumps(value or "未提供", ensure_ascii=False), italic)
+            return [(json.dumps(tr(label), ensure_ascii=False),
+                     json.dumps((tr(value) if label == "数据完整性校验状态" else value) or tr("未提供"), ensure_ascii=False), italic)
                     for label, value, italic in pairs]
-        cover = Template((style_dir / "rna-cover.typ.j2").read_text(encoding="utf-8")).render(
+        cover = Template((style_dir / ("rna-cover.en.typ.j2" if english else "rna-cover.typ.j2")).read_text(encoding="utf-8")).render(
             title=json.dumps(title, ensure_ascii=False),
             study_fields=quoted_fields(study), analysis_fields=quoted_fields(analysis),
-            report_date=json.dumps(report_date or "未提供", ensure_ascii=False),
+            report_date=json.dumps(tr(report_date or "未提供"), ensure_ascii=False),
             pills=[json.dumps(text, ensure_ascii=False) for text in _cover_pills(config)],
             project_id=json.dumps(
                 f"ProjectID: {project.get('project_id', project.get('id')) or short_name}",
@@ -497,30 +511,34 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         )
         metadata.pop("title", None)
         metadata.pop("date", None)
+        cover_block = f"```{{=typst}}\n{cover}\n```\n\n"
         (style_dir / "rna-cover.typ").write_text(cover, encoding="utf-8")
+    content_root = template_dir / "qmd" / "en" if english and has_rna else template_dir / "qmd"
     if pdf and has_rna and any(_canonical(m) == 'rna.index' for m in module_ids):
-        summary = (template_dir / 'qmd/pdf/summary.qmd').read_text(encoding='utf-8')
-        sections.append(composition.section('executive-summary', '摘要', summary, pdf=True))
+        summary = (content_root / 'pdf/summary.qmd').read_text(encoding='utf-8')
+        sections.append(composition.section(
+            'executive-summary', tr('摘要'), summary, pdf=True, unnumbered_pdf=True,
+        ))
     methods_appendix_added = False
     for position, module_id in enumerate(module_ids, start=1):
         canonical = _canonical(module_id)
         if (pdf and canonical in ('provenance','about') and not methods_appendix_added
                 and any(_canonical(m)=='rna.workflow' for m in module_ids[:position-1])):
             appendix = '```{python}\n#| label: detailed-methods-appendix\n#| output: asis\nfor detail in method_details:\n    display(Markdown(detail))\n```'
-            sections.append(composition.section('methods-appendix','详细分析方法（附录）',appendix,pdf=True,page_break=True))
+            sections.append(composition.section('methods-appendix',tr('详细分析方法（附录）'),appendix,pdf=True,page_break=True))
             methods_appendix_added = True
         if module_id in MODULES:
             filename, heading = MODULES[module_id]
             if pdf and has_rna and module_id in ("about", "provenance"):
                 filename = f"pdf/{module_id}.qmd"
-            module_meta, body = _read_module(template_dir / "qmd" / filename)
+            module_meta, body = _read_module(content_root / filename)
             definition = None
         elif canonical in registered:
             definition = registered[canonical]
             filename, heading = definition.qmd.removeprefix("qmd/"), definition.title
             if pdf:
                 filename = "pdf/" + filename
-            module_meta, body = _read_module(template_dir / "qmd" / filename)
+            module_meta, body = _read_module(content_root / filename)
         else:
             source = _custom_source(config, module_id)
             definition = report["module_definitions"][module_id]
@@ -542,19 +560,19 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             parent_filename = parent.qmd.removeprefix("qmd/")
             if pdf:
                 parent_filename = "pdf/" + parent_filename
-            module_meta, _ = _read_module(template_dir / "qmd" / parent_filename)
+            module_meta, _ = _read_module(content_root / parent_filename)
             if definition.parent not in setup_added:
                 setup_filename = definition.setup_qmd.removeprefix("qmd/")
                 if pdf:
                     setup_filename = "pdf/" + setup_filename
-                body = (template_dir / "qmd" / setup_filename).read_text(encoding="utf-8") + "\n" + body
+                body = (content_root / setup_filename).read_text(encoding="utf-8") + "\n" + body
                 setup_added.add(definition.parent)
             if pdf:
                 # The selected child is already a chapter: avoid repeating its
                 # title as a second-level heading immediately below the setup.
                 body = re.sub(r'(?m)^## [^\n]+\n\n', '', body, count=1)
         if (canonical in registered) or (module_id in MODULES and module_id != "ai"):
-            body = _expand_includes(body, template_dir / "qmd", stack=(template_dir / "qmd" / filename,))
+            body = _expand_includes(body, content_root, stack=(content_root / filename,))
         for key in ("bibliography", "csl"):
             if key in module_meta and not website:
                 value = module_meta[key]
@@ -572,7 +590,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                 # SVG. Use the bundled vector diagram for the PDF workflow.
                 body = re.sub(
                     r"```\{mermaid\}\n.*?\n```",
-                    '![RNA-seq 分析流程](assets/rna-workflow.svg){#fig-pipeline-clean width="100%"}',
+                    ('![RNA-seq Analysis Workflow]' if english else '![RNA-seq 分析流程]') + '(assets/rna-workflow.svg){#fig-pipeline-clean width="100%"}',
                     body,
                     flags=re.DOTALL,
                 )
@@ -584,12 +602,12 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         # writer. The slot is a no-op when AI is disabled or unavailable, so
         # legacy reports keep their original structure.
         if config.get("ai", {}).get("enabled", True) and config.get("ai", {}).get("scope", "results") == "global" and canonical == "ai":
-            body += _module_ai_slot(canonical)
+            body += _module_ai_slot(canonical, english)
         elif config.get("ai", {}).get("enabled", True) and config.get("ai", {}).get("scope", "results") == "module" and canonical in registered and canonical not in {"provenance", "about"}:
-            body += _module_ai_slot(canonical)
+            body += _module_ai_slot(canonical, english)
         chapters = [(canonical, heading, body)]
         if canonical == "rna.index":
-            overview, separator, samples = body.partition("\n## 样本信息 (Sample Info)")
+            overview, separator, samples = body.partition(("\n## Sample Information" if english else "\n## 样本信息 (Sample Info)"))
             if separator:
                 chapters = [
                     (canonical, "项目概述", overview),
@@ -598,7 +616,8 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         elif canonical == "rna.workflow":
             chapters = [(canonical, "分析方法与软件版本" if pdf else "分析概述", body)]
         for chapter_id, title, content in chapters:
-            content_heading = module_meta.get("title", title) if chapter_id == "about" else title
+            title = tr(title)
+            content_heading = tr(module_meta.get("title", title) if chapter_id == "about" else title)
             if website:
                 # Separate documents execute in separate kernels. The sample
                 # page needs the same data-loading cell as the project overview.
@@ -609,7 +628,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                 page_name = chapter_id.removeprefix("rna.").replace(".", "-")
                 page_path = template_dir / "qmd" / f"site-{page_name}.qmd"
                 page_meta = {
-                    "lang": report.get("language", "zh"),
+                    "lang": report.get("language", "en"),
                     "execute": {"echo": False, "warning": False},
                     **module_meta,
                     "title": content_heading,
@@ -619,12 +638,12 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                     page_meta.pop("csl", None)
                     content = re.sub(
                         r"\[@([A-Za-z0-9_:-]+)\]",
-                        lambda match: f"[参考文献](site-workflow.qmd#ref-{'FastQ_Screen' if match.group(1) == 'wingett2018fastq' else match.group(1)})",
+                        lambda match: f"[{'References' if english else '参考文献'}](site-workflow.qmd#ref-{'FastQ_Screen' if match.group(1) == 'wingett2018fastq' else match.group(1)})",
                         content,
                     )
                 page_frontmatter = yaml.safe_dump(page_meta, allow_unicode=True, sort_keys=False)
                 page_path.write_text(
-                    f"---\n{page_frontmatter}---\n\n{content.strip()}\n\n" + _report_footer(template_dir),
+                    f"---\n{page_frontmatter}---\n\n" + language_prelude + f"{content.strip()}\n\n" + _report_footer(template_dir, english),
                     encoding="utf-8",
                 )
                 website_pages.append({"href": f"qmd/{page_path.name}", "title": title, "icon": _page_icon(chapter_id, registered)})
@@ -640,7 +659,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
 
     if pdf and not methods_appendix_added and any(_canonical(m)=='rna.workflow' for m in module_ids):
         appendix = '```{python}\n#| label: detailed-methods-appendix\n#| output: asis\nfor detail in method_details:\n    display(Markdown(detail))\n```'
-        sections.append(composition.section('methods-appendix','详细分析方法（附录）',appendix,pdf=True,page_break=True))
+        sections.append(composition.section('methods-appendix',tr('详细分析方法（附录）'),appendix,pdf=True,page_break=True))
     if website:
         return website_pages
 
@@ -669,27 +688,33 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         menu_links = "\n".join(page_links[:-1])
         trailing_link = page_links[-1] if page_links else ""
         navigation = (
-            '```{=html}\n<nav class="navbar report-navbar" aria-label="报告页面">\n'
+            '```{=html}\n<nav class="navbar report-navbar" aria-label="Report navigation">\n'
             '<div class="report-brand">'
             '<a href="https://github.com/xsx123123/bioreport" target="_blank" rel="noopener noreferrer" aria-label="BioReport GitHub 仓库">'
             '<img src="../logo/logo.png" alt="BioReport logo"></a>'
             '<a href="#report-page-1" aria-controls="report-page-1" class="report-brand-link"><span class="report-brand-name">BioReport</span><span class="report-brand-context">RNA-seq report</span></a></div>\n'
-            '<button class="report-nav-toggle" type="button" aria-label="切换导航" aria-expanded="false" aria-controls="report-menu">'
+            '<button class="report-nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="report-menu">'
             '<span class="report-nav-toggle-bar"></span>'
             '<span class="report-nav-toggle-bar"></span>'
             '<span class="report-nav-toggle-bar"></span>'
             '</button>\n'
             f'<div class="report-menu" id="report-menu">\n{menu_links}\n</div>\n'
             '<div class="report-menu-right">\n'
+            '<button class="report-control report-language-control" type="button" data-report-language aria-label="Switch report language">English</button>'
+            '<button class="report-control report-theme-control" type="button" data-report-theme aria-label="Switch to dark mode" title="Switch to dark mode">'
+            '<svg class="report-theme-icon report-theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.4A8.4 8.4 0 0 1 8.6 3.8 8.5 8.5 0 1 0 20.2 15.4Z"/></svg>'
+            '<svg class="report-theme-icon report-theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>'
+            '</button>'
             f'{trailing_link}\n'
-            '<a href="https://www.hzau.edu.cn/" target="_blank" rel="noopener noreferrer" aria-label="华中农业大学官网">'
-            '<img src="../logo/Huazhong_Agricultural_University_logo.svg" alt="华中农业大学"></a></div>\n'
+            '<a href="https://www.hzau.edu.cn/" target="_blank" rel="noopener noreferrer" aria-label="Huazhong Agricultural University website">'
+            '<img src="../logo/Huazhong_Agricultural_University_logo.svg" alt="Huazhong Agricultural University"></a></div>\n'
             '</nav>\n```\n\n'
         )
     frontmatter = yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False)
+    prelude = '```{python}\n#| label: report-language\nimport os\nos.environ["BIOREPORT_LANGUAGE"] = __REPORT_EDITION__\n```\n\n'.replace("__REPORT_EDITION__", repr("en" if english else "zh"))
     target.write_text(
-        f"---\n{frontmatter}---\n\n" + navigation + "\n".join(sections)
-        + ("" if pdf else "\n" + _report_footer(template_dir)),
+        f"---\n{frontmatter}---\n\n" + prelude + navigation + cover_block + "\n".join(sections)
+        + ("" if pdf else "\n" + _report_footer(template_dir, english)),
         encoding="utf-8",
     )
     return target

@@ -7,6 +7,40 @@
     const navbar = document.querySelector('.report-navbar');
     const toggle = navbar && navbar.querySelector ? navbar.querySelector('.report-nav-toggle') : null;
     const homeLink = navbar && navbar.querySelector ? navbar.querySelector('.report-brand a.report-brand-link') : null;
+    const languageButton = document.querySelector('[data-report-language]');
+    const themeButton = document.querySelector('[data-report-theme]');
+    function setLanguage(language) {
+      const edition = window.BIOREPORT_LANGUAGE_EDITION;
+      const target = languageButton?.dataset.languageTarget;
+      if (edition && target && language !== edition) {
+        try { localStorage.setItem('bioreport.report-language', language); } catch (_) {}
+        location.href = target + location.hash;
+      }
+    }
+    function setTheme(theme) {
+      const dark = theme === 'dark';
+      document.documentElement.dataset.reportTheme = dark ? 'dark' : 'light';
+      document.documentElement.dataset.bsTheme = dark ? 'dark' : 'light';
+      document.body.dataset.mode = dark ? 'dark' : 'light';
+      if (themeButton) {
+        const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
+        themeButton.setAttribute('aria-label', label);
+        themeButton.title = label;
+        themeButton.querySelector('.report-theme-icon-dark')?.toggleAttribute('hidden', dark);
+        themeButton.querySelector('.report-theme-icon-light')?.toggleAttribute('hidden', !dark);
+      }
+      try { localStorage.setItem('bioreport.report-theme', dark ? 'dark' : 'light'); } catch (_) {}
+    }
+    languageButton?.addEventListener('click', () => {
+      setLanguage(document.documentElement.dataset.reportLanguage === 'en' ? 'zh' : 'en');
+    });
+    themeButton?.addEventListener('click', () => {
+      setTheme(document.documentElement.dataset.reportTheme === 'dark' ? 'light' : 'dark');
+    });
+    if (window.BIOREPORT_LANGUAGE_EDITION) document.documentElement.dataset.reportLanguage = window.BIOREPORT_LANGUAGE_EDITION;
+    let savedTheme;
+    try { savedTheme = localStorage.getItem('bioreport.report-theme'); } catch (_) {}
+    setTheme(savedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
     function setMenuOpen(open) {
       if (!navbar || !navbar.classList) return;
       navbar.classList.toggle('report-nav-open', open);

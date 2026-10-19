@@ -55,7 +55,9 @@ def validate_content(config, manifest):
             source = get_file_path({'files':config.get('files',{})},evidence['comparison']+'_DEG.csv',local_base_dir=files['deg_dir'])
             up,down = deg_counts(pd.read_csv(source),deg.get('log2fc_threshold',1),deg.get('pvalue_threshold',.05))
             check('deg_counts:'+evidence['comparison'],[evidence['up'],evidence['down']],[up,down])
-            check('deg_caption:'+evidence['comparison'],f'上调 {up}、下调 {down}' in block['caption'],True)
+            from bioreport.i18n import language
+            expected_caption = f'Upregulated {up}, downregulated {down}' if language(config) == 'en' else f'上调 {up}、下调 {down}'
+            check('deg_caption:'+evidence['comparison'], expected_caption in block['caption'], True)
         if evidence.get('kind')=='enrichment':
             identity = (evidence['comparison'],evidence['direction'])
             enriched[identity]['figures' if block['type']=='figure' else 'tables'].append(block)

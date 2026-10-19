@@ -77,10 +77,10 @@ def run_ai_pipeline(
     """
     ai_config = config.get("ai", {})
     if not ai_config.get("enabled", True):
-        logger.info("AI 解读已禁用，跳过 AI 流程。")
+        logger.info("AI interpretation is disabled; skipping the AI workflow.")
         return
 
-    logger.info("启动 AI 分析流程...")
+    logger.info("Starting AI analysis...")
 
     # Optional prevalidated module Markdown can be staged for the Quarto
     # module slots. The default configuration has no entries and is unchanged.
@@ -109,7 +109,11 @@ def run_ai_pipeline(
         _run_result_interpretations(config, config_path, template_dir, ai_config, model, provider,
                                     output_dir=Path(output_dir), visual_mode=visual_mode)
 
-    logger.info("AI 分析流程完成。")
+    from .i18n import is_rna
+    if is_rna(config):
+        _stage_english_interpretations(config, template_dir, model, provider)
+
+    logger.info("AI analysis complete.")
 
 
 def _run_global_interpretation(config, config_path, template_dir, ai_config, model, provider, deg_limit, enrichment_limit, prompt_file):
@@ -249,7 +253,7 @@ def _run_result_interpretations(config, config_path, template_dir, ai_config, mo
                 + fallback[:1600]
             )
         logger.debug(
-            "[{}] AI 内容已清理 | raw_chars={} final_chars={}",
+            "[{}] AI content sanitized | raw_chars={} final_chars={}",
             logical_id,
             len(raw_content),
             len(content),
@@ -264,13 +268,13 @@ def _visual_result_files(output_dir: Path | None, template_dir: Path) -> dict[st
         return {}
     manifest = output_dir / "report-blocks-pdf.jsonl"
     if not manifest.is_file():
-        logger.warning("视觉 AI 跳过：缺少 PDF block manifest %s", manifest)
+        logger.warning("Skipping visual AI: PDF block manifest is missing: %s", manifest)
         return {}
     try:
         import json
         blocks = [json.loads(line) for line in manifest.read_text(encoding="utf-8").splitlines() if line.strip()]
     except Exception as exc:
-        logger.warning("视觉 AI 跳过：无法读取 PDF block manifest: %s", exc)
+        logger.warning("Skipping visual AI: could not read PDF block manifest: %s", exc)
         return {}
     figures = []
     for block in blocks:
@@ -325,10 +329,50 @@ def _visual_result_files(output_dir: Path | None, template_dir: Path) -> dict[st
             subprocess.run(["convert", "-background", "white", str(source), str(target)],
                            check=True, capture_output=True, text=True, timeout=10)
             resolved[key] = target
-            logger.debug("视觉 AI 图像已准备: {} -> {}", source, target)
+            logger.debug("Visual AI image prepared: {} -> {}", source, target)
         except subprocess.TimeoutExpired as exc:
-            logger.warning("视觉 AI 图像转换超时（{} 秒）: {}；回退结构化证据", 10, source)
+            logger.warning("Visual AI image conversion timed out after {} seconds: {}; using structured evidence", 10, source)
         except (OSError, subprocess.SubprocessError) as exc:
             detail = (exc.stderr or str(exc)).strip() if hasattr(exc, "stderr") else str(exc)
-            logger.warning("视觉 AI 无法转换图像 {}: {}；回退结构化证据", source, detail)
+            logger.warning("Visual AI could not convert image {}: {}; using structured evidence", source, detail)
     return resolved
+
+
+def _stage_english_interpretations(config, template_dir, model, provider):
+    """Translate reviewed source notes once; keep the same evidence and claims."""
+    from .ai import AIInterpreter
+    from .modules import stage_module_interpretations
+    data = template_dir / "data"
+    sources = [(p, None) for p in sorted((data / "ai_interpretations").glob("*.md"))]
+    for name in ("consolidated_rna_seq_report", "module_interpretations"):
+        path = data / (name + ".md")
+        if path.is_file():
+            sources.append((path, data / (name + ".en.md")))
+    translated = {}
+    interpreter = None
+    for source, destination in sources:
+        if source.is_symlink():
+            raise ValueError("AI_INTERPRETATION_FILE_SYMLINK")
+        content = source.read_text(encoding="utf-8")
+        if re.search(r"[\u4e00-\u9fff]", content):
+            if interpreter is None:
+                options = dict(config.get("ai", {}))
+                options.setdefault("max_output_tokens", 4000)
+                interpreter = AIInterpreter(model=model, provider=provider, config=options)
+            response = interpreter.execute_inference(
+                system_prompt="Translate the supplied RNA-seq interpretation into English. Preserve all numbers, gene and sample identifiers, comparisons, uncertainty, limitations and Markdown structure. Do not add analysis or claims. Return only Markdown; no HTML, code fences or document YAML.",
+                user_content=[{"type": "text", "text": content}],
+                trace_id="translation-en-" + source.stem, thinking=False, temperature=0,
+            )
+            content = _clean_ai_markdown(response.content or "")
+            if not content:
+                raise RuntimeError("Empty English AI translation: " + source.name)
+            if destination is None:
+                content = '::: {.callout-note .ai-result-card appearance="minimal"}\n\n' + content + '\n\n:::'
+        if destination is None:
+            translated[source.stem] = content
+        else:
+            if destination.is_symlink():
+                raise ValueError("AI_INTERPRETATION_FILE_SYMLINK")
+            destination.write_text(content, encoding="utf-8")
+    stage_module_interpretations(template_dir, translated, execution_id=config.get("execution_id"), language="en")

@@ -24,7 +24,11 @@ def test_pdf_has_own_content_and_print_layout(tmp_path):
     config = load_config(ROOT / "tests/report.rna.local.json")
     pdf = compose_report(config, staged, pdf=True).read_text()
     html = compose_report(config, staged).read_text()
-    assert "rna-style.typ" in pdf and "rna-cover.typ" in pdf
+    assert "rna-style.typ" in pdf
+    assert "#heading(level: 1, numbering: none, outlined: false)[摘要]" in pdf
+    assert pdf.index("Powered by JZHANG") < pdf.index("#heading(level: 1, numbering: none, outlined: false)[摘要]")
+    assert "#heading(level: 2, numbering: none, outlined: false)[' + title + ']" in pdf
+    assert "summary_heading('差异表达客观统计汇总')" in pdf
     assert "papersize: a4" in pdf
     assert "# 样本信息" in pdf
     assert "## 样本信息" in pdf
@@ -46,9 +50,11 @@ def test_pdf_has_own_content_and_print_layout(tmp_path):
     assert f"ProjectID: {config['project']['project_id']}" in cover
     assert "BioReport: v2.0.0" in cover
     assert f"FlowVersion: {config['project']['pipeline_version']}" in cover
-    assert "align: center" in (staged / "pdf/print-style.typ").read_text()
     print_style = (staged / "pdf/print-style.typ").read_text()
-    assert 'numbering("1-1"' in print_style and "supplement: [图#h(" in print_style
+    assert 'numbering("1-1"' in print_style and 'supplement: [#(if report-language == "en" {"Figure"} else {"图"})#h(' in print_style
+
+    assert "align: (x, y) => if y == 0 { center } else if numeric.at(x) { right } else { left }" in print_style
+    assert 'rgb("#315f65")' in print_style and 'fill: rgb("#ffffff")' in print_style
     assert "block(sticky: true)[#figure(" in print_style
     assert "sci(" in cover and "Group 2 vs Group 1" in cover
     assert "2_vs_1" not in cover

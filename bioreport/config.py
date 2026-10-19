@@ -325,9 +325,10 @@ def project_file_stem(config: Dict[str, Any]) -> str:
     return cleaned or "bioreport-report"
 
 
-def report_artifact_name(config: Dict[str, Any], output_format: str) -> str:
+def report_artifact_name(config: Dict[str, Any], output_format: str, language: str | None = None) -> str:
     """报告交付文件名：<project_id>_report.<format>，如 PRJ-2026-001_report.pdf。"""
-    return f"{project_file_stem(config)}_report.{output_format}"
+    suffix = ".en" if language == "en" else ""
+    return f"{project_file_stem(config)}_report{suffix}.{output_format}"
 
 
 def run_log_name(config: Dict[str, Any], timestamp: str) -> str:

@@ -1,0 +1,27 @@
+---
+title: About BioReport
+---
+
+**BioReport** is a modular, configurable report engine built with Python and Quarto, and a delivery component of **CygnusX BioOps**. It turns existing omics outputs into structured, interactive and verifiable research reports.
+
+## Mission and Capabilities
+
+Configuration controls module selection, parameters and delivery formats. Domain modules supply QC, expression, differential analysis and enrichment. Interactive Plotly charts and searchable tables support review; dedicated PDF templates support archiving. Optional AI interpretations require scientific review against the underlying evidence.
+
+## Technical Architecture
+
+Python handles validation, data paths, module composition and execution. pandas and NumPy process result tables; Plotly and ITables provide visualization. Quarto and Typst render the final documents. Local Python/Quarto or Docker can run report generation.
+
+## CygnusX Research Ecosystem
+
+- [GeoMuse](https://github.com/xsx123123/GeoMuse): public omics data and literature discovery.
+- [Polariseq](https://github.com/xsx123123/polariseq): sequencing-data acquisition and transfer.
+- [FlowFrame](https://github.com/xsx123123/FlowFrame): versioned bioinformatics workflows.
+- [BioReport](https://github.com/xsx123123/bioreport): analysis organization and scientific report delivery.
+- [CygnusX BioOps](https://github.com/xsx123123/OmicHub_BioOps): research agents, workflow orchestration and evidence tracking.
+
+## Development and Acknowledgments
+
+The project develops additional omics modules, provenance integration and evidence-grounded interpretation. Contributions and issues are welcome on [GitHub](https://github.com/xsx123123/bioreport). We thank participating research teams at Huazhong Agricultural University for their support with use cases and testing.
+
+Maintained by the BioReport / CygnusX BioOps team.

@@ -1,0 +1,11 @@
+
+## STAR Alignment Statistics
+
+STAR reports uniquely mapped, multiply mapped and unmapped reads [@dobin2013star].  Unmapped categories include excessive mismatches, short sequences and other failures. Percentages and read units follow the source statistics. The key PDF table excludes first-pass STAR records. Review reference compatibility, library quality and read depth when alignment or depth differs across samples.
+
+```{python}
+#| label: qc-star
+#| results: asis
+visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['STAR'])
+display_result_ai('rna.qc.star__figure')
+```

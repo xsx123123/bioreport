@@ -1,0 +1,23 @@
+
+## Sequencing Quality Control
+
+Selected modules summarize read quality, adapter removal, potential cross-species contamination, alignment and coverage. Assess these indicators in the context of the species, library protocol and experimental design.
+
+```{python}
+#| label: setup-import-qc
+#| echo: false
+import pandas as pd
+from omics.rna.analysis.qc_vis import visualize_multiqc_logs
+from bioreport.utils.visualize_utils import display_fastp_table, display_fastq_screen_table
+from bioreport.config import load_project_metadata
+project_info = load_project_metadata()
+input_files = project_info['input_files']
+
+def display_result_ai(result_id):
+    from pathlib import Path
+    import re
+    note = Path('../data/ai_interpretations/en') / (re.sub('[^A-Za-z0-9_.-]', '-', result_id).strip('.') + '.md')
+    if note.is_file() and (not note.is_symlink()):
+        from IPython.display import Markdown, display
+        display(Markdown(note.read_text(encoding='utf-8')))
+```

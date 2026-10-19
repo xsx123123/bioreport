@@ -1,0 +1,19 @@
+
+## fastp Sequencing Quality
+
+Upstream fastp removes adapters and low-quality reads. Statistics summarize duplication, Q30, GC content, retained reads and adapter trimming. Q30 is the percentage of bases with Phred score >= 30. Filtering charts retain the read-count categories; quality curves show mean Phred scores by cycle for R1 and R2. The key-figure PDF mode uses after-filtering stages, while full mode retains all stages.
+
+```{python}
+#| label: fastp-table
+#| results: asis
+data_path = input_files['fastp_stats_file']
+display_fastp_table(data_path)
+display_result_ai('rna.qc.fastp__table')
+```
+
+```{python}
+#| label: fastp-viz
+#| results: asis
+visualize_multiqc_logs(analysis_dir=input_files['fastp_report_dir'], target_modules=['fastp'])
+display_result_ai('rna.qc.fastp__figure')
+```

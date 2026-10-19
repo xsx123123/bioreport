@@ -11,9 +11,9 @@ def build_default_report_config(client, species, genome, pipeline_version, proje
     return {
         "report": {
             "type": "rna-seq",
-            "title": f"{client} RNA-seq 分析报告",
-            "subtitle": "RNA 转录组测序分析报告",
-            "language": "zh",
+            "title": f"{client} RNA-seq Analysis Report",
+            "subtitle": "RNA Sequencing Analysis",
+            "language": "en",
             "output_format": "html",
             "sections": [
                 "index",
@@ -119,13 +119,13 @@ def update_yaml_config(client, species, genome, pipeline_version, output_path, p
                     existing_data[key] = default_data[key]
 
             final_data = existing_data
-            print(f"✅ 已更新现有 YAML 配置: {output_path}")
+            print(f"Updated existing YAML configuration: {output_path}")
         except Exception as e:
-            print(f"⚠️  读取现有 YAML 失败，覆盖创建: {output_path} ({e})")
+            print(f"Warning: could not read existing YAML; replacing it: {output_path} ({e})")
             final_data = default_data
     else:
         final_data = default_data
-        print(f"✅ 创建新 YAML 配置: {output_path}")
+        print(f"Created YAML configuration: {output_path}")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, 'w', encoding='utf-8') as f:
@@ -180,13 +180,13 @@ def update_json_config(client, species, genome, pipeline_version, output_path, p
                     existing_data["input_files"].setdefault(key, value)
 
             final_data = existing_data
-            print(f"✅ 已更新现有 JSON 配置: {output_path}")
+            print(f"Updated existing JSON configuration: {output_path}")
         except json.JSONDecodeError:
-            print(f"⚠️  现有 JSON 文件损坏，覆盖创建: {output_path}")
+            print(f"Warning: existing JSON is invalid; replacing it: {output_path}")
             final_data = default_data
     else:
         final_data = default_data
-        print(f"✅ 创建新 JSON 配置: {output_path}")
+        print(f"Created JSON configuration: {output_path}")
 
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(final_data, f, indent=2, ensure_ascii=False)
@@ -195,7 +195,7 @@ def update_json_config(client, species, genome, pipeline_version, output_path, p
 def update_quarto_yaml(title, yaml_path):
     """更新 _quarto.yml 中的标题（直接字符串替换，保留注释）。"""
     if not os.path.exists(yaml_path):
-        print(f"❌ 找不到 _quarto.yml: {yaml_path}")
+        print(f"Error: _quarto.yml not found: {yaml_path}")
         return
 
     try:
@@ -211,11 +211,11 @@ def update_quarto_yaml(title, yaml_path):
             if new_content != content:
                 with open(yaml_path, 'w', encoding='utf-8') as f:
                     f.write(new_content)
-                print(f"✅ 报告标题已更新为: {title}")
+                print(f"Report title updated: {title}")
             else:
-                print("ℹ️  报告标题未变更")
+                print("Report title unchanged.")
         else:
-            print("⚠️  未在 _quarto.yml 中找到标准 title 字段，跳过更新。")
+            print("Warning: no standard title field found in _quarto.yml; skipping update.")
 
     except Exception as e:
-        print(f"❌ 更新 _quarto.yml 失败: {e}")
+        print(f"Error: failed to update _quarto.yml: {e}")

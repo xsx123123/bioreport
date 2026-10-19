@@ -1,0 +1,11 @@
+
+## QualiMap Alignment Quality
+
+QualiMap summarizes genomic coverage, the fraction of the genome covered at different depths, insert-size distribution and GC content [@okonechnikov2016qualimap].  Coverage and library-shape differences may warrant additional review. Expected distributions depend on the assay and reference genome.
+
+```{python}
+#| label: qc-qualimap
+#| results: asis
+visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['QualiMap'])
+display_result_ai('rna.qc.qualimap__figure')
+```

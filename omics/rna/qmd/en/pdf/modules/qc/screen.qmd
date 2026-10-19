@@ -1,0 +1,14 @@
+
+## FastQ Screen Contamination Screening
+
+FastQ Screen aligns sampled reads to a panel of reference genomes to assess species composition and potential contamination. Unique and multiple-species alignment categories help distinguish target-specific sequences from shared regions. Interpret fractions against the reference panel and expected library origin [@wingett2018fastq]. 
+
+```{python}
+#| label: fastq-screen-pair
+#| output: asis
+from bioreport.utils.render_output import figure_group
+with figure_group('fastq-screen-reads'):
+    for read in ('r1', 'r2'):
+        visualize_multiqc_logs(analysis_dir=input_files[f'fastq_screen_{read}_dir'], target_modules=['fastq_screen'])
+        display_result_ai(f'rna.qc.screen__{read.upper()}')
+```

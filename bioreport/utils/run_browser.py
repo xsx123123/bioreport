@@ -29,7 +29,7 @@ def render_runs(console: Console, rows: list[dict], db_path) -> None:
         summary.add_row(status, str(count), bar)
     if not counts:
         summary.add_row("状态", "0", "无记录")
-    console.print(Panel(Group(f"数据库: {db_path}\n记录数: {len(rows)}", summary),
+    console.print(Panel(Group(f"Database: {db_path}\nRecords: {len(rows)}", summary),
                         title="BioReport 运行记录"))
     table = Table(show_header=True, header_style="bold cyan", expand=True)
     for column in ("ID", "项目", "运行时间", "状态", "格式", "模块", "输出目录"):
@@ -71,7 +71,7 @@ def render_dashboard(console: Console, rows: list[dict], db_path) -> None:
         f"[bold red]{failed}[/bold red]\n失败",
         f"[bold yellow]{rate}[/bold yellow]\n成功率",
     )
-    console.print(Panel(metrics, title="BioReport 运行仪表盘", border_style="cyan"))
+    console.print(Panel(metrics, title="BioReport Run Dashboard", border_style="cyan"))
 
     project_panel = Table.grid(padding=(0, 1))
     project_panel.add_column(style="bold")
@@ -80,14 +80,14 @@ def render_dashboard(console: Console, rows: list[dict], db_path) -> None:
     project_panel.add_row("当前时间", current_time)
     project_panel.add_row("项目数", str(projects))
     project_panel.add_row("数据库", _short(db_path, 60))
-    console.print(Panel(project_panel, title="概览", border_style="dim"))
+    console.print(Panel(project_panel, title="Overview", border_style="dim"))
 
     recent = sorted(rows, key=lambda row: row.get("id", 0), reverse=True)[:10]
-    console.print("[bold]最近运行（最多 10 条）[/bold]")
+    console.print("[bold]Recent runs (up to 10)[/bold]")
     if recent:
         render_runs(console, recent, db_path)
     else:
-        console.print("[dim]暂无运行记录。执行 bioreport run 后这里会显示运行结果。[/dim]")
+        console.print("[dim]No runs yet. Results will appear here after running bioreport run.[/dim]")
 
 
 def browse_runs(console: Optional[Console] = None, db_path=None) -> None:
@@ -101,7 +101,7 @@ def browse_runs(console: Optional[Console] = None, db_path=None) -> None:
             console.clear()
             render_dashboard(console, rows, db_path)
             filter_hint = "已应用筛选" if active_filters else "全量数据"
-            console.print(f"\n[bold]操作[/bold]  [cyan]s[/cyan] 搜索  [cyan]r[/cyan] 刷新  [cyan]c[/cyan] 清除筛选  [cyan]q[/cyan] 退出    [dim]{filter_hint}[/dim]")
+            console.print(f"\n[bold]Actions[/bold]  [cyan]s[/cyan] Search  [cyan]r[/cyan] Refresh  [cyan]c[/cyan] Clear filters  [cyan]q[/cyan] Quit    [dim]{filter_hint}[/dim]")
             action = console.input("> ").strip().lower()
             if action in {"q", "quit", "exit"}:
                 return

@@ -80,4 +80,4 @@ def test_workspace_migration_commands_are_explicit_and_reversible(tmp_path, monk
 
     monkeypatch.setattr(sys, "argv", ["bioreport", "workspace-restore", "--db", str(db_path)])
     cli.main()
-    assert "Workspace 迁移备份已恢复" in capsys.readouterr().out
+    assert "Workspace migration backup restored" in capsys.readouterr().out

@@ -22,7 +22,7 @@ def render_templates(
     template_dir: str = "/app/templates",
 ) -> None:
     """Render Quarto project settings and compose the selected modules."""
-    logger.info("正在渲染 Quarto 模板...")
+    logger.info("Rendering Quarto templates...")
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     env = Environment(
@@ -46,11 +46,11 @@ def render_templates(
         from .utils.font_stage import stage_fonts
         staged_fonts = stage_fonts(output_dir) if "html" in requested_formats else None
         if staged_fonts:
-            logger.debug(f"报告字体已随报告输出: {staged_fonts}")
+            logger.debug(f"Report fonts staged in output: {staged_fonts}")
         elif "html" in requested_formats:
-            logger.warning("内置字体文件缺失,HTML 将回退到系统字体")
+            logger.warning("Built-in font files are missing; HTML will use system fonts.")
     except Exception as e:
-        logger.warning(f"字体随报告输出失败(不影响渲染): {e}")
+        logger.warning(f"Could not stage report fonts (rendering can continue): {e}")
 
     # 1. 渲染 _quarto.yml
     try:
@@ -62,17 +62,17 @@ def render_templates(
         )
         quarto_path = Path(template_dir) / "_quarto.yml"
         quarto_path.write_text(quarto_content, encoding="utf-8")
-        logger.debug(f"已生成 {quarto_path}")
+        logger.debug(f"Generated {quarto_path}")
     except Exception as e:
-        logger.error(f"渲染 _quarto.yml 失败: {e}")
+        logger.error(f"Failed to render _quarto.yml: {e}")
         raise
 
     if layout == "single":
         # 按实际输出格式按需生成 .qmd：html 模式不生成 report_pdf.qmd。
         if "html" in requested_formats:
             report_qmd_path = compose_report(config, Path(template_dir))
-            logger.debug(f"已生成 {report_qmd_path}")
+            logger.debug(f"Generated {report_qmd_path}")
         if "pdf" in requested_formats:
             pdf_qmd_path = compose_report(config, Path(template_dir), pdf=True)
             shutil.copyfile(Path(template_dir) / "qmd/report-plan.json", Path(output_dir) / "report-plan.json")
-            logger.debug(f"已生成 {pdf_qmd_path}")
+            logger.debug(f"Generated {pdf_qmd_path}")
