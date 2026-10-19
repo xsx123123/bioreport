@@ -1,4 +1,4 @@
-[English](../README.md) | **中文**
+[English](../README.md) | **中文** | [文档索引](README.md)
 
 <p align="center">
   <img src="蓝色生物信息报告图标.png" alt="BioReport Logo" width="250">
@@ -34,7 +34,7 @@ html 示例报告
 
 ## 下一阶段重点
 
-下一阶段将集中优化三条方向：完善 Docker 镜像、挂载约定和正式容器化交付；将现有逐结果 AI 框架升级为分模块 Prompt、证据校验、可审计 Agent 和 Workspace 异步解读；在通用引擎契约基础上补充其他组学的原生模块、数据读取、分析函数和报告模板。详细计划见 [`todo.md`](../todo.md) 和 [`AI.md`](AI.md)。
+下一阶段将集中优化三条方向：完善 Docker 镜像、挂载约定和正式容器化交付；将现有逐结果 AI 框架升级为分模块 Prompt、证据校验、可审计 Agent 和 Workspace 异步解读；在通用引擎契约基础上补充其他组学的原生模块、数据读取、分析函数和报告模板。详细计划见 [`roadmap.md`](roadmap.md) 和 [`AI.md`](AI.md)。
 
 ## 🛠️ 环境依赖
 
@@ -95,7 +95,7 @@ bioreport workspace-restore --db /path/to/runs.db
 
 ### Web 端 AI 现状与规划
 
-当前 Web 端已经具备 Workspace v1 的运行历史、证据、产物、溯源和模块级 AI 解读浏览能力，但完整的 AI 工作台尚未作为最终产品形态完成；静态 HTML/PDF 仍是当前主要交付方式。下一大版本计划建设 Workspace v2，将项目、运行、分析模块、结果证据、逐结果 AI 解读和交付版本串成统一工作流，支持异步解读、证据定位、重新解读、版本保留以及 HTML/PDF 原位回填。详细规划见 [`todo.md`](../todo.md) 的“Web 工作台大版本升级：BioReport Workspace v2”。
+当前 Web 端已经具备 Workspace v1 的运行历史、证据、产物、溯源和模块级 AI 解读浏览能力，但完整的 AI 工作台尚未作为最终产品形态完成；静态 HTML/PDF 仍是当前主要交付方式。下一大版本计划建设 Workspace v2，将项目、运行、分析模块、结果证据、逐结果 AI 解读和交付版本串成统一工作流，支持异步解读、证据定位、重新解读、版本保留以及 HTML/PDF 原位回填。详细规划见 [`roadmap.md`](roadmap.md) 的“Web 工作台大版本升级：BioReport Workspace v2”。
 
 ### Docker 与 PDF 部署说明
 
@@ -213,7 +213,7 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 | 可选 AI 辅助解读 | OpenAI SDK · 结构化证据 · Markdown | 默认按结果生成独立解读卡片；HTML/非视觉路径在渲染前生成，PDF 视觉路径在第一次渲染后读取图像与证据，再二次回填；模型生成内容需研究人员审阅 |
 | 运行环境 | 本地 Python / Quarto · Docker | 本地或容器内完成模板渲染、代码执行与文档构建；报告阅读使用浏览器或 PDF 阅读器 |
 
-> 架构图的权威源文件是 [`templates/shared/assets/architecture.mmd`](templates/shared/assets/architecture.mmd)：报告「关于」页通过 include 机制内嵌该 Mermaid 源码。README 和 `docs/Architecture.md` 使用同一架构语义的说明性副本；PDF 中的静态 SVG（`templates/shared/assets/architecture.svg`）需要在架构图变更后重新离线导出。当前内置 RNA-seq 模块；新增组学类型需要提供对应的数据读取、图表和解释模块。
+> 架构图的权威源文件是 [`templates/shared/assets/architecture.mmd`](../templates/shared/assets/architecture.mmd)：报告「关于」页通过 include 机制内嵌该 Mermaid 源码。README 和 `docs/Architecture.md` 使用同一架构语义的说明性副本；PDF 中的静态 SVG（`templates/shared/assets/architecture.svg`）需要在架构图变更后重新离线导出。当前内置 RNA-seq 模块；新增组学类型需要提供对应的数据读取、图表和解释模块。
 
 ## 📂 目录结构说明
 
@@ -374,7 +374,7 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 
 统一 JSON/YAML 配置已经为 AI 兼容性预留 `enabled`、`provider`、`model`、`base_url`、`api_key_env`、`scope`、`vision`、输入限制和回退策略等字段，可兼容 OpenAI SDK 及 OpenAI-compatible 服务商。详细字段、当前逐结果流程和 PDF 视觉流程见 [`AI.md`](AI.md)。
 
-当前主线已经具备逐结果 AI 解读框架；下一版本将重点优化分模块 Prompt、证据约束、输出验证、审计字段和 Web Workspace v2 的异步解读能力，详见 [`AI.md`](AI.md) 与 [`../todo.md`](../todo.md)。
+当前主线已经具备逐结果 AI 解读框架；下一版本将重点优化分模块 Prompt、证据约束、输出验证、审计字段和 Web Workspace v2 的异步解读能力，详见 [`AI.md`](AI.md) 与 [`roadmap.md`](roadmap.md)。
 
 ## 🔄 向后兼容
 
