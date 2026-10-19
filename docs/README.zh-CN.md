@@ -39,18 +39,17 @@ html 示例报告
 ## 🛠️ 环境依赖
 
 - [Python 3.10+](https://www.python.org/)；本地运行需安装 [Quarto](https://quarto.org/)
-- RNA 报告依赖：`pip install -e '.[rna]'`
-- AI 解读需额外安装 AI 依赖：`pip install -e '.[rna,ai]'`
+- 默认安装包含 RNA 报告和 AI 的 Python 依赖：`python -m pip install -e ./`，旧版 `rna` / `ai` extra 写法继续兼容
 - PDF 只读锁与版式校验为可选依赖：`pip install -e '.[rna,security,validation]'`
 - PDF 图表通过 Kaleido 导出为图片；所用 Kaleido 版本若依赖 Chrome / Chromium，需在运行环境提供浏览器
-- Docker 部署说明目前位于 `deploy/README.zh-CN.md`，正式交付流程仍在完善
+- Docker 镜像固定使用 Quarto 1.8.26；构建和容器测试命令见下方 Docker 说明及 `deploy/README.zh-CN.md`
 
 ## 🚀 快速上手
 
 ### 本地生成 RNA 示例报告
 
 ```bash
-pip install -e '.[rna]'
+python -m pip install -e ./
 python -m bioreport validate -c tests/report.rna.local.json
 # 生成 HTML 报告
 python -m bioreport run -c tests/report.rna.html.json -o output/rna-report
@@ -100,7 +99,14 @@ bioreport workspace-restore --db /path/to/runs.db
 
 ### Docker 与 PDF 部署说明
 
-Docker 构建、配置挂载、干运行和 RNA-seq PDF 模板的详细说明已移至 [`deploy/README.zh-CN.md`](../deploy/README.zh-CN.md)。Docker 作为正式交付方式仍在完善中，当前开发和验证建议优先使用本 README 前面的本地 Python/Quarto 命令。
+Docker 镜像固定 Quarto 1.8.26，构建时会执行 RNA HTML/PDF smoke test。构建镜像并测试：
+
+```bash
+docker build --platform linux/amd64 -f deploy/Dockerfile -t bioreport:latest .
+docker run --rm --entrypoint python bioreport:latest /opt/bioreport-smoke-test.py
+```
+
+配置挂载、报告运行和 RNA-seq PDF 模板的详细说明见 [`deploy/README.zh-CN.md`](../deploy/README.zh-CN.md)。
 
 ## 🏗️ 技术架构
 
@@ -345,7 +351,7 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 | `fastq_screen_r1_dir` / `fastq_screen_r2_dir` | 污染检测报告 |
 | `qualimap_dir` | QualiMap / STAR 比对质控 |
 | `contrasts_file` / `deg_dir` / `enrichment_dir` | 差异分析与富集结果 |
-| `software_versions_file` | 流程页的软件版本表；未配置时沿用内置示例表 |
+| `software_versions_file` | 流程页的软件版本表；选择 `rna.workflow` 时必填，`validate` 和 `run` 会检查文件存在且可读 |
 
 其他输入字段的相对路径基于 `data_dir` 解析，绝对路径直接使用。修改输入或参数后，需要重新运行生成命令才能更新 HTML / PDF。
 
@@ -408,7 +414,7 @@ npm run dev -- --host 127.0.0.1 --port 5174
 
 团队部署可额外设置 `BIOREPORT_ALLOWED_PROJECTS`（精确项目 ID 白名单）、`BIOREPORT_RATE_LIMIT_PER_MINUTE`（每客户端限流）和 `BIOREPORT_CORS_ORIGINS`（明确的浏览器来源白名单）；请求中的 `project` 参数只用于筛选，不能授予项目权限。
 
-- `bioreport validate -c <配置文件>`：检查配置结构与字段取值，不检查模块是否可用或输入文件是否存在。
+- `bioreport validate -c <配置文件>`：检查 JSON/YAML 配置结构、字段取值、模块选择及必需输入路径（存在性、可读性、`_file` / `_dir` 路径类型）；所选模块已配置的可选输入也会检查，其他无关输入缺失仅告警。相对路径基于 `input_files.data_dir`，未配置该目录时基于配置文件目录。不检查文件内容或执行 Quarto / AI；模板组装请使用 `run --dry-run`。
 - `bioreport run -c <配置文件> -o <输出目录> --dry-run`：进一步检查模块选择、模板组合与输入文件，不调用 AI 或执行 Quarto。
 - `bioreport init`：显示初始配置位置，不会自动创建配置文件。
 

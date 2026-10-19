@@ -3,6 +3,7 @@
 __pycache__
 *.pyc
 output
+pdf-figures
 legacy-old-bioreport
 legacy-old-templates
 docs
@@ -12,3 +13,19 @@ data
 build
 dist
 *.egg-info
+
+# Local project inputs and credentials never belong in the build context.
+project_data
+.env
+.env.*
+!.env.example
+.venv
+.venv*
+.agents
+.codex
+.aws
+archive
+node_modules
+frontend/node_modules
+frontend
+scripts

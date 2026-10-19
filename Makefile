@@ -1,6 +1,7 @@
-.PHONY: install install-dev test test-integration validate dry-run report docker-build docker-run clean lint-imports
+.PHONY: install install-dev test test-integration validate dry-run report docker-build docker-test docker-run clean lint-imports
 
 CONFIG ?= configs/report.example.json
+DATA ?= examples/rna-seq/data
 OUT ?= output
 
 install:
@@ -28,10 +29,18 @@ lint-imports:
 	! rg --pcre2 -n "from omics\\.(?!rna)|import omics\\.(?!rna)" omics --glob '*.py'
 
 docker-build:
-	docker build -f deploy/Dockerfile -t bioreport:latest .
+	docker build --platform linux/amd64 -f deploy/Dockerfile -t bioreport:latest .
+
+docker-test:
+	docker run --rm --entrypoint python bioreport:latest /opt/bioreport-smoke-test.py
 
 docker-run:
-	docker run --rm -v "$$(pwd)/$$(dirname $(CONFIG)):/data:ro" -v "$$(pwd)/$(OUT):/workspace" bioreport:latest -c "/data/$$(basename $(CONFIG))" -o /workspace
+	mkdir -p "$(OUT)"
+	docker run --rm \
+	  -v "$(abspath $(CONFIG)):/config/report.json:ro" \
+	  -v "$(abspath $(DATA)):/data:ro" \
+	  -v "$(abspath $(OUT)):/workspace" \
+	  bioreport:latest run -c /config/report.json -o /workspace
 
 clean:
 	rm -rf output _deploy_temp dist *.egg-info
