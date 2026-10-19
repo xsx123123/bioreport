@@ -28,29 +28,28 @@ The same project configuration can produce interactive HTML and print-ready PDF 
 - **Per-result AI interpretation**: QC, sample relationships, expression, heatmaps, DEG, and enrichment outputs receive independent Markdown interpretation cards linked to their source evidence.
 - **PDF visual interpretation**: For `ai.scope: results`, PDF generation renders figures first, sends rendered images plus structured evidence to the model, and performs a second render to place cards below the corresponding result; structured evidence is used as a fallback when an image cannot be prepared.
 - **Auditable AI integration**: Providers use the OpenAI Python SDK with retries, input limits, fallback providers, visual fallback, and empty-response handling; result slots can record evidence hashes, prompt versions, model parameters, and response status.
-- **Docker roadmap**: A Dockerfile and deployment draft are included; the formal container delivery workflow is planned for a later version.
+- **Docker image**: A pinned Quarto 1.8.26 image includes the report dependencies and runs an RNA HTML/PDF smoke test during the build.
 - **Backward compatibility**: Legacy `project_summary.json` and older YAML layouts remain supported by the config loader.
 
 ## Next-stage priorities
 
-The next stage will focus on three areas: completing Docker images, mount conventions, and formal container delivery; evolving the current per-result AI framework with specialized prompts, evidence validation, auditable agents, and asynchronous Workspace interpretation; and adding native modules, data readers, analysis functions, and report templates for additional omics types. See [`todo.md`](todo.md) and [`docs/AI.md`](docs/AI.md) for the roadmap.
+The next stage will focus on three areas: formalizing container delivery and mount conventions; evolving the current per-result AI framework with specialized prompts, evidence validation, auditable agents, and asynchronous Workspace interpretation; and adding native modules, data readers, analysis functions, and report templates for additional omics types. See [`todo.md`](todo.md) and [`docs/AI.md`](docs/AI.md) for the roadmap.
 
 ## Requirements
 
 - [Python 3.10+](https://www.python.org/)
 - [Quarto](https://quarto.org/) for local rendering
-- RNA dependencies: `pip install -e '.[rna]'`
-- AI dependencies: `pip install -e '.[rna,ai]'`
+- RNA reporting and AI Python dependencies: `python -m pip install -e ./` (the historical `rna` and `ai` extras remain accepted)
 - Optional PDF validation and read-only locking: `pip install -e '.[rna,security,validation]'`
 - Kaleido and a supported Chrome/Chromium installation for static figure export
-- Docker support is planned; see [`deploy/`](deploy/) for the deployment draft.
+- Docker: see the commands below and [`deploy/README.zh-CN.md`](deploy/README.zh-CN.md) for deployment details.
 
 ## Quick start
 
 Install the package and validate a local RNA-seq configuration:
 
 ```bash
-pip install -e '.[rna]'
+python -m pip install -e ./
 python -m bioreport validate -c tests/report.rna.local.json
 ```
 
@@ -92,7 +91,30 @@ bioreport workspace-restore --db /path/to/runs.db
 
 ## Docker and PDF deployment
 
-Docker execution and RNA-seq PDF deployment details are maintained in the draft guide at [`deploy/README.zh-CN.md`](deploy/README.zh-CN.md). Docker support is planned as a formal delivery path; local Python/Quarto execution remains the recommended development workflow.
+Build the image from the repository root. The build pins Quarto 1.8.26 and automatically checks the installed package, Kaleido export, and RNA HTML/PDF report generation:
+
+```bash
+docker build --platform linux/amd64 -f deploy/Dockerfile -t bioreport:latest .
+```
+
+Run the smoke test again against the built image:
+
+```bash
+docker run --rm --entrypoint python bioreport:latest \
+  /opt/bioreport-smoke-test.py
+```
+
+To generate a report, mount a configuration, its input data, and an output directory. Paths inside the configuration must point to the container mount points, for example `/data` and `/workspace`:
+
+```bash
+docker run --rm \
+  -v "$PWD/report.json:/config/report.json:ro" \
+  -v /path/to/project-data:/data:ro \
+  -v /path/to/report-output:/workspace \
+  bioreport:latest run -c /config/report.json -o /workspace
+```
+
+The configuration's `input_files.data_dir` should be `/data` (or a path beneath it). The generated HTML/PDF files will appear in `/path/to/report-output`. See [`deploy/README.zh-CN.md`](deploy/README.zh-CN.md) for complete examples and PDF deployment details.
 
 ## Architecture
 
@@ -179,6 +201,8 @@ The API defaults to loopback. Public deployment requires an API token, trusted p
 Workspace v2 will connect projects, runs, analysis modules, evidence, per-result AI interpretations, and delivery versions in one workflow. Planned capabilities include asynchronous interpretation, evidence-linked re-interpretation, version history, and precise HTML/PDF card backfill. See [`todo.md`](todo.md) for the roadmap.
 
 ## Validation and tests
+
+`validate` checks JSON/YAML schema, selected modules, required input keys and paths (existence, readability, and file/directory types for `_file`/`_dir` keys). Optional inputs declared by selected modules are checked when configured; unrelated missing inputs produce warnings. Relative paths resolve against `input_files.data_dir`, or the configuration directory when omitted. It does not inspect file contents or execute Quarto/AI; use `run --dry-run` to also check template assembly.
 
 ```bash
 bioreport validate -c <config>
