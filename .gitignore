@@ -19,3 +19,8 @@ pipeline.log
 run_config_backup.*
 legacy-old-*/
 *.log
+.agents
+.aws
+.codex
+.github
+.pytest_cache
