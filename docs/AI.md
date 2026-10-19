@@ -52,4 +52,4 @@ AI 设置位于统一 JSON/YAML 配置的 `ai` 节，当前配置结构已经为
 
 当前提示词和解读逻辑仍属于过渡实现。下一版本重点是按 fastp/QC、样本关系、DEG、富集和图表视觉解读拆分专家 Prompt，并统一输出“观察、统计依据、生物学解释、限制条件、建议复核项”。同时增加数值引用、证据一致性、结果为空校验、Prompt 版本、模型参数、evidence hash 和响应状态记录。
 
-后续 AI Agent 将拆分为证据适配、Prompt 注册、模型调用、输出验证和渲染回填等可替换层；Web Workspace v2 计划提供异步解读、证据定位、重新解读、版本保留和 HTML/PDF 原位回填。实施骨架见 [`../todo.md`](../todo.md) 的“AI 逐结果解读 Agent 框架”和“Web 工作台大版本升级：BioReport Workspace v2”。
+后续 AI Agent 将拆分为证据适配、Prompt 注册、模型调用、输出验证和渲染回填等可替换层；Web Workspace v2 计划提供异步解读、证据定位、重新解读、版本保留和 HTML/PDF 原位回填。实施骨架见 [`roadmap.md`](roadmap.md) 的“AI 逐结果解读 Agent 框架”和“Web 工作台大版本升级：BioReport Workspace v2”。

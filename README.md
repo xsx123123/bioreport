@@ -1,4 +1,4 @@
-**English** | [中文文档](docs/README.zh-CN.md)
+**English** | [中文文档](docs/README.zh-CN.md) | [Documentation index](docs/README.md)
 
 <p align="center">
   <img src="docs/蓝色生物信息报告图标.png" alt="BioReport logo" width="250">
@@ -33,7 +33,7 @@ The same project configuration can produce interactive HTML and print-ready PDF 
 
 ## Next-stage priorities
 
-The next stage will focus on three areas: formalizing container delivery and mount conventions; evolving the current per-result AI framework with specialized prompts, evidence validation, auditable agents, and asynchronous Workspace interpretation; and adding native modules, data readers, analysis functions, and report templates for additional omics types. See [`todo.md`](todo.md) and [`docs/AI.md`](docs/AI.md) for the roadmap.
+The next stage will focus on three areas: formalizing container delivery and mount conventions; evolving the current per-result AI framework with specialized prompts, evidence validation, auditable agents, and asynchronous Workspace interpretation; and adding native modules, data readers, analysis functions, and report templates for additional omics types. See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/AI.md`](docs/AI.md) for the roadmap.
 
 ## Requirements
 
@@ -145,7 +145,7 @@ flowchart TB
 
 The JSON/YAML configuration already reserves compatibility fields for AI providers and future workflows, including `enabled`, `provider`, `model`, `base_url`, `api_key_env`, `scope`, `vision`, input limits, and fallback settings. Detailed field definitions and the current interpretation pipeline are maintained in [`docs/AI.md`](docs/AI.md).
 
-The current release provides the per-result interpretation framework. The next version will focus on specialized prompts, evidence constraints, output validation, audit fields, and asynchronous AI interpretation in Workspace v2. See [`docs/AI.md`](docs/AI.md) and [`todo.md`](todo.md) for the roadmap.
+The current release provides the per-result interpretation framework. The next version will focus on specialized prompts, evidence constraints, output validation, audit fields, and asynchronous AI interpretation in Workspace v2. See [`docs/AI.md`](docs/AI.md) and [`docs/roadmap.md`](docs/roadmap.md) for the roadmap.
 
 ## Project structure
 
@@ -198,7 +198,7 @@ npm run dev -- --host 127.0.0.1 --port 5174
 
 The API defaults to loopback. Public deployment requires an API token, trusted project configuration, and a reverse proxy. Details are in [`docs/architecture/`](docs/architecture/).
 
-Workspace v2 will connect projects, runs, analysis modules, evidence, per-result AI interpretations, and delivery versions in one workflow. Planned capabilities include asynchronous interpretation, evidence-linked re-interpretation, version history, and precise HTML/PDF card backfill. See [`todo.md`](todo.md) for the roadmap.
+Workspace v2 will connect projects, runs, analysis modules, evidence, per-result AI interpretations, and delivery versions in one workflow. Planned capabilities include asynchronous interpretation, evidence-linked re-interpretation, version history, and precise HTML/PDF card backfill. See [`docs/roadmap.md`](docs/roadmap.md) for the roadmap.
 
 ## Validation and tests
 
@@ -222,7 +222,7 @@ Complete rendering tests require a working Jupyter kernel and Kaleido/Chrome. Ea
 
 ## Version and acknowledgements
 
-Current version: **v2.0.0**. See [`CHANGELOG.md`](CHANGELOG.md) for release history.
+Current version: **v2.0.0**. See [`CHANGELOG.md`](docs/CHANGELOG.md) for release history. See [`CONTRIBUTING.md`](docs/CONTRIBUTING.md) for contribution guidelines.
 
 Maintainer: **Zhang Jian**
 

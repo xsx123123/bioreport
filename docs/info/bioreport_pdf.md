@@ -396,9 +396,9 @@ Typst 引擎默认针对西文排版设计，其默认行距（`leading`）仅�
 * 在 Quarto `.qmd` 中直接使用 `layout-ncol: 2` 即可实现左右并排：
   ```markdown
   ::: {layout-ncol=2}
-  ![Fastp: R1 过滤后碱基质量](path/to/r1_quality.svg){#fig-r1-qual}
+  `r1_quality.svg`（Fastp: R1 过滤后碱基质量）{#fig-r1-qual}
 
-  ![Fastp: R2 过滤后碱基质量](path/to/r2_quality.svg){#fig-r2-qual}
+  `r2_quality.svg`（Fastp: R2 过滤后碱基质量）{#fig-r2-qual}
   :::
   ```
 

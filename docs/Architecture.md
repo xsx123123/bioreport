@@ -228,5 +228,5 @@ PDF 独有的"先规划、再渲染、后校验"三层:
 ## 相关文档
 
 - [README](../README.md) — 项目简介、快速上手、配置字段手册
-- [PDF 样式规范](pdf-style.md) — 共享样式约定与验证命令
-- [仓库重构方案](bioreport-repo-refactor-plan.md) — 现状从何而来(历史设计依据)
+- [PDF 样式规范](info/pdf-style.md) — 共享样式约定与验证命令
+- [仓库重构方案](info/bioreport-repo-refactor-plan.md) — 现状从何而来(历史设计依据)
