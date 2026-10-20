@@ -28,6 +28,9 @@ format:
       - theme/report-pages.html
     include-after-body:
       - theme/load-mermaid.html
+{% if pet and pet.enabled %}
+      - theme/report-pet.html
+{% endif %}
     theme:
       light:
         - {{ (report.get('theme') or {}).get('light', 'theme/bioreport.scss') }}

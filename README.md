@@ -22,6 +22,7 @@ The same project configuration can produce interactive HTML and print-ready PDF 
 - **Composable modules**: The engine composes shared modules such as `index`, `workflow`, `provenance`, `ai`, and `about`. The built-in `qc.*` and `results.*` modules, including `qc.fastp`, `results.deg`, and `results.enrichment`, are currently RNA-seq-specific. Other omics workflows can use external QMD modules through `report.module_definitions`; native modules, data contracts, and analysis components for additional omics types are planned.
 - **HTML and PDF delivery**: The engine supports `report.output_format: [html, pdf]` for HTML and Typst-based PDF delivery. The current RNA-seq single-page template exposes six navigable pages; other omics types will use the same delivery interface with their own chapter templates.
 - **Interactive HTML**: Plotly figures and searchable Itables tables are embedded for offline use.
+- **Optional desktop pet**: HTML reports can include the Taotao animated desktop pet, with click and drag interactions. It is disabled by default; add `report.pet.enabled: true` to opt in.
 - **Report variants**: The same data and code can produce full, compact, or AI-disabled reports through module and PDF settings.
 - **Reproducible delivery**: Input SHA-256 fingerprints, provenance, delivery manifests, configuration backups, engine metadata, module lists, and run logs are recorded; final artifacts are re-hashed and validated.
 - **Report history and evidence**: Workspace/API endpoints expose historical runs, artifacts, evidence packages, provenance, and module-level interpretation status with integrity and availability information.
@@ -65,6 +66,52 @@ Use `--dry-run` to validate modules, templates, and input files without calling 
 
 ```bash
 python -m bioreport run -c tests/report.rna.local.json -o output/rna-report --dry-run
+```
+
+## Optional Taotao desktop pet
+
+HTML reports can optionally include Taotao as an interactive desktop pet. The
+pet is disabled by default and is added only when `report.pet.enabled` is set
+to `true`. It is embedded in HTML as an offline resource; PDF output does not
+include it. Click or double-click Taotao to trigger an animation, or drag it
+to another position in the report.
+
+![Taotao desktop pet animation states](./templates/Taotao/final/previews/motion-stills.png)
+
+Enable it in a JSON or YAML report configuration:
+
+```json
+{
+  "report": {
+    "pet": {
+      "enabled": true,
+      "size": 144
+    }
+  }
+}
+```
+
+`size` accepts values from 96 to 240 pixels. A ready-to-run configuration for
+the X101SC26098749-Z01-J001 example is included at
+`tests/X101SC26098749-Z01-J001.pet.json`:
+
+```bash
+python -m bioreport run \
+  -c tests/X101SC26098749-Z01-J001.pet.json \
+  -o output/X101SC26098749-Z01-J001-pet
+```
+
+For Docker, use the same repository mount as the X101 example and point the
+container at the pet-enabled configuration:
+
+```bash
+mkdir -p "$PWD/output/X101SC26098749-Z01-J001-pet"
+docker run --rm -it \
+  -v "$PWD:/project:ro" \
+  -v "$PWD/output/X101SC26098749-Z01-J001-pet:/workspace" \
+  bioreport:latest run \
+  -c /project/tests/X101SC26098749-Z01-J001.pet.json \
+  -o /workspace
 ```
 
 For RNA-seq reports in `single` layout, `<project_id>_report.html` contains both Chinese and English, with a button to switch languages within the same file. PDFs are delivered separately as `<project_id>_report.pdf` (Chinese) and `<project_id>_report.en.pdf` (English), with evidence and validation manifests. Set `report.title_en` to customize the English title. Set `report.layout: website` for a multi-page HTML site with separate language editions; website layout cannot be combined with PDF output.

@@ -113,6 +113,20 @@
             "null"
           ]
         },
+        "pet": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 96,
+              "maximum": 240
+            }
+          },
+          "additionalProperties": false
+        },
         "pdf": {
           "type": "object",
           "properties": {

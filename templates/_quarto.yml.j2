@@ -57,5 +57,8 @@ format:
       - theme/report-pages.html
     include-after-body:
       - ./theme/load-mermaid.html
+{% if pet and pet.enabled %}
+      - ./theme/report-pet.html
+{% endif %}
     language:
       search-text-placeholder: Search

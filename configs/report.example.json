@@ -4,6 +4,10 @@
     "title": "RNA-seq 分析报告",
     "language": "zh",
     "layout": "single",
+    "pet": {
+      "enabled": false,
+      "size": 144
+    },
     "modules": [
       "index",
       "rna.workflow",

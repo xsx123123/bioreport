@@ -93,6 +93,17 @@ bioreport workspace-restore --db /path/to/runs.db
 
 需要单文件 HTML/PDF 时，将 `report.layout` 设为 `single`，并按需设置 `report.output_format`。RNA-seq 章节位于 `omics/rna/qmd/`；所有组学共用的关于、常见问题、许可、商标和 AI 页面位于 `templates/shared/`；共享样式位于 `templates/theme/`。报告标题、模块顺序、分析阈值和 PDF 预览参数均由配置文件控制，修改模板或 Logo 后重新生成报告即可生效。
 
+如需在 HTML 报告中加入 `templates/Taotao/` 的桃桃桌面宠物，在 `report` 下显式开启即可：
+
+```yaml
+report:
+  pet:
+    enabled: true
+    size: 144
+```
+
+默认值为 `enabled: false`，因此未配置时不会向 HTML 注入宠物；宠物只会进入 HTML，PDF 输出会自动忽略。生成后可点击或双击桃桃触发动作，也可以拖动它调整位置。`size` 支持 96 到 240 像素。
+
 ### Web 端 AI 现状与规划
 
 当前 Web 端已经具备 Workspace v1 的运行历史、证据、产物、溯源和模块级 AI 解读浏览能力，但完整的 AI 工作台尚未作为最终产品形态完成；静态 HTML/PDF 仍是当前主要交付方式。下一大版本计划建设 Workspace v2，将项目、运行、分析模块、结果证据、逐结果 AI 解读和交付版本串成统一工作流，支持异步解读、证据定位、重新解读、版本保留以及 HTML/PDF 原位回填。详细规划见 [`roadmap.md`](roadmap.md) 的“Web 工作台大版本升级：BioReport Workspace v2”。

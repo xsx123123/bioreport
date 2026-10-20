@@ -14,6 +14,7 @@ from jinja2 import Environment, FileSystemLoader
 from loguru import logger
 
 from .modules import compose_report, output_formats, selected_modules
+from .utils.report_pet import build_pet_context, stage_pet_template
 
 
 def render_templates(
@@ -42,6 +43,8 @@ def render_templates(
         for lang in languages(config):
             pages.extend(compose_report(localized_config(config, lang), Path(template_dir), website=True))
     requested_formats = output_formats(config)
+    pet = build_pet_context(config, Path(template_dir), requested_formats)
+    stage_pet_template(env, Path(template_dir), pet)
 
     # 1.0 HTML 输出:把内置字体拷贝到输出目录并声明 @font-face,
     # 报告文件夹自带字体,客户机器无需安装。
@@ -64,7 +67,7 @@ def render_templates(
         quarto_template = env.get_template(template_name)
         quarto_content = quarto_template.render(
             report=report, sections=sections, pages=pages, output_dir=output_dir,
-            staged_fonts=staged_fonts,
+            staged_fonts=staged_fonts, pet=pet,
         )
         quarto_path = Path(template_dir) / "_quarto.yml"
         quarto_path.write_text(quarto_content, encoding="utf-8")

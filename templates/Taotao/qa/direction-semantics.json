@@ -1,0 +1,117 @@
+{
+  "directions": [
+    {
+      "label": "000",
+      "expected": "up",
+      "observed": "up",
+      "verdict": "pass",
+      "evidence": "Chin raised, short forehead projection, irises high beneath upper lids; face remains frontal."
+    },
+    {
+      "label": "022.5",
+      "expected": "up-right",
+      "observed": "up-right",
+      "verdict": "warning",
+      "evidence": "Chin raised with nose and iris aim subtly right; high iris placement preserves upward axis."
+    },
+    {
+      "label": "045",
+      "expected": "up-right",
+      "observed": "up-right",
+      "verdict": "pass",
+      "evidence": "Head yaws screen-right while chin elevated, nose right of head center, eyes aimed upper right."
+    },
+    {
+      "label": "067.5",
+      "expected": "up-right",
+      "observed": "up-right",
+      "verdict": "pass",
+      "evidence": "Pronounced rightward nose and cheek profile, irises slightly high; chin modestly elevated."
+    },
+    {
+      "label": "090",
+      "expected": "right",
+      "observed": "right",
+      "verdict": "pass",
+      "evidence": "Nose projects screen-right and both eyes aim right, head clearly three-quarter right."
+    },
+    {
+      "label": "112.5",
+      "expected": "down-right",
+      "observed": "down-right",
+      "verdict": "pass",
+      "evidence": "Nose right of head center, head slightly bowed and irises lower than right cardinal."
+    },
+    {
+      "label": "135",
+      "expected": "down-right",
+      "observed": "down-right",
+      "verdict": "pass",
+      "evidence": "Bowed chin and low irises with nose/head yaw to screen-right."
+    },
+    {
+      "label": "157.5",
+      "expected": "down-right",
+      "observed": "down-right",
+      "verdict": "warning",
+      "evidence": "Head strongly bowed, low irises; small rightward nose/face displacement approaching down anchor."
+    },
+    {
+      "label": "180",
+      "expected": "down",
+      "observed": "down",
+      "verdict": "pass",
+      "evidence": "Chin tucked, forehead enlarged by pitch, eyelids lowered and gaze toward feet."
+    },
+    {
+      "label": "202.5",
+      "expected": "down-left",
+      "observed": "down-left",
+      "verdict": "warning",
+      "evidence": "Chin tucked and low irises, slight leftward eye aim; near-vertical horizontal cue is subtle."
+    },
+    {
+      "label": "225",
+      "expected": "down-left",
+      "observed": "down-left",
+      "verdict": "pass",
+      "evidence": "Low irises beneath lowered lids, nose and face begin leftward yaw."
+    },
+    {
+      "label": "247.5",
+      "expected": "down-left",
+      "observed": "down-left",
+      "verdict": "pass",
+      "evidence": "Nose projects left, cheek/profile yaws left; chin remains slightly lowered before left cardinal."
+    },
+    {
+      "label": "270",
+      "expected": "left",
+      "observed": "left",
+      "verdict": "pass",
+      "evidence": "Nose projects screen-left, eyes aim left, stable front-facing torso."
+    },
+    {
+      "label": "292.5",
+      "expected": "up-left",
+      "observed": "up-left",
+      "verdict": "pass",
+      "evidence": "Head turns left with chin rising, irises elevated toward upper-left."
+    },
+    {
+      "label": "315",
+      "expected": "up-left",
+      "observed": "up-left",
+      "verdict": "warning",
+      "evidence": "Chin raised and irises high, subtle screen-left nose/eye aim approaching vertical."
+    },
+    {
+      "label": "337.5",
+      "expected": "up-left",
+      "observed": "up-left",
+      "verdict": "warning",
+      "evidence": "Strong chin lift and high irises with slight leftward face aim, flows back toward up anchor."
+    }
+  ],
+  "continuity_review": "225->247.5 metric warning visually reflects progressive head yaw, no visible registration jump. Feet remain stable and face readable throughout."
+}

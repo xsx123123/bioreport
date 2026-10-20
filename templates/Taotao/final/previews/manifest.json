@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "atlas": "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/spritesheet-extended.png",
+  "atlas_sha256": "366f14c947a72310fb0f0b322913ec1b7af28799def192c7553221bbe1d20ad8",
+  "source_size": [
+    1536,
+    2288
+  ],
+  "previews": [
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/all-states.gif",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/all-states.mp4",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/failed.gif",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/idle-jump-idle.gif",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/idle.gif",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/jumping.gif",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/look-loop.gif",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/motion-stills.png",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/review.gif",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/running-left.gif",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/running-right.gif",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/running.gif",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/still-01.png",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/still-02.png",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/still-03.png",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/still-04.png",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/waiting.gif",
+    "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/final/previews/waving.gif"
+  ]
+}

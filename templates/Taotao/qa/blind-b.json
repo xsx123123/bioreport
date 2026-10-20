@@ -1,0 +1,16 @@
+{"pairs":[
+{"pair":"horizontal-1","A":"screen-right","B":"screen-left","reason":"A face and gaze sit slightly right of head center; B face and gaze sit slightly left."},
+{"pair":"horizontal-2","A":"screen-left","B":"screen-right","reason":"A eyes and nose favor the left side; B eyes and nose favor the right side."},
+{"pair":"horizontal-3","A":"screen-left","B":"screen-right","reason":"A face turns left with hair covering more of the right cheek; B reverses this."},
+{"pair":"horizontal-4","A":"screen-left","B":"screen-right","reason":"The nose and facial profile visibly project left in A and right in B."},
+{"pair":"horizontal-5","A":"screen-right","B":"screen-left","reason":"A face and eye line turn right; B face and eye line turn left."},
+{"pair":"horizontal-6","A":"screen-right","B":"screen-left","reason":"Despite lowered eyelids, A nose and face angle point right and B point left."},
+{"pair":"horizontal-7","A":"ambiguous","B":"ambiguous","reason":"Both heads are lowered; lateral displacement of the small facial features is too subtle to resolve reliably at normal size."},
+{"pair":"vertical-1","A":"down","B":"up","reason":"A eyelids and chin angle down; B eyes are raised and chin is lifted."},
+{"pair":"vertical-2","A":"down","B":"up","reason":"A face is lowered beneath the fringe; B eyes look upward with a raised chin."},
+{"pair":"vertical-3","A":"down","B":"up","reason":"A eyes and chin point downward; B gaze is higher and chin is lifted."},
+{"pair":"vertical-4","A":"down","B":"up","reason":"A gaze sits lower with a tucked chin; B gaze and chin angle upward."},
+{"pair":"vertical-5","A":"down","B":"up","reason":"A lowered eyelids and tucked chin indicate down; B raised eyes and lifted chin indicate up."},
+{"pair":"vertical-6","A":"down","B":"up","reason":"A face looks down beneath the fringe; B eyes and chin point upward."},
+{"pair":"vertical-7","A":"down","B":"up","reason":"A face and gaze tilt down; B gaze is raised and chin is lifted."}
+]}

@@ -1,0 +1,112 @@
+{
+  "ok": true,
+  "frames_root": "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/qa/rows/idle/frames",
+  "states": [
+    "idle"
+  ],
+  "errors": [],
+  "warnings": [],
+  "rows": [
+    {
+      "state": "idle",
+      "expected_frames": 6,
+      "actual_frames": 6,
+      "extraction_method": "components",
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "frames": [
+        {
+          "index": 0,
+          "file": "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/qa/rows/idle/frames/idle/00.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 10522,
+          "bbox": [
+            56,
+            5,
+            135,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 46
+        },
+        {
+          "index": 1,
+          "file": "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/qa/rows/idle/frames/idle/01.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 10606,
+          "bbox": [
+            56,
+            5,
+            135,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 52
+        },
+        {
+          "index": 2,
+          "file": "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/qa/rows/idle/frames/idle/02.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 10335,
+          "bbox": [
+            56,
+            7,
+            135,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 45
+        },
+        {
+          "index": 3,
+          "file": "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/qa/rows/idle/frames/idle/03.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 10330,
+          "bbox": [
+            56,
+            8,
+            135,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 56
+        },
+        {
+          "index": 4,
+          "file": "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/qa/rows/idle/frames/idle/04.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 10311,
+          "bbox": [
+            56,
+            7,
+            135,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 55
+        },
+        {
+          "index": 5,
+          "file": "/Users/zhangjian/Documents/Codex/2026-10-19/pets-plugin-work-pets-openai-curated-3/work/taotao/qa/rows/idle/frames/idle/05.png",
+          "width": 192,
+          "height": 208,
+          "nontransparent_pixels": 10409,
+          "bbox": [
+            56,
+            6,
+            135,
+            203
+          ],
+          "edge_pixels": 0,
+          "chroma_adjacent_pixels": 60
+        }
+      ]
+    }
+  ]
+}
