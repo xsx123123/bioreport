@@ -9,9 +9,16 @@ format:
   html:
     embed-resources: true
     html-math-method: katex
+    self-contained-math: true
     toc: true
     toc-depth: 3
     toc-location: left
+    page-layout: article
+    grid:
+      body-width: 1150px
+      sidebar-width: 200px
+      margin-width: 180px
+      gutter-width: 1.2rem
     toc-title: Contents
     number-sections: true
     code-copy: true
@@ -22,8 +29,12 @@ format:
     include-after-body:
       - theme/load-mermaid.html
     theme:
-      light: {{ (report.get('theme') or {}).get('light', 'theme/bioreport.scss') }}
-      dark: {{ (report.get('theme') or {}).get('dark', 'darkly') if (report.get('theme') or {}).get('dark') != (report.get('theme') or {}).get('light') else 'darkly' }}
+      light:
+        - {{ (report.get('theme') or {}).get('light', 'theme/bioreport.scss') }}
+        - theme/offline-fonts.scss
+      dark:
+        - {{ (report.get('theme') or {}).get('dark', 'darkly') if (report.get('theme') or {}).get('dark') != (report.get('theme') or {}).get('light') else 'darkly' }}
+        - theme/offline-fonts.scss
     css:
 {% if staged_fonts %}
       - {{ staged_fonts }}

@@ -6,83 +6,30 @@ project:
 {% endfor %}
   output-dir: {{ output_dir | default('/workspace') }}
 
+  resources:
+    - fonts.css
+    - fonts/**
+    - assets/**
+    - logo/**
+
 website:
-  title: "{{ report.title | default('BFP Report') }}"
-  reader-mode: true
-  page-navigation: true
-  navbar:
-    logo: {{ report.logo | default('logo/logo.png') }}
-    logo-href: "{{ report.logo_href | default('https://github.com/xsx123123/bioreport') }}"
-    pinned: true
-    background: primary
-    search: true
-    left:
-{% for page in pages %}
-      - href: {{ page.href }}
-        text: "{{ page.title }}"
-        icon: {{ page.icon }}
-{% endfor %}
-{% if report.navbar_right %}
-    right:
-{% for item in report.navbar_right | default([]) %}
-      - icon: {{ item.icon }}
-        href: "{{ item.href }}"
-{% endfor %}
-{% endif %}
-{% if report.announcement %}
-    announcement:
-      icon: {{ report.announcement.icon | default('info-circle') }}
-      dismissable: {{ report.announcement.dismissable | default(true) | lower }}
-      content: "{{ report.announcement.content | default('') }}"
-      type: {{ report.announcement.type | default('primary') }}
-      position: {{ report.announcement.position | default('below-navbar') }}
-{% endif %}
-  sidebar:
-    title: "{{ report.sidebar_title | default('RNA-seq Report') }}"
-    logo: {{ report.logo | default('logo/logo.png') }}
-    logo-href: "{{ report.logo_href | default('https://github.com/xsx123123/bioreport') }}"
-    alignment: left
-    style: "floating"
-    pinned: true
-    contents:
-{% for page in pages %}
-      - href: {{ page.href }}
-        text: "{{ page.title }}"
-{% endfor %}
-    tools:
-      - icon: twitter
-        href: https://twitter.com
-      - icon: github
-        menu:
-          - text: Source Code
-            href: https://github.com/xsx123123/bioreport
-          - text: Report a Bug
-            href: https://github.com/xsx123123/bioreport/issues
-  page-footer:
-      border: true
-      left: |
-        <a href="https://www.hzau.edu.cn/" target="_blank" rel="noopener noreferrer"><img src="/logo/Huazhong_Agricultural_University_logo.svg" alt="Huazhong Agricultural University" height="32" style="vertical-align: middle; margin-right: 10px;"></a>
-        <span style="vertical-align: middle;">FROM STARDUST, TO DISCOVERY</span>
-        <a href="https://posit.co" target="_blank" style="text-decoration: none; border-bottom: none;">
-          <img src="/logo/Posit_logo.svg" alt="Posit" height="18" style="vertical-align: middle; margin: 0 10px;">
-        </a>
-        &nbsp;
-        <a href="https://github.com/xsx123123" target="_blank" class="footer-icon"><i class="bi bi-github"></i></a>
-        &nbsp;
-
-
-      center: |
-{% for page in pages if page.title in ['About', '关于'] %}
-        <a href="/{{ page.href | replace('.qmd', '.html') }}" class="footer-link">About BioReport</a>
-{% endfor %}
+  title: BioReport
+  navbar: false
+  search: false
 
 format:
   html:
+    html-math-method: katex
+    self-contained-math: true
     embed-resources: false
     self-contained: false
     theme:
-      light: {{ (report.get('theme') or {}).get('light', 'theme/bioreport.scss') }}
-      dark: {{ (report.get('theme') or {}).get('dark', 'darkly') }}
+      light:
+        - {{ (report.get('theme') or {}).get('light', 'theme/bioreport.scss') }}
+        - theme/offline-fonts.scss
+      dark:
+        - {{ (report.get('theme') or {}).get('dark', 'darkly') }}
+        - theme/offline-fonts.scss
     mainfont: "Source Sans 3"
     toc: true
     toc-depth: 3
@@ -96,8 +43,8 @@ format:
 {% endfor %}
     grid:
       sidebar-width: 200px
-      body-width: 1050px
-      margin-width: 250px
+      body-width: 1150px
+      margin-width: 200px
       gutter-width: 1.2rem
     toc-location: right
     toc-title: "Contents"
@@ -106,6 +53,8 @@ format:
     smooth-scroll: true
     anchor-sections: true
     df-print: paged
+    include-in-header:
+      - theme/report-pages.html
     include-after-body:
       - ./theme/load-mermaid.html
     language:

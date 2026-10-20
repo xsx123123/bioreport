@@ -1,14 +1,43 @@
 <script>
 (() => {
   function initializeReportPages() {
+    for (const header of document.querySelectorAll('.callout-header[data-bs-toggle="collapse"]')) {
+      header.setAttribute('role', 'button');
+      header.setAttribute('tabindex', '0');
+      header.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          header.click();
+        }
+      });
+    }
+    const labelNativeThemeControls = () => {
+      // Quarto's citation hover wrapper is a <sup> around a real bibliography
+      // link. Keep hover on the wrapper and add focus on the link; the wrapper
+      // itself has no expanded state in the accessibility tree.
+      for (const reference of document.querySelectorAll('.citation > sup')) {
+        const link = reference.querySelector('a[role="doc-biblioref"]');
+        if (reference._tippy && link) {
+          reference._tippy.setProps({
+            aria: {...reference._tippy.props.aria, expanded: false},
+            triggerTarget: [reference, link]
+          });
+        }
+        reference.removeAttribute('aria-expanded');
+      }
+      for (const control of document.querySelectorAll('.quarto-color-scheme-toggle')) {
+        control.setAttribute('aria-label', 'Toggle color scheme');
+      }
+    };
+    labelNativeThemeControls();
+    window.addEventListener('load', labelNativeThemeControls);
     const pages = Array.from(document.querySelectorAll('.report-page'));
     const links = Array.from(document.querySelectorAll('.report-navbar a.nav-link'));
-    if (!pages.length) return;
     const navbar = document.querySelector('.report-navbar');
     const toggle = navbar && navbar.querySelector ? navbar.querySelector('.report-nav-toggle') : null;
     const homeLink = navbar && navbar.querySelector ? navbar.querySelector('.report-brand a.report-brand-link') : null;
-    const languageButton = document.querySelector('[data-report-language]');
-    const themeButton = document.querySelector('[data-report-theme]');
+    const languageButton = document.querySelector('.report-navbar [data-report-language]');
+    const themeButton = document.querySelector('.report-navbar button[data-report-theme]');
     function setLanguage(language) {
       const edition = window.BIOREPORT_LANGUAGE_EDITION;
       const target = languageButton?.dataset.languageTarget;
@@ -53,12 +82,22 @@
     if (navbar && window.ResizeObserver) new window.ResizeObserver(sizeNavbar).observe(navbar);
     window.addEventListener('resize', () => {
       sizeNavbar();
-      if (window.innerWidth > 768) setMenuOpen(false);
+      if (window.innerWidth > 1279) setMenuOpen(false);
     });
     if (toggle) toggle.addEventListener('click', () => {
       setMenuOpen(!(navbar.classList && navbar.classList.contains('report-nav-open')));
     });
 
+    // A table initialized inside a hidden Quarto tab needs its native width
+    // calculation after the pane becomes visible, just like a routed page.
+    document.addEventListener('shown.bs.tab', () => {
+      for (const table of document.querySelectorAll('.tab-pane.active table.dataTable')) {
+        if (table._reportTable) table._reportTable.columns.adjust();
+      }
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    if (!pages.length) return;
     // Quarto renders Mermaid at window.load, when inactive pages have no size.
     // Claim these diagrams first and render only after their page becomes visible.
     const diagrams = Array.from(document.querySelectorAll('pre.mermaid-js'));
@@ -120,7 +159,10 @@
       requestAnimationFrame(() => {
         renderDiagrams(selected);
         for (const chart of selected.querySelectorAll('.js-plotly-plot')) {
-          if (window.Plotly && chart._fullLayout) window.Plotly.Plots.resize(chart);
+          if (window.Plotly && chart._fullLayout && !chart.layout?.meta?.bioreport_responsive_pca && chart.getBoundingClientRect().width > 0) window.Plotly.Plots.resize(chart);
+        }
+        for (const table of selected.querySelectorAll('table.dataTable')) {
+          if (table._reportTable) table._reportTable.columns.adjust();
         }
         window.dispatchEvent(new Event('resize'));
         if (scroll) (target || selected).scrollIntoView({block: 'start'});
@@ -132,7 +174,10 @@
       if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
       event.stopPropagation();
-      if (location.hash !== link.hash) history.pushState(null, '', link.hash);
+      if (location.hash !== link.hash) {
+        try { history.pushState(null, '', link.hash); }
+        catch (_) { location.hash = link.hash; }
+      }
       selectPage(link.hash, true);
       setMenuOpen(false);
     }

@@ -161,6 +161,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
 
     # --- 5. 样式美化 ---
     fig.update_layout(
+        meta={"bioreport_responsive_pca": True},
         template="simple_white", # 仿 R 的白色背景风格
         height=height_num,
         # 图例提取为左右两子图的顶部公共图例，避免压在左图点位上。

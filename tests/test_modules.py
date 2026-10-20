@@ -31,8 +31,8 @@ def test_single_report_uses_shared_styles_by_default(tmp_path):
     assert 'toc-location: left' in settings
     assert 'theme/report-pages.html' in settings
     assert 'theme/load-mermaid.html' in settings
-    assert 'dark: darkly' in settings
-    assert 'light: theme/bioreport.scss' in settings
+    assert '- darkly' in settings
+    assert '- theme/bioreport.scss' in settings
 
 
 def test_website_report_stages_seven_independent_pages_with_shared_styles(tmp_path):
@@ -50,25 +50,29 @@ def test_website_report_stages_seven_independent_pages_with_shared_styles(tmp_pa
 
     settings = yaml.safe_load((staged / "_quarto.yml").read_text())
     paths = settings["project"]["render"]
-    assert len(paths) == 7
+    assert len(paths) == 14
     assert settings["format"]["html"]["theme"] == {
-        "light": "theme/bioreport.scss",
-        "dark": "darkly",
+        "light": ["theme/bioreport.scss", "theme/offline-fonts.scss"],
+        "dark": ["darkly", "theme/offline-fonts.scss"],
     }
     css = settings["format"]["html"]["css"]
     # Built-in fonts stage first, then the shared theme styles.
     assert css[-2:] == ["theme/styles.css", "theme/itables_saas.css"]
-    assert css[0].endswith("fonts.css") and (Path(css[0])).exists()
-    assert settings["website"]["navbar"]["pinned"] is True
-    assert [page["href"] for page in settings["website"]["navbar"]["left"]] == paths
+    assert css[0].endswith("fonts.css") and (staged / css[0]).exists()
+    assert settings["website"]["navbar"] is False
+    assert len(set(paths)) == 14
+    assert sum('site-zh-' in path for path in paths) == 7
+    assert sum('site-en-' in path for path in paths) == 7
     documents = [(staged / path).read_text() for path in paths]
-    assert all("report-page" not in doc for doc in documents)
+    assert all(doc.count("<nav class=\"navbar report-navbar\"") == 1 for doc in documents)
     assert "get_project_summary_stats(" in documents[1]
     assert "Sample_Info_table_modern(df_final)" in documents[1]
     assert "Sample_Info_table_modern(df_final)" not in documents[0]
-    assert [i for i, doc in enumerate(documents) if "bibliography:" in doc] == [2]
+    assert [i for i, doc in enumerate(documents) if "bibliography:" in doc] == [2, 9]
     assert "::: {#refs}" in documents[2]
-    assert "```{mermaid}" in documents[2]
+    assert "```{mermaid}" not in documents[2]
+    assert "report-mermaid-svg" in documents[2]
+    assert "#fig-pipeline-clean" in documents[2]
     assert "load_provenance(" in documents[5]
     assert "body-classes: about-project" in documents[6]
     assert "::: {.about-project}" not in documents[6]
@@ -109,7 +113,8 @@ def test_rna_report_has_seven_pages_with_samples_outside_overview(tmp_path):
     pdf = compose_report(config, tmp_path, pdf=True).read_text(encoding="utf-8")
     assert "report-navbar" not in pdf
     assert "# 样本信息" in pdf
-    assert "```{mermaid}" in document
+    assert "```{mermaid}" not in document
+    assert "report-mermaid-svg" in document
     assert "```{mermaid}" not in pdf
     assert "实际提供的软件版本" in pdf
     assert (tmp_path / "qmd/assets/rna-workflow.svg").is_file()

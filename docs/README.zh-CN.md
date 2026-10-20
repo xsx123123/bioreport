@@ -443,9 +443,9 @@ RUN_REPORT_INTEGRATION=1 python -m pytest -q tests/test_integration_render.py
  
 ## 版本信息
 
-**版本**: v2.0.0 
+**版本**: v2.0.1 
 **作者**: Zhang Jian 
-**最后更新**: 2026-10-17 
+**最后更新**: 2026-10-20 
 
 ## 🤝 开源协作与致谢
 

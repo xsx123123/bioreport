@@ -407,6 +407,8 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
     from .report.composition import ReportComposition
     composition = ReportComposition()
     language_prelude = "```{python}\n#| label: report-language\nimport os\nos.environ[\"BIOREPORT_LANGUAGE\"] = " + repr("en" if english else "zh") + "\n```\n\n"
+    if website:
+        language_prelude += "```{python}\nfrom pathlib import Path as _ReportPath\nos.environ['BIOREPORT_SHARED_ASSET_DIR'] = str((_ReportPath.cwd().parent / 'assets').resolve())\nos.environ['BIOREPORT_SHARED_ASSET_URL'] = '../assets'\n```\n\n"
     pages = []
     website_pages = []
     module_ids = selected_modules(config)
@@ -573,6 +575,10 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                 body = re.sub(r'(?m)^## [^\n]+\n\n', '', body, count=1)
         if (canonical in registered) or (module_id in MODULES and module_id != "ai"):
             body = _expand_includes(body, content_root, stack=(content_root / filename,))
+        if not pdf and canonical in {'rna.workflow', 'about'}:
+            from .utils.mermaid_static import inline_static_mermaid
+            body, _ = inline_static_mermaid(body, template_dir/'qmd/assets',
+                                            f'{module_id}-{language(config)}', language(config))
         for key in ("bibliography", "csl"):
             if key in module_meta and not website:
                 value = module_meta[key]
@@ -626,9 +632,9 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                     if setup:
                         content = setup.group(0) + "\n\n" + content
                 page_name = chapter_id.removeprefix("rna.").replace(".", "-")
-                page_path = template_dir / "qmd" / f"site-{page_name}.qmd"
+                page_path = template_dir / "qmd" / f"site-{language(config)}-{page_name}.qmd"
                 page_meta = {
-                    "lang": report.get("language", "en"),
+                    "lang": "en" if english else "zh-Hans",
                     "execute": {"echo": False, "warning": False},
                     **module_meta,
                     "title": content_heading,
@@ -638,7 +644,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                     page_meta.pop("csl", None)
                     content = re.sub(
                         r"\[@([A-Za-z0-9_:-]+)\]",
-                        lambda match: f"[{'References' if english else '参考文献'}](site-workflow.qmd#ref-{'FastQ_Screen' if match.group(1) == 'wingett2018fastq' else match.group(1)})",
+                        lambda match: f"[{'References' if english else '参考文献'}](site-{language(config)}-workflow.qmd#ref-{'FastQ_Screen' if match.group(1) == 'wingett2018fastq' else match.group(1)})",
                         content,
                     )
                 page_frontmatter = yaml.safe_dump(page_meta, allow_unicode=True, sort_keys=False)
@@ -646,7 +652,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                     f"---\n{page_frontmatter}---\n\n" + language_prelude + f"{content.strip()}\n\n" + _report_footer(template_dir, english),
                     encoding="utf-8",
                 )
-                website_pages.append({"href": f"qmd/{page_path.name}", "title": title, "icon": _page_icon(chapter_id, registered)})
+                website_pages.append({"href": f"qmd/{page_path.name}", "id": chapter_id.replace(".", "-"), "title": title, "icon": _page_icon(chapter_id, registered)})
             elif pdf:
                 sections.append(composition.section(chapter_id, content_heading, content, pdf=True, page_break=has_rna))
             else:
@@ -661,6 +667,15 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         appendix = '```{python}\n#| label: detailed-methods-appendix\n#| output: asis\nfor detail in method_details:\n    display(Markdown(detail))\n```'
         sections.append(composition.section('methods-appendix',tr('详细分析方法（附录）'),appendix,pdf=True,page_break=True))
     if website:
+        nav_pages = [(Path(page["href"]).name.replace(".qmd", ".html"), page["title"]) for page in website_pages]
+        navigation = _report_navigation(nav_pages, tr)
+        navigation = navigation.replace('href="#site-', 'href="site-')
+        navigation = navigation.replace('href="#report-page-1"', 'href="' + nav_pages[0][0] + '"')
+        for page in website_pages:
+            path = template_dir / page['href']
+            text = path.read_text(encoding='utf-8')
+            boundary = text.index('\n---\n', 4) + 5
+            path.write_text(text[:boundary] + '\n' + navigation + text[boundary:], encoding='utf-8')
         return website_pages
 
     if pdf and "bibliography" in metadata:
@@ -681,35 +696,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
     navigation = ""
     if not pdf:
         metadata["format"] = {"html": {"number-sections": False, "format-links": False}}
-        page_links = [
-            f'<a href="#{page_id}" aria-controls="{page_id}" class="nav-link">{escape(title)}</a>'
-            for page_id, title in pages
-        ]
-        menu_links = "\n".join(page_links[:-1])
-        trailing_link = page_links[-1] if page_links else ""
-        navigation = (
-            '```{=html}\n<nav class="navbar report-navbar" aria-label="Report navigation">\n'
-            '<div class="report-brand">'
-            '<a href="https://github.com/xsx123123/bioreport" target="_blank" rel="noopener noreferrer" aria-label="BioReport GitHub 仓库">'
-            '<img src="../logo/logo.png" alt="BioReport logo"></a>'
-            '<a href="#report-page-1" aria-controls="report-page-1" class="report-brand-link"><span class="report-brand-name">BioReport</span><span class="report-brand-context">RNA-seq report</span></a></div>\n'
-            '<button class="report-nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="report-menu">'
-            '<span class="report-nav-toggle-bar"></span>'
-            '<span class="report-nav-toggle-bar"></span>'
-            '<span class="report-nav-toggle-bar"></span>'
-            '</button>\n'
-            f'<div class="report-menu" id="report-menu">\n{menu_links}\n</div>\n'
-            '<div class="report-menu-right">\n'
-            '<button class="report-control report-language-control" type="button" data-report-language aria-label="Switch report language">English</button>'
-            '<button class="report-control report-theme-control" type="button" data-report-theme aria-label="Switch to dark mode" title="Switch to dark mode">'
-            '<svg class="report-theme-icon report-theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.4A8.4 8.4 0 0 1 8.6 3.8 8.5 8.5 0 1 0 20.2 15.4Z"/></svg>'
-            '<svg class="report-theme-icon report-theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>'
-            '</button>'
-            f'{trailing_link}\n'
-            '<a href="https://www.hzau.edu.cn/" target="_blank" rel="noopener noreferrer" aria-label="Huazhong Agricultural University website">'
-            '<img src="../logo/Huazhong_Agricultural_University_logo.svg" alt="Huazhong Agricultural University"></a></div>\n'
-            '</nav>\n```\n\n'
-        )
+        navigation = _report_navigation(pages, tr)
     frontmatter = yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False)
     prelude = '```{python}\n#| label: report-language\nimport os\nos.environ["BIOREPORT_LANGUAGE"] = __REPORT_EDITION__\n```\n\n'.replace("__REPORT_EDITION__", repr("en" if english else "zh"))
     target.write_text(
@@ -718,3 +705,36 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         encoding="utf-8",
     )
     return target
+
+
+def _report_navigation(pages, tr):
+    page_links = [
+        f'<a href="#{page_id}" aria-controls="{page_id}" class="nav-link">{escape(title)}</a>'
+        for page_id, title in pages
+    ]
+    menu_links = "\n".join(page_links[:-1])
+    trailing_link = page_links[-1] if page_links else ""
+    navigation = (
+        '```{=html}\n<nav class="navbar report-navbar" aria-label="Report navigation">\n'
+        '<div class="report-brand">'
+        '<a href="https://github.com/xsx123123/bioreport" target="_blank" rel="noopener noreferrer" aria-label="BioReport GitHub 仓库">'
+        '<img src="../logo/logo.png" alt="BioReport logo"></a>'
+        '<a href="#report-page-1" aria-controls="report-page-1" class="report-brand-link"><span class="report-brand-name">BioReport</span><span class="report-brand-context">RNA-seq report</span></a></div>\n'
+        '<button class="report-nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="report-menu">'
+        '<span class="report-nav-toggle-bar"></span>'
+        '<span class="report-nav-toggle-bar"></span>'
+        '<span class="report-nav-toggle-bar"></span>'
+        '</button>\n'
+        f'<div class="report-menu" id="report-menu">\n{menu_links}\n</div>\n'
+        '<div class="report-menu-right">\n'
+        '<button class="report-control report-language-control" type="button" data-report-language aria-label="Switch report language">English</button>'
+        '<button class="report-control report-theme-control" type="button" data-report-theme aria-label="Switch to dark mode" title="Switch to dark mode">'
+        '<svg class="report-theme-icon report-theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.4A8.4 8.4 0 0 1 8.6 3.8 8.5 8.5 0 1 0 20.2 15.4Z"/></svg>'
+        '<svg class="report-theme-icon report-theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>'
+        '</button>'
+        f'{trailing_link}\n'
+        '<a href="https://www.hzau.edu.cn/" target="_blank" rel="noopener noreferrer" aria-label="Huazhong Agricultural University website">'
+        '<img src="../logo/Huazhong_Agricultural_University_logo.svg" alt="Huazhong Agricultural University"></a></div>\n'
+        '</nav>\n```\n\n'
+    )
+    return navigation

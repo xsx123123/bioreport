@@ -1,0 +1,7 @@
+{
+  "version": "3.4.0",
+  "source": "https://raw.githubusercontent.com/plotly/plotly.js/v3.4.0/dist/plotly-cartesian.min.js",
+  "sha256": "950d4b7a827cd446e5cfcb125b33fe56bf2ddb9900fd2d4cf7035829f73eae43",
+  "file": "plotly-cartesian-3.4.0.min.js",
+  "license": "plotly-LICENSE.txt"
+}

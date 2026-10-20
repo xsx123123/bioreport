@@ -36,7 +36,11 @@ def render_templates(
     layout = report.get("layout", "single")
     if layout not in ("single", "website"):
         raise ValueError("report.layout must be 'single' or 'website'")
-    pages = compose_report(config, Path(template_dir), website=True) if layout == "website" else []
+    pages = []
+    if layout == "website":
+        from .i18n import languages, localized_config
+        for lang in languages(config):
+            pages.extend(compose_report(localized_config(config, lang), Path(template_dir), website=True))
     requested_formats = output_formats(config)
 
     # 1.0 HTML 输出:把内置字体拷贝到输出目录并声明 @font-face,
@@ -44,7 +48,9 @@ def render_templates(
     staged_fonts = None
     try:
         from .utils.font_stage import stage_fonts
-        staged_fonts = stage_fonts(output_dir) if "html" in requested_formats else None
+        staged_fonts = stage_fonts(Path(template_dir) if layout == "website" else output_dir) if "html" in requested_formats else None
+        if staged_fonts and layout == "website":
+            staged_fonts = "fonts.css"
         if staged_fonts:
             logger.debug(f"Report fonts staged in output: {staged_fonts}")
         elif "html" in requested_formats:

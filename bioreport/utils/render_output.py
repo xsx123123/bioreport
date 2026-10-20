@@ -5,15 +5,19 @@ import re
 import json
 from pathlib import Path
 from contextlib import contextmanager
+from html import escape as escape_html
+from loguru import logger
 from bioreport.report.recording import record_block
 from bioreport.i18n import translate, language
 
 from IPython.display import HTML, Image, Markdown, display
 from itables import init_notebook_mode, show as show_interactive_table
-from plotly.offline import get_plotlyjs
+from .plotly_runtime import selected_runtime, supports_cartesian
 
 
 _plotly_loaded = False
+_plotly_bundle = None
+_plotly_trace_types = set()
 _itables_loaded = False
 _figure_count = 0
 _table_count = 0
@@ -31,7 +35,7 @@ def is_pdf() -> bool:
 
 
 def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
-    global _plotly_loaded, _figure_count
+    global _plotly_loaded, _plotly_bundle, _figure_count
     if language() == "en":
         from bioreport.i18n import localize_figure
         figure = localize_figure(figure)
@@ -72,11 +76,31 @@ def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
 
     else:
         if not _plotly_loaded:
+            _plotly_trace_types.clear()
+        encountered = {trace.type for trace in figure.data}
+        if encountered - _plotly_trace_types:
+            _plotly_trace_types.update(encountered)
+            logger.info('HTML Plotly trace inventory: {}', ', '.join(sorted(_plotly_trace_types)))
+        if not _plotly_loaded or (_plotly_bundle == 'cartesian' and not supports_cartesian(figure)):
+            runtime_source, _plotly_bundle, runtime_name = selected_runtime(figure, force_full=_plotly_loaded)
             # Quarto promotes the output containing plotly.js to a dependency.
             # Emit the library separately so no chart is moved before the report.
-            display(HTML(f'<script data-bioreport-dependency="plotly">{get_plotlyjs()}</script>'))
+            shared = os.environ.get('BIOREPORT_SHARED_ASSET_DIR')
+            if shared:
+                directory = Path(shared)
+                directory.mkdir(parents=True, exist_ok=True)
+                runtime = directory / runtime_name
+                if not runtime.exists():
+                    runtime.write_text(runtime_source, encoding='utf-8')
+                url = os.environ['BIOREPORT_SHARED_ASSET_URL']
+                display(HTML(f'<script data-bioreport-dependency="plotly" src="{url}/{runtime_name}"></script>'))
+            else:
+                display(HTML(f'<script data-bioreport-dependency="plotly">{runtime_source}</script>'))
             _plotly_loaded = True
         display(HTML(_responsive_figure_html(figure, config, caption=caption)))
+        from .asset_audit import record_asset
+        record_asset({'kind':'plotly','language':language(),
+                      'traces':sorted(encountered),'bundle':_plotly_bundle})
 
 
 @contextmanager
@@ -157,26 +181,96 @@ def _responsive_figure_html(figure, config, caption=None):
     """
     config = _html_plotly_config(figure, config, caption=caption)
     export_options = config.get("toImageButtonOptions") or {}
-    width = figure.layout.width or export_options.get("width")
-    height = figure.layout.height or export_options.get("height")
+    width = figure.layout.width or export_options.get("width") or 700
+    height = figure.layout.height or export_options.get("height") or 450
     saved_width, saved_height = figure.layout.width, figure.layout.height
     figure.layout.width = None
     figure.layout.height = None
     try:
-        html = figure.to_html(full_html=False, include_plotlyjs=False, config=config)
+        options = dict(full_html=False, include_plotlyjs=False, config=config)
+        if isinstance(figure.layout.meta, dict) and figure.layout.meta.get('bioreport_responsive_pca'):
+            options['post_script'] = _responsive_pca_script(width, height)
+            config['responsive'] = False
+        elif isinstance(figure.layout.meta, dict) and figure.layout.meta.get('enrichment'):
+            options['post_script'] = """(() => {
+              const chart = document.getElementById('{plot_id}');
+              const region = chart.closest('.report-chart-scroll');
+              if (!region) return;
+              const hint = region.querySelector('.report-chart-scroll-hint');
+              new ResizeObserver(() => {hint.hidden = region.scrollWidth <= region.clientWidth + 1;}).observe(region);
+            })();"""
+        html = figure.to_html(**options)
     finally:
         figure.layout.width = saved_width
         figure.layout.height = saved_height
-    if not (width and height):
-        return html
     html = re.sub(
         r'(<div id="[^"]*" class="plotly-graph-div" style=")height:[^;]+; width:[^;]+;',
         r"\1position:absolute; top:0; left:0; height:100%; width:100%;",
         html,
         count=1,
     )
-    return (f'<div class="report-plot" style="position:relative; width:100%; '
-            f'aspect-ratio: {width} / {height};">{html}</div>')
+    top = figure.layout.margin.t if figure.layout.margin.t is not None else 100
+    bottom = figure.layout.margin.b if figure.layout.margin.b is not None else 80
+    minimum_height = max(280, int(top + bottom + 160))
+    enrichment = isinstance(figure.layout.meta, dict) and figure.layout.meta.get('enrichment')
+    minimum_width = f'min-width: {width}px; ' if enrichment else ''
+    result = (f'<div class="report-plot" style="position:relative; width:100%; '
+              f'{minimum_width}min-height: {minimum_height}px; aspect-ratio: {width} / {height};">{html}</div>')
+    if enrichment:
+        title = re.sub(r'<[^>]*>', ' ', str(figure.layout.title.text or 'Enrichment chart')).strip()
+        hint = '横向滚动查看完整图表' if language() == 'zh' else 'Scroll horizontally to view the complete chart'
+        return (f'<div class="report-chart-scroll" tabindex="0" role="region" aria-label="{escape_html(title, quote=True)}">'
+                f'<p class="report-chart-scroll-hint" hidden>{hint}</p>{result}</div>')
+    return result
+
+
+def _responsive_pca_script(width, height):
+    """Reflow both PCA views without recalculating or duplicating their data."""
+    return r'''(() => {
+      const chart = document.getElementById('{plot_id}');
+      const wrapper = chart.closest('.report-plot');
+      if (!wrapper) return;
+      const original = JSON.parse(JSON.stringify(chart.layout));
+      let lastKey, running = false, pending = false;
+      const update = () => {
+        if (running) { pending = true; return; }
+        const initial = wrapper.getBoundingClientRect();
+        if (initial.width < 100 || initial.height < 100) return;
+        const compact = initial.width < 640;
+        wrapper.style.aspectRatio = compact ? '1 / 1.9' : 'WIDTH / HEIGHT';
+        const box = wrapper.getBoundingClientRect();
+        const width = Math.round(box.width), height = Math.round(box.height);
+        const key = width + ':' + height + ':' + compact;
+        if (key === lastKey) return;
+        lastKey = key;
+        // Fixed positive drawing dimensions keep queued relayouts valid even
+        // if routing hides this page while Plotly is completing its work.
+        const patch = {width, height, autosize:false};
+        for (const axis of ['xaxis','xaxis2','yaxis','yaxis2']) {
+          patch[axis + '.domain'] = original[axis].domain;
+        }
+        patch.annotations = JSON.parse(JSON.stringify(original.annotations || []));
+        patch['legend.y'] = original.legend.y;
+        if (compact) {
+          patch['xaxis.domain'] = [0,1];
+          patch['xaxis2.domain'] = [0,1];
+          patch['yaxis.domain'] = [.60,1];
+          patch['yaxis2.domain'] = [0,.40];
+          patch.annotations.forEach((label, index) => {
+            label.x = .5; label.y = index === 0 ? 1.04 : .44;
+            label.font = Object.assign({}, label.font, {size:13});
+          });
+          patch['legend.y'] = 1.13;
+        }
+        running = true;
+        Plotly.relayout(chart, patch).finally(() => {
+          running = false;
+          if (pending) { pending = false; requestAnimationFrame(update); }
+        });
+      };
+      new ResizeObserver(update).observe(wrapper);
+      update();
+    })();'''.replace('WIDTH',str(width or 1000)).replace('HEIGHT',str(height or 500))
 
 
 def show_table(table, **kwargs) -> None:
@@ -185,10 +279,38 @@ def show_table(table, **kwargs) -> None:
         frame = table.data if hasattr(table, "data") else table
         show_print_table(frame, limit=kwargs.pop("limit", 30))
     else:
-        if not _itables_loaded:
-            init_notebook_mode(all_interactive=False, connected=False)
-            _itables_loaded = True
+        # Use DataTables' native scrolling rather than clipping wide matrices.
+        kwargs.setdefault('scrollX', True)
+        from itables import JavascriptFunction
+        kwargs.setdefault('drawCallback', JavascriptFunction("""function() {
+            const api = this.api();
+            api.table().node()._reportTable = api;
+            const scroll = api.table().container().querySelector('.dt-scroll-body, .dataTables_scrollBody');
+            if (scroll) {
+                scroll.tabIndex = 0;
+                scroll.setAttribute('role', 'region');
+                scroll.setAttribute('aria-label', 'Scrollable report data table');
+            }
+        }"""))
+        shared = os.environ.get('BIOREPORT_SHARED_ASSET_DIR')
+        if shared:
+            from .html_table import stage_table_runtime
+            stage_table_runtime()
+            show_interactive_table(table, connected=True,
+                dt_url=os.environ['BIOREPORT_SHARED_ASSET_URL'] + '/dt_bundle.js', **kwargs)
+            return
+        ensure_table_runtime()
         show_interactive_table(table, connected=False, **kwargs)
+
+
+def ensure_table_runtime():
+    """Share ITables' existing offline module with native lazy DataTables."""
+    global _itables_loaded
+    if not _itables_loaded:
+        init_notebook_mode(all_interactive=False, connected=False)
+        _itables_loaded = True
+    from itables.javascript import _ITABLES_UNDERSCORE_VERSION
+    return 'window.' + _ITABLES_UNDERSCORE_VERSION
 
 
 def typst_note(text):

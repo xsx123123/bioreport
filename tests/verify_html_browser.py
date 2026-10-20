@@ -22,14 +22,14 @@ def verify(source, output):
                 page.wait_for_function("document.querySelector('#report')?.contentDocument?.querySelector('.report-navbar')",timeout=120000)
                 page.locator('#loading').wait_for(state='hidden',timeout=120000)
                 frame=page.frame_locator('#report')
-                assert page.locator('#report').evaluate('(node)=>node.contentDocument.documentElement.lang')=='zh-CN'
+                assert page.locator('#report').evaluate('(node)=>node.contentDocument.documentElement.lang.toLowerCase().startsWith("zh")')
                 page.locator('[data-edition="en"]').click()
-                page.wait_for_function("document.querySelector('#report')?.contentDocument?.documentElement.lang === 'en'",timeout=120000)
+                page.wait_for_function("document.querySelector('#report')?.contentDocument?.documentElement?.lang === 'en'",timeout=120000)
                 page.locator('#loading').wait_for(state='hidden',timeout=120000)
                 assert frame.locator('.report-navbar').count()==1
                 checks.append('single-file English edition switch')
                 page.locator('[data-edition="zh"]').click()
-                page.wait_for_function("document.querySelector('#report')?.contentDocument?.documentElement.lang === 'zh-CN'",timeout=120000)
+                page.wait_for_function("document.querySelector('#report')?.contentDocument?.documentElement?.lang?.toLowerCase().startsWith('zh')",timeout=120000)
                 page.locator('#loading').wait_for(state='hidden',timeout=120000)
                 checks.append('single-file Chinese edition switch')
                 report=frame

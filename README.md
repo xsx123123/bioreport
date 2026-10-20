@@ -93,13 +93,13 @@ bioreport workspace-restore --db /path/to/runs.db
 
 ### Build, test, and run with Make
 
-Run these commands from the repository root. The Makefile reads `[project].version` from `pyproject.toml` each time Make is invoked and uses `IMAGE=bioreport:<version>` by default. With the current version, `2.0.0`, the following command builds `bioreport:2.0.0`:
+Run these commands from the repository root. The Makefile reads `[project].version` from `pyproject.toml` each time Make is invoked and uses `IMAGE=bioreport:<version>` by default. With the current version, `2.0.1`, the following command builds `bioreport:2.0.1`:
 
 ```bash
 make docker-build
 ```
 
-This expands to `docker build --platform linux/amd64 -f deploy/Dockerfile -t bioreport:2.0.0 .`. The build pins Quarto 1.8.26 and automatically checks the installed package, Kaleido export, and RNA HTML/PDF report generation. Changing the version in `pyproject.toml` changes the default image tag on the next invocation; rebuild the image before testing or running that version.
+This expands to `docker build --platform linux/amd64 -f deploy/Dockerfile -t bioreport:2.0.1 .`. The build pins Quarto 1.8.26 and automatically checks the installed package, Kaleido export, and RNA HTML/PDF report generation. Changing the version in `pyproject.toml` changes the default image tag on the next invocation; rebuild the image before testing or running that version.
 
 `docker-test` and `docker-run` use the same default versioned image. They require an existing image and do not build it automatically:
 
@@ -167,7 +167,7 @@ docker run --rm -it \
 | `-it` | Keep standard input open and allocate a terminal for interactive use and progress display. Omit this option in CI or other non-interactive jobs. |
 | `-v "$PWD:/project:ro"` | Mount the current repository directory at `/project` inside the container. `$PWD` must be the repository root; `:ro` makes this mount read-only. This exposes both `tests/` and `examples/` while preserving their relative paths. |
 | `-v "$PWD/output/X101SC26098749-Z01-J001:/workspace"` | Mount the host output directory at `/workspace` with write access, so reports and logs persist after the container exits. |
-| `bioreport:latest` | Select the Docker image. Replace it with `bioreport:2.0.0` when using the current versioned image built by `make docker-build`; use the corresponding version after updating `pyproject.toml`. |
+| `bioreport:latest` | Select the Docker image. Replace it with `bioreport:2.0.1` when using the current versioned image built by `make docker-build`; use the corresponding version after updating `pyproject.toml`. |
 | `run` | Generate a report. The image entrypoint is `bioreport`, so this invokes `bioreport run` inside the container. |
 | `-c /project/tests/X101SC26098749-Z01-J001.json` | Load the report configuration from its container path. Its `input_files.data_dir`, `../examples/X101SC26098749-Z01-J001/data`, resolves relative to the configuration file directory. |
 | `-o /workspace` | Write the generated reports and logs to the container output mount, corresponding to `output/X101SC26098749-Z01-J001/` on the host. |
@@ -296,7 +296,7 @@ Complete rendering tests require a working Jupyter kernel and Kaleido/Chrome. Ea
 
 ## Version and acknowledgements
 
-Current version: **v2.0.0**. See [`CHANGELOG.md`](docs/CHANGELOG.md) for release history. See [`CONTRIBUTING.md`](docs/CONTRIBUTING.md) for contribution guidelines.
+Current version: **v2.0.1**. See [`CHANGELOG.md`](docs/CHANGELOG.md) for release history. See [`CONTRIBUTING.md`](docs/CONTRIBUTING.md) for contribution guidelines.
 
 Maintainer: **Zhang Jian**
 

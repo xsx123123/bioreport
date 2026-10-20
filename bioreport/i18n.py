@@ -106,48 +106,140 @@ def combine_language_editions(chinese_path, english_path, output_path, title='Bi
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{shell_title}</title><style>
 *{{box-sizing:border-box}}html,body{{height:100%;margin:0}}body{{font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#26364a;background:#f3f7fb}}
-.edition-bar{{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:#fff;border-bottom:1px solid #dbe4ee}}
-.brand{{font-weight:650;color:#20344f}}.edition-switch{{display:inline-flex;padding:3px;border:1px solid #dbe4ee;border-radius:8px;background:#f3f7fb}}
-.edition-switch button{{min-width:72px;height:32px;border:0;border-radius:6px;background:transparent;color:#52657b;font:inherit;font-weight:600;cursor:pointer}}
-.edition-switch button[aria-pressed="true"]{{background:#fff;color:#174ea6;box-shadow:0 1px 3px #20344f24}}
-.edition-switch button:focus-visible{{outline:2px solid #1d5fbf;outline-offset:2px}}
-iframe{{display:block;width:100%;height:calc(100% - 52px);border:0;background:#fff}}.loading{{position:absolute;inset:52px 0 0;display:grid;place-items:center;color:#63748a;background:#fff}}
+iframe{{position:absolute;inset:0;display:block;width:100%;height:100%;border:0;background:#fff}}
+iframe[hidden]{{display:block;visibility:hidden;pointer-events:none}}
+.loading{{position:absolute;inset:0;z-index:2;display:grid;place-items:center;color:#63748a;background:#fff}}
 .loading[hidden]{{display:none}}
-</style></head><body><header class="edition-bar"><div class="brand">{shell_title}</div><div class="edition-switch" role="group" aria-label="Report language">
-<button type="button" data-edition="zh" aria-pressed="true">中文</button><button type="button" data-edition="en" aria-pressed="false">English</button>
-</div></header><div class="loading" id="loading" role="status">正在载入报告...</div><iframe id="report" title="中文报告"></iframe>
-<script>
-(() => {{
-  const frame = document.getElementById('report');
+</style></head><body><div class="loading" id="loading" role="status">正在载入报告...</div><iframe id="report" title="中文报告"></iframe>
+''')
+        output.write(r'''<script>
+(() => {
+  let frame = document.getElementById('report');
   const loading = document.getElementById('loading');
-  const buttons = [...document.querySelectorAll('[data-edition]')];
+  // Exactly two editions: cache decoding promises and retain each live document.
+  // A string-only cache still reparses all charts/tables on every srcdoc assignment.
+  const sources = new Map();
+  const decoding = new Map();
+  const frames = new Map();
+  const preparing = new Map();
   let current = '';
-  async function openEdition(language) {{
-    if (language === current) return;
-    buttons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.edition === language)));
-    document.documentElement.lang = language === 'en' ? 'en' : 'zh-CN';
-    frame.title = language === 'en' ? 'English report' : '中文报告';
+  let requested = 'zh';
+  let sequence = 0;
+  let idleScheduled = false;
+  const unsupported = '此浏览器不支持离线报告解压，请使用新版 Chrome、Edge 或 Firefox。 / This browser cannot decompress the offline report. Please use a recent Chrome, Edge or Firefox.';
+
+  function decode(language) {
+    if (sources.has(language)) return Promise.resolve(sources.get(language));
+    if (decoding.has(language)) return decoding.get(language);
+    const pending = (async () => {
+      if (typeof DecompressionStream !== 'function') throw new Error(unsupported);
+      const data = document.getElementById('edition-' + language).textContent.replace(/\s/g, '');
+      const binary = atob(data);
+      const compressed = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) compressed[i] = binary.charCodeAt(i);
+      const source = await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+      sources.set(language, source);
+      return source;
+    })();
+    decoding.set(language, pending);
+    pending.then(() => decoding.delete(language), () => decoding.delete(language));
+    return pending;
+  }
+
+  function showError(error) {
     loading.hidden = false;
-    const data = document.getElementById('edition-' + language).textContent.replace(/\\s/g, '');
-    const binary = atob(data);
-    const compressed = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) compressed[i] = binary.charCodeAt(i);
-    const source = await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    loading.textContent = '报告载入失败 / Report could not load: ' + error.message + ' ';
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.textContent = '重试 / Retry';
+    retry.onclick = () => openEdition(requested).catch(showError);
+    loading.append(retry);
+  }
+
+  function prepare(language) {
+    if (frames.has(language)) return Promise.resolve(frames.get(language));
+    if (preparing.has(language)) return preparing.get(language);
+    const pending = (async () => {
+      const source = await decode(language);
+      const target = current ? document.createElement('iframe') : frame;
+      target.title = language === 'en' ? 'English report' : '中文报告';
+      if (target !== frame) {
+        target.id = 'report-' + language;
+        target.hidden = true;
+        target.setAttribute('aria-hidden', 'true');
+        document.body.append(target);
+      }
+      try {
+        await new Promise((resolve, reject) => {
+          target.onload = resolve;
+          target.onerror = () => reject(new Error('Report frame failed to load'));
+          target.srcdoc = source;
+        });
+      } catch (error) {
+        if (target !== frame) target.remove();
+        throw error;
+      } finally {
+        target.onload = target.onerror = null;
+      }
+      const button = target.contentDocument.querySelector('[data-report-language]');
+      if (button) {
+        button.textContent = language === 'zh' ? '中文 / English' : 'English / 中文';
+        button.setAttribute('aria-label', language === 'zh' ? '当前语言：中文；切换到 English' : 'Current language: English; switch to 中文');
+        button.onclick = event => {
+          event?.preventDefault();
+          openEdition(language === 'zh' ? 'en' : 'zh').catch(showError);
+        };
+      }
+      frames.set(language, target);
+      return target;
+    })();
+    preparing.set(language, pending);
+    pending.then(() => preparing.delete(language), () => preparing.delete(language));
+    return pending;
+  }
+
+  async function openEdition(language) {
+    requested = language;
+    if (language === current && loading.hidden) return;
+    const ticket = ++sequence;
     const fragment = current ? frame.contentWindow.location.hash : '';
-    frame.onload = () => {{
-      loading.hidden = true;
-      const doc = frame.contentDocument;
-      const style = doc.createElement('style');
-      style.textContent = '.report-language-control{{display:none!important}}';
-      doc.head.append(style);
-      if (fragment) frame.contentWindow.location.hash = fragment;
-    }};
-    frame.srcdoc = source;
+    const theme = current ? frame.contentDocument.documentElement.dataset.reportTheme : null;
+    loading.hidden = false;
+    loading.textContent = '正在载入报告 / Loading report…';
+    const target = await prepare(language);
+    if (ticket !== sequence) return;
+    if (current && target !== frame) {
+      frame.id = 'report-' + current;
+      frame.hidden = true;
+      frame.setAttribute('aria-hidden', 'true');
+    }
+    target.id = 'report';
+    target.hidden = false;
+    target.removeAttribute('aria-hidden');
+    if (theme && target.contentDocument.documentElement.dataset.reportTheme !== theme) {
+      target.contentDocument.querySelector('button[data-report-theme]')?.click();
+    }
+    frame = target;
     current = language;
-  }}
-  buttons.forEach(button => button.addEventListener('click', () => openEdition(button.dataset.edition).catch(error => {{ loading.textContent = '报告载入失败：' + error.message; }})));
-  document.addEventListener('DOMContentLoaded', () => openEdition('zh').catch(error => {{ loading.textContent = '报告载入失败：' + error.message; }}), {{once:true}});
-}})();
+    document.documentElement.lang = language === 'en' ? 'en' : 'zh-CN';
+    frame.contentWindow.location.hash = fragment;
+    // A restored chapter can trigger chart layout on hashchange. Keep the
+    // loading status until that route has had a chance to paint.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    if (ticket !== sequence) return;
+    loading.hidden = true;
+    if (!idleScheduled) {
+      idleScheduled = true;
+      // Decode only, after the first edition has had time to paint.
+      setTimeout(() => {
+        const predecode = () => decode(language === 'zh' ? 'en' : 'zh').catch(() => {});
+        if (typeof requestIdleCallback === 'function') requestIdleCallback(predecode, {timeout:5000});
+        else setTimeout(predecode, 0);
+      }, 1000);
+    }
+  }
+  document.addEventListener('DOMContentLoaded', () => openEdition('zh').catch(showError), {once:true});
+})();
 </script>
 ''')
         for language, source_path in (('zh', chinese_path), ('en', english_path)):

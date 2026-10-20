@@ -1,0 +1,43 @@
+{
+  "compiler": "@mermaid-js/mermaid-cli@12.0.0",
+  "locations": [
+    {
+      "source": "templates/shared/about.qmd",
+      "digest": "0d2bb9d24bc5d1bd155111ae39f05c49e009e5a99cb07e4bbb4edaddbaa82c41"
+    },
+    {
+      "source": "omics/rna/qmd/en/about.qmd",
+      "digest": "e085c8ddb0e47926ee06154f416c3a9afa28725c682da6325b56ffb37a8c74cc"
+    },
+    {
+      "source": "omics/rna/qmd/workflow.qmd",
+      "digest": "7dda7690383c19b0aa36694db564ba24de98fc4d68221979cf1e345bb270f85d"
+    },
+    {
+      "source": "omics/rna/qmd/en/workflow.qmd",
+      "digest": "b7102ab285a3535a3329e28b2e012d8b5fe325d1e1e92de5d877a27028de563e"
+    }
+  ],
+  "diagrams": {
+    "0d2bb9d24bc5d1bd155111ae39f05c49e009e5a99cb07e4bbb4edaddbaa82c41": {
+      "file": "mermaid-0d2bb9d24bc5d1bd.svg",
+      "svg_sha256": "75bb688fc32e7ecda93bf0f9d1b2386c81efd44149cb4fa4ede91bf4092efcb9",
+      "bytes": 47404
+    },
+    "e085c8ddb0e47926ee06154f416c3a9afa28725c682da6325b56ffb37a8c74cc": {
+      "file": "mermaid-e085c8ddb0e47926.svg",
+      "svg_sha256": "4ea0a50fe18292d1c8eaa3237adbe3a0c98f6d1412cb7a05958acf5ff8119ad5",
+      "bytes": 47696
+    },
+    "7dda7690383c19b0aa36694db564ba24de98fc4d68221979cf1e345bb270f85d": {
+      "file": "mermaid-7dda7690383c19b0.svg",
+      "svg_sha256": "4c3212b83d07c731b70f0ee92663c63030c298a8b1d0624a80fcab82b69e45b9",
+      "bytes": 51477
+    },
+    "b7102ab285a3535a3329e28b2e012d8b5fe325d1e1e92de5d877a27028de563e": {
+      "file": "mermaid-b7102ab285a3535a.svg",
+      "svg_sha256": "2ea92bed852294287628676425ea6349e3d45d3c7f7761ccf267bbfdbcf99d81",
+      "bytes": 51477
+    }
+  }
+}

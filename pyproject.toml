@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bioreport"
-version = "2.0.0"
+version = "2.0.1"
 description = "Multi-omics report generator based on Quarto"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,6 +30,7 @@ dependencies = [
     "rich",
     "rich-argparse",
     "pypdf>=5",
+    "fonttools[woff]>=4.58",
     "pandas",
     "numpy",
     "scipy",
@@ -86,7 +87,7 @@ include = ["bioreport*", "omics*"]
 pythonpath = ["."]
 
 [tool.setuptools.package-data]
-bioreport = ["translations.en.json", "utils/prompt.txt", "report.schema.json", "assets/fonts/**/*"]
+bioreport = ["translations.en.json", "utils/prompt.txt", "report.schema.json", "assets/fonts/**/*", "assets/js/*"]
 "omics.rna" = ["qmd/**/*.qmd", "qmd/assets/*.svg", "schema.json"]
 
 [tool.setuptools.data-files]

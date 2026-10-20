@@ -4,12 +4,22 @@
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-20
+
+### 新增
+
+- 双语（中文/英文）RNA 报告版本与语言切换。
+- 报告运行历史、搜索和 Workspace v1 证据浏览能力（[#6337bec](https://github.com/xsx123123/bioreport/commit/6337bec)）。
+- 按结果的 AI 解读与 HTML Plotly PNG 导出规范（[#39c5be8](https://github.com/xsx123123/bioreport/commit/39c5be8)、[#d227236](https://github.com/xsx123123/bioreport/commit/d227236)）。
+- 静态 Mermaid 预编译、离线字体、Plotly 运行时本地缓存与共享网站输出，提升离线交付能力和 HTML 加载性能。
+- HTML 表格精度控制、表达式表格渲染与报告资源审计能力。
+
 ### 变更
 
 - 建立版本校验、CHANGELOG 和 GitHub Actions 发布流程。
-- 增加报告运行历史、搜索和 Workspace v1 证据浏览能力（[#6337bec](https://github.com/xsx123123/bioreport/commit/6337bec)）。
-- 增加按结果的 AI 解读与 HTML Plotly PNG 导出规范（[#39c5be8](https://github.com/xsx123123/bioreport/commit/39c5be8)、[#d227236](https://github.com/xsx123123/bioreport/commit/d227236)）。
 - 完善 PDF 语义布局、字体、封面、报告溯源和项目文档（[#2d5ea98](https://github.com/xsx123123/bioreport/commit/2d5ea98)、[#b4a603a](https://github.com/xsx123123/bioreport/commit/b4a603a)）。
+- 优化报告主题、导航与交付目录结构。
+- 报告引擎版本更新至 2.0.1。
 
 ## [2.0.0] - 2026-10-15
 
@@ -38,5 +48,6 @@
 - `v0.0.2`（2026-01-14 至 2026-01-15）：RNA-seq 报告、配置更新和 Web/火山图改进。
 - 2026-01-27 的 `v0.0.3` 提交未形成 Git tag，因而不作为已发布版本列出。
 
-[Unreleased]: https://github.com/xsx123123/bioreport/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/xsx123123/bioreport/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/xsx123123/bioreport/releases/tag/v2.0.1
 [2.0.0]: https://github.com/xsx123123/bioreport/releases/tag/v2.0.0

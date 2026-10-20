@@ -5,6 +5,7 @@ BioReport CLI 与主流程编排。
 """
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -154,7 +155,9 @@ def setup_logging(output_dir: str | None = None, verbose: bool = False,
 
     # 终端只展示精简的高价值步骤状态；--verbose 才放开 DEBUG。
     logger.add(
-        sys.stderr,
+        # Resolve the current stream when writing: embedded CLI callers may
+        # replace/close their redirected stderr between report builds.
+        lambda message: sys.stderr.write(message),
         format="<green>{time:HH:mm:ss}</green>  <level>{level: <7}</level>  {message}",
         level="DEBUG" if verbose else "INFO",
         colorize=True,
@@ -433,13 +436,23 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
     original_config = config
     bilingual = is_rna(config)
     paired_html = bilingual and layout == "single"
-    jobs = [(fmt, lang) for fmt in output_formats(config) for lang in languages(config)]
+    asset_audit = Path(abs_output_dir) / "html-assets.jsonl"
+    html_requested = 'html' in output_formats(config)
+    if html_requested:
+        asset_audit.unlink(missing_ok=True)
+        env['BIOREPORT_ASSET_AUDIT_FILE'] = str(asset_audit)
+    else:
+        env.pop('BIOREPORT_ASSET_AUDIT_FILE', None)
+    if bilingual and html_requested:
+        from .utils.asset_audit import static_plotly_calls
+        logger.info('RNA Plotly static calls: {}', ', '.join(static_plotly_calls(Path(package_root)/'omics/rna/analysis')))
+    jobs = [(fmt, lang) for fmt in output_formats(config) for lang in (languages(config)[:1] if layout == "website" else languages(config))]
     for output_format, lang in jobs:
         config = localized_config(original_config, lang)
         env["BIOREPORT_LANGUAGE"] = lang
         abs_output_dir = str(Path(output_dir).resolve() / ("en" if layout == "website" and bilingual and lang == "en" else ""))
         Path(abs_output_dir).mkdir(parents=True, exist_ok=True)
-        if bilingual:
+        if bilingual and layout != "website":
             render_templates(config, abs_output_dir, str(template_dir))
         edition_name = {"zh": "Chinese", "en": "English"}.get(lang, lang)
         logger.info("Starting Quarto render ({} / {})...", output_format.upper(), edition_name)
@@ -476,6 +489,10 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
             raise RuntimeError(
                 f"Quarto {output_format} render failed{detail}{cause}; full output: {log_hint}"
             )
+        if output_format == "html" and asset_audit.exists():
+            events = [json.loads(line) for line in asset_audit.read_text().splitlines() if line.strip()]
+            kinds = sorted({kind for event in events if event.get('kind') == 'plotly' for kind in event['traces']})
+            logger.info('Rendered Plotly trace types: {}', ', '.join(kinds))
         if layout == "single":
             stem = "report_pdf" if output_format == "pdf" else "report"
             rendered = Path(abs_output_dir) / "qmd" / f"{stem}.{output_format}"
@@ -490,17 +507,24 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
                 if not any(rendered.parent.iterdir()):
                     rendered.parent.rmdir()
         else:
+            from .website import finalize_website
+            shutil.copytree(template_dir / "assets", Path(abs_output_dir) / "assets", dirs_exist_ok=True)
+            finalize_website(Path(abs_output_dir), original_config)
             edition = Path(abs_output_dir) / "index.html"
         expected = Path(abs_output_dir) / report_artifact_name(config, output_format) if paired_html and output_format == "html" else edition
         if not edition.exists():
             raise RuntimeError(f"Quarto finished but expected artifact is missing: {edition}")
-        if output_format == "html" and bilingual and not paired_html:
+        if output_format == "html" and bilingual and not paired_html and layout != "website":
             from .i18n import add_language_switch
             add_language_switch(edition, original_config, lang, layout)
         if paired_html and output_format == "html" and lang == "en":
             from .i18n import combine_language_editions
             chinese = Path(abs_output_dir) / report_artifact_name(config, output_format, "zh")
             english = Path(abs_output_dir) / report_artifact_name(config, output_format, "en")
+            from .utils.html_fonts import subset_html_fonts
+            font_metrics = subset_html_fonts([chinese, english])
+            (Path(abs_output_dir) / "font-subset-metrics.json").write_text(
+                json.dumps(font_metrics, ensure_ascii=False, indent=2), encoding="utf-8")
             title = original_config.get("report", {}).get("title", "BioReport bilingual report")
             combined = expected.with_name(expected.name + ".combined")
             combine_language_editions(chinese, english, combined, title)

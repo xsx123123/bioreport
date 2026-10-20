@@ -1,27 +1,242 @@
 ---
-title: About BioReport
+title: "About BioReport"
+date: ""
+body-classes: about-project
+title-block-style: none
 ---
 
-**BioReport** is a modular, configurable report engine built with Python and Quarto, and a delivery component of **CygnusX BioOps**. It turns existing omics outputs into structured, interactive and verifiable research reports.
+::: {.about-manifesto}
+::: {.quote-orbit .quote-orbit--one aria-hidden="true"}
+:::
+::: {.quote-orbit .quote-orbit--two aria-hidden="true"}
+:::
+::: {.quote-star .quote-star--one aria-hidden="true"}
+:::
+::: {.quote-star .quote-star--two aria-hidden="true"}
+:::
+::: {.quote-star .quote-star--three aria-hidden="true"}
+:::
+::: {.manifesto-kicker}
+FROM STARDUST, TO DISCOVERY
+:::
+::: {.manifesto-body}
+::: {.manifesto-quote}
+We are made of star-stuff.
+:::
+For a few decades, we borrow the carbon, hydrogen and oxygen of the universe to experience the world. The atoms that make up our bodies connect us to ancient stars. At the end of life, those atoms return to the wider universe, continuing in other forms.
+:::
+::: {.manifesto-attribution}
+— Carl Sagan (opening quotation); reflection inspired by his cosmic perspective
+:::
+:::
 
-## Mission and Capabilities
+## Project and Mission
 
-Configuration controls module selection, parameters and delivery formats. Domain modules supply QC, expression, differential analysis and enrichment. Interactive Plotly charts and searchable tables support review; dedicated PDF templates support archiving. Optional AI interpretations require scientific review against the underlying evidence.
+**BioReport** is a modular, configurable bioinformatics report engine built with Python and Quarto, and a core delivery component of the **CygnusX BioOps** research software ecosystem.
 
-## Technical Architecture
+Tables, figures and logs scattered across analysis tools make scientific review and delivery costly. BioReport connects existing computational outputs to structured, interactive, interpretable and verifiable research reports.
 
-Python handles validation, data paths, module composition and execution. pandas and NumPy process result tables; Plotly and ITables provide visualization. Quarto and Typst render the final documents. Local Python/Quarto or Docker can run report generation.
+::: {.mission-grid}
+::: {.mission-card}
+<div class="mission-badge">ECOSYSTEM VISION</div>
+<div class="mission-en">From Research Questions to Reproducible Scientific Evidence.</div>
+<div class="mission-cn">Organize controlled computational experiments around research questions to produce verifiable, traceable and reproducible evidence.</div>
+:::
+::: {.mission-card}
+<div class="mission-badge">CORE MISSION</div>
+<div class="mission-en">From Analysis Results to Verifiable Research Reports.</div>
+<div class="mission-cn">Make research results clear to communicate, effective to review and useful to the continuing accumulation of scientific knowledge.</div>
+:::
+:::
+
+## Capabilities and Technical Architecture
+
+BioReport separates an **omics-independent rendering engine** from **domain analysis modules**, turning repetitive manual report preparation into a configurable, maintainable and reusable engineering process.
+
+::: {.callout-strip}
+Define once, compose as needed. Separate results from presentation and reuse reporting components.
+:::
+
+### Core Features
+
+::: {.feature-grid}
+
+::: {.feature-card}
+<div class="feature-head"><span class="feature-title">Configuration-driven</span><span class="feature-tag">Declarative configuration</span></div>
+<div class="feature-desc">Manage report structure, modules, parameters and output formats through JSON / YAML configuration.</div>
+:::
+
+::: {.feature-card}
+<div class="feature-head"><span class="feature-title">Modular Reporting</span><span class="feature-tag">Domain modules</span></div>
+<div class="feature-desc">Combine project summaries, samples, quality control, differential analysis and enrichment as needed. RNA-seq is supported today, with an extensible foundation for other omics.</div>
+:::
+
+::: {.feature-card}
+<div class="feature-head"><span class="feature-title">Interactive Visualization</span><span class="feature-tag">Explore and review</span></div>
+<div class="feature-desc">Explore interactive charts and searchable high-dimensional tables, with HTML delivery and dedicated PDF templates for print and archiving.</div>
+:::
+
+::: {.feature-card}
+<div class="feature-head"><span class="feature-title">AI-assisted Interpretation</span><span class="feature-tag">Optional scientific support</span></div>
+<div class="feature-desc">Optionally use language models to interpret differential expression and enriched pathways. Researchers must review generated interpretations against the underlying evidence.</div>
+:::
+
+:::
+
+### Report Generation Architecture
+
+The engine reads existing analysis results, selects chapters and binds input files and display parameters from JSON / YAML configuration, then composes Quarto documents for interactive HTML or print-ready PDF. Optional AI interpretations are prepared for insertion into the relevant result sections.
+
+::: {.arch-figure}
+```{mermaid}
+flowchart TB
+  Config["JSON / YAML configuration<br/>JSON Schema validation"] --> Control["CLI: validation and orchestration"]
+  RNA["RNA-seq modules: omics/rna"] --> Compose["Module registry, selection and composition"]
+  Custom["Custom QMD modules"] --> Compose
+  Theme["Jinja2 templates and shared theme"] --> Stage["Temporary Quarto project<br/>QMD, configuration and assets"]
+  Control --> Compose --> Stage
+  Data["Existing analysis results and project metadata"] --> Analysis["Read results, summarize and plot"]
+  Stage --> Execute["Quarto / Jupyter: execute selected modules"]
+  Data --> Execute
+  Execute --> Analysis
+  Analysis --> HTMLView["HTML: Plotly / ITables"] --> HTML["Single-file / multi-page HTML"]
+  Analysis --> PDFView["PDF figures: static SVG and Typst"]
+  PDFView --> FirstPDF["First PDF render<br/>Figures and block manifest"]
+  FirstPDF --> Evidence["Structured evidence and rendered images"]
+  Control -.-> AIPre["AI interpretation: HTML / non-visual path"]
+  Data -.-> AIPre
+  AIPre -.-> Markdown["Per-result Markdown cards"]
+  Markdown -.-> Stage
+  Evidence -.-> AIPost["AI visual interpretation: two-pass PDF path"]
+  AIPost -.-> Markdown
+  Markdown -.-> SecondPDF["Second PDF render<br/>Insert result interpretations"]
+  SecondPDF --> PDF["PDF report and layout validation"]
+  Control --> Records["Run logs, configuration backup and manifests"]
+  Evidence -.-> Records
+  AIPost -.-> Records
+  classDef plain fill:#ffffff,stroke:#94a3b8,color:#334155;
+  classDef blue fill:#eff6ff,stroke:#3b82f6,color:#173258;
+  classDef green fill:#f0fdf4,stroke:#22a06b,color:#14532d;
+  classDef optional fill:#faf5ff,stroke:#a78bfa,color:#553285;
+  class Config,Data,RNA,Custom,Theme,HTMLView,PDFView plain;
+  class Control,Compose,Stage,Execute,Analysis blue;
+  class HTML,PDF,Records,FirstPDF,SecondPDF green;
+  class AIPre,AIPost,Markdown,Evidence optional;
+```
+:::
+::: {.arch-caption}
+Configuration combines domain modules and shared templates. Quarto executes the selected modules to read results and create figures for interactive HTML or print PDF. AI interpretation is optional; Docker provides a containerized generation environment.
+:::
+
+Runtime: local Python + Quarto, or Docker. Read delivered reports in a browser or PDF reader.
+
+### Technology by Responsibility
+
+::: {.tech-roles}
+
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">Configuration and orchestration</span><span class="tech-role-tools">Python · JSON / YAML · JSON Schema</span></div>
+<div class="tech-role-desc">Load and validate configuration, resolve paths, select modules, check inputs and orchestrate report generation.</div>
+:::
+
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">Modules and content composition</span><span class="tech-role-tools">Registry · QMD · Module composer · Jinja2</span></div>
+<div class="tech-role-desc">Register domain modules and input requirements, compose chapters, pass parameters and generate Quarto configuration and templates.</div>
+:::
+
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">Data processing and interactive presentation</span><span class="tech-role-tools">pandas / NumPy · Plotly · ITables</span></div>
+<div class="tech-role-desc">Read existing QC, expression, differential analysis and enrichment results for summaries, figures and searchable tables.</div>
+:::
+
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">Rendering and delivery</span><span class="tech-role-tools">Quarto · Jupyter · Static figures · Typst</span></div>
+<div class="tech-role-desc">HTML supports interactive review. PDF uses dedicated chapters, pagination-aware static figures and Typst. Both formats share analysis functions while using their own content templates.</div>
+:::
+
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">Optional AI interpretation</span><span class="tech-role-tools">Language models · Markdown</span></div>
+<div class="tech-role-desc">When selected and enabled, AI modules summarize specified differential and enrichment results as Markdown before rendering. Researchers review model-generated content.</div>
+:::
+
+::: {.tech-role}
+<div class="tech-role-head"><span class="tech-role-name">Runtime environment</span><span class="tech-role-tools">Local Python / Quarto · Docker</span></div>
+<div class="tech-role-desc">Render templates, execute code and build documents locally or in containers. Containers reduce environment differences without guaranteeing byte-for-byte cross-platform reproduction.</div>
+:::
+
+:::
+
+::: {.callout-strip}
+Configuration defines structure; modules carry content. Reuse analysis functions and adapt delivery to the format.
+:::
 
 ## CygnusX Research Ecosystem
 
-- [GeoMuse](https://github.com/xsx123123/GeoMuse): public omics data and literature discovery.
-- [Polariseq](https://github.com/xsx123123/polariseq): sequencing-data acquisition and transfer.
-- [FlowFrame](https://github.com/xsx123123/FlowFrame): versioned bioinformatics workflows.
-- [BioReport](https://github.com/xsx123123/bioreport): analysis organization and scientific report delivery.
-- [CygnusX BioOps](https://github.com/xsx123123/OmicHub_BioOps): research agents, workflow orchestration and evidence tracking.
+BioReport runs independently and works with the wider **CygnusX BioOps** ecosystem to connect scientific questions with trustworthy computational results.
 
-## Development and Acknowledgments
+| Component | Role |
+|---|---|
+| **[GeoMuse](https://github.com/xsx123123/GeoMuse)** | Public omics data and literature discovery; research evidence retrieval and organization |
+| **[Polariseq](https://github.com/xsx123123/polariseq)** | Efficient acquisition, download and transfer of public sequencing data |
+| **[FlowFrame](https://github.com/xsx123123/FlowFrame)** | Versioned, standardized bioinformatics workflows |
+| **[BioReport](https://github.com/xsx123123/bioreport)** | Analysis result organization, interactive visualization and standardized report delivery |
+| **[CygnusX BioOps](https://github.com/xsx123123/OmicHub_BioOps)** | Governed research agents, workflow orchestration, trustworthy computation and evidence tracking |
 
-The project develops additional omics modules, provenance integration and evidence-grounded interpretation. Contributions and issues are welcome on [GitHub](https://github.com/xsx123123/bioreport). We thank participating research teams at Huazhong Agricultural University for their support with use cases and testing.
+Four engineering principles guide the ecosystem:
 
-Maintained by the BioReport / CygnusX BioOps team.
+::: {.pill-row}
+
+::: {.pill-badge}
+<span class="pill-dot"></span><span class="pill-en">Research Agents</span>
+:::
+
+::: {.pill-badge}
+<span class="pill-dot"></span><span class="pill-en">Reproducible Workflows</span>
+:::
+
+::: {.pill-badge}
+<span class="pill-dot"></span><span class="pill-en">Governed Execution</span>
+:::
+
+::: {.pill-badge}
+<span class="pill-dot"></span><span class="pill-en">Verifiable Evidence</span>
+:::
+
+:::
+
+## Roadmap and Acknowledgments
+
+### Development Roadmap
+
+::: {.roadmap-grid}
+
+::: {.roadmap-card}
+<div class="roadmap-num">01</div>
+<div class="roadmap-title">Additional Omics Modules</div>
+<div class="roadmap-desc">Extend standardized reporting to single-cell transcriptomics, epigenomics, genomics and other domains.</div>
+:::
+
+::: {.roadmap-card}
+<div class="roadmap-num">02</div>
+<div class="roadmap-title">End-to-end Evidence Tracking</div>
+<div class="roadmap-desc">Connect metadata interfaces with FlowFrame and CygnusX BioOps to anchor workflow versions, run parameters and data fingerprints in reports.</div>
+:::
+
+::: {.roadmap-card}
+<div class="roadmap-num">03</div>
+<div class="roadmap-title">Governed Intelligent Interpretation</div>
+<div class="roadmap-desc">Improve multimodal figure interpretation and literature connections within reviewable, traceable evidence boundaries.</div>
+:::
+
+:::
+
+### Open Collaboration and Acknowledgments
+
+::: {.about-footer-card}
+<div class="footer-vision"><span class="footer-vision-kicker">FROM STARDUST, TO DISCOVERY</span><span class="footer-vision-text">Let every computation leave evidence, and every report carry discovery.</span></div>
+<div class="footer-notes">
+<div class="footer-note">Built for real life-science analysis and delivery needs, this project supports open collaboration and reproducible research. Issues and module contributions are welcome on <a href="https://github.com/xsx123123/bioreport" target="_blank" rel="noopener">GitHub</a>.</div>
+<div class="footer-note">We thank participating research teams at <strong>Huazhong Agricultural University</strong> for their support with research use cases, analysis requirements and tool testing.</div>
+</div>
+<div class="footer-meta"><span class="footer-label">Development and maintenance</span><span class="footer-value">BioReport / CygnusX BioOps team</span><a class="footer-gh" href="https://github.com/xsx123123/bioreport" target="_blank" rel="noopener">GitHub repository ↗</a></div>
+:::

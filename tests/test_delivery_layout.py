@@ -39,7 +39,10 @@ def test_python_entrypoints_are_consolidated_under_bioreport():
         if "if __name__ ==" in path.read_text(encoding="utf-8")
     }
 
-    assert entrypoints == {"bioreport/__main__.py", "bioreport/cli.py", "bioreport/api_server.py"}
+    # The zero-dependency offline launcher is packaged here and copied into
+    # delivered website archives, so it is an intentional fourth entrypoint.
+    assert entrypoints == {"bioreport/__main__.py", "bioreport/cli.py",
+                           "bioreport/api_server.py", "bioreport/serve_report.py"}
 
 
 @pytest.mark.parametrize("arguments", [[], ["-h"], ["--help"]])

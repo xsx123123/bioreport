@@ -360,7 +360,7 @@ body.report-about-active #quarto-margin-sidebar { display: none !important; }
 body.report-about-active #quarto-document-content {
   grid-column: body-start / body-end !important;
 }
-@media (max-width: 768px) {
+@media (max-width: 1279px) {
   .report-navbar.navbar { height: 60px; gap: .75rem; }
   .report-brand img { height: 34px; width: 34px; }
   .report-brand { min-width: 0; }
@@ -895,4 +895,13 @@ code { color: #29496f; }
 @media print {
   #TOC, .navbar, .report-navbar { display: none !important; }
   #quarto-content { padding-top: 0; }
+}
+
+@media (max-width: 480px) {
+  .report-navbar.navbar { padding-inline: .5rem; gap: .35rem; }
+  .report-brand { gap: .3rem; }
+  .report-brand-link { font-size: .88rem; }
+  .report-menu-right { gap: .35rem; }
+  .report-navbar .report-language-control { font-size: .73rem; padding-inline: .3rem; }
+  .report-menu-right > a.nav-link { padding-inline: .2rem; }
 }

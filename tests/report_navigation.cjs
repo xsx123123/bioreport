@@ -26,7 +26,7 @@ function node(attrs, page) {
 const pages = data.pages.map(p => {
   const n=node({id:p.id});
   if(p.id==='report-page-6') n.classList={contains(name){return name==='about-project';}};
-  n.querySelectorAll=()=>Array.from({length:p.charts},()=>({_fullLayout:{}}));
+  n.querySelectorAll=(selector)=>selector==='.js-plotly-plot'?Array.from({length:p.charts},()=>({_fullLayout:{},getBoundingClientRect(){return {width:900};}})):[];
   nodes.set(p.id,n); return n;
 });
 for (const [id,page] of Object.entries(data.headings)) nodes.set(id,node({id},nodes.get(page)));
@@ -67,7 +67,7 @@ const context={document:{
  documentElement:{dataset:{},style:{setProperty(){}}},
  querySelector(q){return q==='.report-navbar'?navbarStub:null;},
  readyState:"complete", body:{classList:bodyClassList,dataset:{}},
-  querySelectorAll(q) { return q==='.report-page'?pages:q==='.report-navbar a.nav-link'?links:q==='pre.mermaid-js'?[diagram]:toc; },
+  querySelectorAll(q) { return q==='.report-page'?pages:q==='.report-navbar a.nav-link'?links:q==='pre.mermaid-js'?[diagram]:q==='#TOC a[data-scroll-target]'?toc:[]; },
   createElement(){return {querySelector(){return {classList:{add(){}},removeAttribute(){}};}};},
   getElementById(id) { return nodes.get(id); },
   addEventListener(k,fn) { documentEvents[k]=fn; }

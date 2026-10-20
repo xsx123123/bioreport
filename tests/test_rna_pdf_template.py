@@ -5,6 +5,7 @@ import json
 import re
 import shutil
 
+import bioreport
 from bioreport.config import load_config
 from bioreport.modules import compose_report
 
@@ -40,7 +41,8 @@ def test_pdf_has_own_content_and_print_layout(tmp_path):
     assert "BioReport 愿景" in pdf
     assert "about-manifesto" in html
     assert "panel-tabset" in html
-    assert "```{mermaid}" in html and "```{mermaid}" not in pdf
+    assert "report-mermaid-svg" in html
+    assert "```{mermaid}" not in html and "```{mermaid}" not in pdf
     cover = (staged / "pdf/rna-cover.typ").read_text()
     assert config["project"]["client"] in cover
     assert config["report"]["title"] in cover
@@ -48,7 +50,7 @@ def test_pdf_has_own_content_and_print_layout(tmp_path):
     for label in ("项目编号", "核心比较组", "报告引擎"):
         assert label in cover
     assert f"ProjectID: {config['project']['project_id']}" in cover
-    assert "BioReport: v2.0.0" in cover
+    assert f"BioReport: v{bioreport.__version__}" in cover
     assert f"FlowVersion: {config['project']['pipeline_version']}" in cover
     print_style = (staged / "pdf/print-style.typ").read_text()
     assert 'numbering("1-1"' in print_style and 'supplement: [#(if report-language == "en" {"Figure"} else {"图"})#h(' in print_style

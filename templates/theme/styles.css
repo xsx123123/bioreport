@@ -139,3 +139,176 @@ figcaption, .figure-caption {
 }
 
 .report-mermaid-container { position: relative; width: 100%; }
+
+/* Report components share tokens across standalone and website delivery.
+   Specificity intentionally beats legacy per-cell style tags. */
+:root {
+  --br-primary: #2563eb;
+  --br-primary-dark: #203a5f;
+  --br-text: #334155;
+  --br-muted: #52657d;
+  --br-border: #e2e8f0;
+  --br-surface: #fff;
+  --br-surface-soft: #f8fafc;
+  --br-surface-hover: #eff6ff;
+}
+:root[data-report-theme="dark"] {
+  --br-primary: #93c5fd;
+  --br-primary-dark: #e2e8f0;
+  --br-text: #d5dce6;
+  --br-muted: #a1b0c4;
+  --br-border: #364150;
+  --br-surface: #171c24;
+  --br-surface-soft: #222a35;
+  --br-surface-hover: #293442;
+}
+#quarto-document-content .cell,
+#quarto-document-content .cell-output-display,
+#quarto-document-content .report-data-table,
+#quarto-document-content .dataTables_wrapper,
+#quarto-document-content .dt-container {
+  min-width: 0;
+  max-width: 100%;
+}
+#quarto-document-content .cell-output-display { display: block; }
+#quarto-document-content .dataTables_scrollBody,
+#quarto-document-content .dt-scroll-body { overflow-x: auto !important; }
+#quarto-document-content table.dataTable thead th {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  min-width: 7rem;
+  text-transform: none;
+  letter-spacing: normal;
+  background: var(--br-surface-soft) !important;
+  color: var(--br-primary-dark) !important;
+  padding: .65rem .75rem !important;
+  border-bottom: 1px solid var(--br-border) !important;
+  font-size: .82rem !important;
+}
+#quarto-document-content table.dataTable tbody td {
+  background: var(--br-surface) !important;
+  color: var(--br-text) !important;
+  padding: .55rem .75rem !important;
+  font-size: .86rem !important;
+  text-align: left !important;
+  border-bottom: 1px solid var(--br-border) !important;
+}
+#quarto-document-content table.dataTable tbody tr:nth-child(even) td {
+  background: var(--br-surface-soft) !important;
+}
+#quarto-document-content table.dataTable tbody tr:hover td {
+  background: var(--br-surface-hover) !important;
+}
+#quarto-document-content table.dataTable tbody td.dt-type-numeric,
+#quarto-document-content table.dataTable tbody td.dt-right {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+/* Native scrolling owns the header/body relationship. Legacy sticky cells
+   span two separate tables and cannot reliably maintain that relationship. */
+#quarto-document-content table.dataTable td:first-child,
+#quarto-document-content table.dataTable th:first-child {
+  position: static !important;
+}
+#quarto-document-content .dataTables_wrapper > .d-flex,
+#quarto-document-content .dt-container > .d-flex {
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+#quarto-document-content .dataTables_filter input,
+#quarto-document-content .dt-search input {
+  max-width: 100%;
+  min-height: 2.25rem;
+}
+#quarto-document-content :is(button, a, input, select):focus-visible,
+.mermaid-download-btn:focus-visible {
+  outline: 2px solid var(--br-primary);
+  outline-offset: 3px;
+}
+#quarto-document-content .about-project :is(.mission-grid, .feature-grid, .tech-roles) {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  .report-control, .mermaid-download-btn, .about-project .footer-gh {
+    transition: none;
+  }
+}
+
+#quarto-document-content table.dataTable tbody td {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  max-width: 24rem;
+}
+#quarto-document-content table.dataTable tbody td.dt-right {
+  white-space: nowrap !important;
+}
+
+.report-footer { color: var(--br-muted); }
+#quarto-document-content .callout .callout-title-container {
+  color: var(--br-text);
+}
+.callout-header[role="button"]:focus-visible,
+.dt-scroll-body:focus-visible {
+  outline: 2px solid var(--br-primary);
+  outline-offset: 2px;
+}
+#quarto-document-content table.dataTable td a {
+  color: var(--br-primary) !important;
+}
+
+#quarto-document-content table.dataTable td span[style*="#d1d5db" i] {
+  color: var(--br-muted) !important;
+}
+:root[data-report-theme="dark"] #quarto-document-content table.dataTable td span:not([style*="background"]) {
+  color: var(--br-text) !important;
+}
+#quarto-document-content :is(.prov-subtitle, .prov-label, .prov-fp-count, .prov-fp-note) {
+  color: var(--br-muted);
+}
+#quarto-document-content .references,
+#quarto-document-content .csl-entry a {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.report-mermaid-container:focus-visible {
+  outline: 2px solid var(--br-primary);
+  outline-offset: 2px;
+}
+#quarto-document-content .report-mermaid-svg .cluster-label,
+#quarto-document-content .report-mermaid-svg .cluster-label * {
+  color: var(--br-muted) !important;
+  fill: var(--br-muted) !important;
+}
+#quarto-document-content .report-mermaid-svg .node.core .nodeLabel,
+#quarto-document-content .report-mermaid-svg .node.core .nodeLabel * {
+  color: #9a3412 !important;
+  fill: #9a3412 !important;
+}
+.report-chart-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+.report-chart-scroll:focus-visible {
+  outline: 2px solid var(--br-primary);
+  outline-offset: 2px;
+}
+.report-chart-scroll-hint {
+  position: sticky;
+  left: 0;
+  margin: .25rem 0 .5rem;
+  font-size: .8rem;
+  color: var(--br-muted);
+}
+
+/* Reserve a readable table placeholder until viewport-triggered initialization. */
+.report-data-table { min-width: 0; margin-block: 1rem; }
+.report-table-status { color: var(--br-muted, #64748b); font-size: .85rem; margin: .25rem 0 .75rem; }
+.report-table-pending { min-height: 20rem; }
+.report-table-pending::after {
+  content: ""; display: block; height: 12rem; border: 1px solid var(--br-border, #e2e8f0);
+  border-radius: .4rem;
+  background: repeating-linear-gradient(to bottom, var(--br-surface-soft, #f8fafc) 0 2rem, var(--br-surface, #fff) 2rem 4rem);
+}
