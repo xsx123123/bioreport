@@ -62,3 +62,20 @@ def test_pdf_expression_table_uses_print_path(monkeypatch):
     source=pd.DataFrame({'id':['a'],'value':[1.23456789123]})
     visualize_utils.display_gene_expression_table(source)
     pd.testing.assert_frame_equal(captured[0],source)
+
+
+def test_gene_list_display_keeps_raw_search_and_export_values():
+    import shutil
+    import subprocess
+    import pytest
+    if not shutil.which('node'): pytest.skip('Node.js checks cell rendering')
+    script = 'const render=(' + html_table.GENE_LIST_RENDER_JS + ');' + '''
+const genes = Array.from({length:1000}, (_,i)=>'Solyc'+i).join('/');
+const rendered = render(genes,'display');
+if(!rendered.includes('report-gene-list') || !rendered.includes(genes))throw Error('full list missing');
+for(const type of ['sort','filter','export','type']) {
+ if(render(genes,type)!==genes)throw Error('raw value modified for '+type);
+}
+if(render('<script>&', 'display').includes('<script>'))throw Error('unescaped gene text');
+'''
+    subprocess.run(['node','-e',script],check=True,capture_output=True,text=True)

@@ -15,10 +15,11 @@ The workflow diagram shows the upstream data processing stages. The software tab
 ```{python}
 #| label: setup-import
 #| echo: false
-from bioreport.utils.visualize_utils import load_software_data
+from bioreport.software import software_records, software_source
 from bioreport.utils.report_utils import software_version_table
 from bioreport.config import load_project_metadata
-input_files = load_project_metadata()['input_files']
+workflow_config = load_project_metadata()
+input_files = workflow_config['input_files']
 ```
 
 ```{mermaid}
@@ -32,28 +33,28 @@ graph LR
 
     %% -------------------- Style Library -------------------- %%
     %% Use balanced mid-tone colors. %%
-    
+
     %% Standard nodes: rounded corners and neutral borders. %%
     classDef base fill:#fff,stroke:#7f8c8d,stroke-width:1px,rx:5,ry:5,color:#333;
-    
+
     %% 1. Data flow (blue) %%
     classDef raw fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,rx:5,ry:5,color:#0d47a1;
-    
+
     %% 2. Alignment flow (green) %%
     classDef map fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,rx:5,ry:5,color:#1b5e20;
-    
+
     %% 3. Analysis flow (orange) %%
     classDef core fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,rx:5,ry:5,color:#e65100;
-    
+
     %% 4. Advanced analysis (purple) %%
     classDef adv fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,rx:5,ry:5,color:#4a148c;
-    
+
     %% 5. Delivery: white text on dark gray with a light border. %%
     classDef endNode fill:#37474f,stroke:#cfd8dc,stroke-width:2px,rx:15,ry:15,color:#fff;
 
 
     %% -------------------- Workflow diagram -------------------- %%
-    
+
     %% 1. Read and clean inputs %%
     subgraph S1 ["Step 1: Data Cleaning"]
         direction TB
@@ -105,7 +106,7 @@ graph LR
     %% fill:none = transparent %%
     %% Neutral border visible on light and dark backgrounds. %%
     %% Dashed lines keep the diagram lightweight. %%
-    
+
     style S1 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
     style S2 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
     style S3 fill:none,stroke:#7f8c8d,stroke-width:2px,stroke-dasharray: 5 5,color:#7f8c8d
@@ -118,8 +119,8 @@ graph LR
 ```{python}
 #| label: software-table
 #| echo: false
-sw_file = input_files.get('software_versions_file', '../data/software_versions.yaml')
-df_sw = load_software_data(sw_file)
+sw_file = software_source(workflow_config)
+df_sw = software_records(workflow_config)
 sw_ver_map = software_version_table(df_sw, sw_file)
 ```
 
@@ -128,24 +129,24 @@ sw_ver_map = software_version_table(df_sw, sw_file)
 
 #### Data Preprocessing and Quality Control {#en-data-preprocessing-and-quality-control}
 
-Raw sequencing data were first subjected to comprehensive quality control. The integrity and quality of raw reads were assessed using **`FastQC`** (`{python} sw_ver_map.get('FastQC', 'v0.12.x')`)[@andrews2010fastqc] and **`MultiQC`** (`{python} sw_ver_map.get('MultiQC', 'v1.x')`)[@MultiQC].  Potential cross-species contamination was screened using **`Fastq Screen`** (`{python} sw_ver_map.get('Fastq Screen', 'v0.15.x')`)[@FastQ_Screen].  To obtain high-quality clean reads, adapter sequences and low-quality bases were trimmed using **`Fastp`** (`{python} sw_ver_map.get('Fastp', 'v0.23.x')`) [@chen2018fastp] with default parameters.
+Raw sequencing data were first subjected to comprehensive quality control. The integrity and quality of raw reads were assessed using **`FastQC`** (`{python} sw_ver_map.get('FastQC', 'Not supplied')`)[@andrews2010fastqc] and **`MultiQC`** (`{python} sw_ver_map.get('MultiQC', 'Not supplied')`)[@MultiQC].  Potential cross-species contamination was screened using **`Fastq Screen`** (`{python} sw_ver_map.get('Fastq Screen', 'Not supplied')`)[@FastQ_Screen].  To obtain high-quality clean reads, adapter sequences and low-quality bases were trimmed using **`Fastp`** (`{python} sw_ver_map.get('Fastp', 'Not supplied')`) [@chen2018fastp] with default parameters.
 
 #### Read Alignment and Quantification {#en-read-alignment-and-quantification}
 
-Cleaned reads were aligned to the reference genome using **`STAR`** (`{python} sw_ver_map.get('STAR', 'v2.7.x')`)[@dobin2013star] in two-pass mode to enhance splice junction discovery. Post-alignment processing, including sorting and indexing, was carried out using **`Samtools`** (`{python} sw_ver_map.get('Samtools', 'v1.x')`)[@li2009sequence].  Alignment quality, coverage distribution, and insert sizes were evaluated using **`Qualimap`** (`{python} sw_ver_map.get('Qualimap', 'v2.2.x')`)[@okonechnikov2016qualimap] and Samtools stats. For visualization, coverage tracks (BigWig files) were generated using **`deepTools`** (`{python} sw_ver_map.get('deepTools', 'v3.5.x')`)[@ramirez2014deeptools].  Gene and transcript expression levels were quantified using **`RSEM`** (`{python} sw_ver_map.get('RSEM', 'v1.3.x')`)[@li2011rsem] to calculate expected counts, TPM, and FPKM.
+Cleaned reads were aligned to the reference genome using **`STAR`** (`{python} sw_ver_map.get('STAR', 'Not supplied')`)[@dobin2013star] in two-pass mode to enhance splice junction discovery. Post-alignment processing, including sorting and indexing, was carried out using **`Samtools`** (`{python} sw_ver_map.get('Samtools', 'Not supplied')`)[@li2009sequence].  Alignment quality, coverage distribution, and insert sizes were evaluated using **`Qualimap`** (`{python} sw_ver_map.get('Qualimap', 'Not supplied')`)[@okonechnikov2016qualimap] and Samtools stats. For visualization, coverage tracks (BigWig files) were generated using **`deepTools`** (`{python} sw_ver_map.get('deepTools', 'Not supplied')`)[@ramirez2014deeptools].  Gene and transcript expression levels were quantified using **`RSEM`** (`{python} sw_ver_map.get('RSEM', 'Not supplied')`)[@li2011rsem] to calculate expected counts, TPM, and FPKM.
 
 #### Differential Expression and Functional Analysis {#en-differential-expression-and-functional-analysis}
 
-Differential expression analysis between experimental groups was performed using **`DESeq2`** (`{python} sw_ver_map.get('DESeq2', 'v1.40.x')`)[@love2014moderated] based on the raw count matrix. Volcano plots mark differential genes using the configured raw P-value and $|\log_2(\text{FoldChange})|$ cutoffs. Functional enrichment analyses (GO and KEGG) were conducted using **`clusterProfiler`** (`{python} sw_ver_map.get('clusterProfiler', 'v4.x')`)[@yu2012clusterprofiler]. 
+Differential expression analysis between experimental groups was performed using **`DESeq2`** (`{python} sw_ver_map.get('DESeq2', 'Not supplied')`)[@love2014moderated] based on the raw count matrix. Volcano plots mark differential genes using the configured raw P-value and $|\log_2(\text{FoldChange})|$ cutoffs. Functional enrichment analyses (GO and KEGG) were conducted using **`clusterProfiler`** (`{python} sw_ver_map.get('clusterProfiler', 'Not supplied')`)[@yu2012clusterprofiler].
 
 #### Advanced Downstream Analyses {#en-advanced-downstream-analyses}
 
 To explore transcriptomic complexity, several specialized analyses were performed:
 
-*   **Novel Transcript Discovery**: **`StringTie`** (`{python} sw_ver_map.get('StringTie', 'v2.x')`) was used for de novo transcript assembly[@pertea2020gff], followed by **`GffCompare`** (`{python} sw_ver_map.get('GffCompare', 'v0.12.x')`) to compare with reference genome annotations[@pertea2015stringtie]. 
-*   **Alternative Splicing**: **`rMATS`** (`{python} sw_ver_map.get('rMATS', 'v4.x')`) was used to detect differential alternative splicing events[@wang2024rmats]. 
-*   **Variant Calling**: SNPs and Indels were identified following the **`GATK Best Practices`** (`{python} sw_ver_map.get('GATK', 'v4.x')`) workflow. Analysis steps included Duplicate Marking with **`Picard`** (`{python} sw_ver_map.get('Picard', 'v2.x')`), Base Quality Score Recalibration (BQSR), and variant filtering[@mckenna2010genome]. 
-*   **Gene Fusion**: Potential gene fusion events were detected using **`Arriba`** (`{python} sw_ver_map.get('Arriba', 'v2.x')`) based on STAR alignment results[@uhrig2021accurate]. 
+*   **Novel Transcript Discovery**: **`StringTie`** (`{python} sw_ver_map.get('StringTie', 'Not supplied')`) was used for de novo transcript assembly[@pertea2020gff], followed by **`GffCompare`** (`{python} sw_ver_map.get('GffCompare', 'Not supplied')`) to compare with reference genome annotations[@pertea2015stringtie].
+*   **Alternative Splicing**: **`rMATS`** (`{python} sw_ver_map.get('rMATS', 'Not supplied')`) was used to detect differential alternative splicing events[@wang2024rmats].
+*   **Variant Calling**: SNPs and Indels were identified following the **`GATK Best Practices`** (`{python} sw_ver_map.get('GATK', 'Not supplied')`) workflow. Analysis steps included Duplicate Marking with **`Picard`** (`{python} sw_ver_map.get('Picard', 'Not supplied')`), Base Quality Score Recalibration (BQSR), and variant filtering[@mckenna2010genome].
+*   **Gene Fusion**: Potential gene fusion events were detected using **`Arriba`** (`{python} sw_ver_map.get('Arriba', 'Not supplied')`) based on STAR alignment results[@uhrig2021accurate].
 
 
 ## References

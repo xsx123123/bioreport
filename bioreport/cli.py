@@ -320,6 +320,16 @@ def check_input_files(config: dict, provenance: dict | None = None) -> None:
 
     console.print(table)
 
+    if 'software_versions' in config:
+        required.discard('software_versions_file')
+    if config.get('enrichment'):
+        required.discard('enrichment_dir')
+        if any(registry.canonical(m) in ('rna.results', 'rna.results.enrichment') for m in selected):
+            from .enrichment import validate_enrichment_inputs
+            validate_enrichment_inputs(config)
+    if all_passed and any(registry.canonical(m) == 'rna.workflow' for m in selected):
+        from .software import software_records
+        software_records(config)
     for key in required - files_to_check.keys():
         logger.error(f"Required input is not configured: {key}")
         all_passed = False

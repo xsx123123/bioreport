@@ -20,6 +20,12 @@ NUMBER_RENDER_JS = '''function(data, type) {
     return absolute < 0.001 || absolute >= 1000000 ? value.toExponential(3)
         : new Intl.NumberFormat('en-US', {maximumFractionDigits:4, useGrouping:false}).format(value);
 }'''
+GENE_LIST_RENDER_JS = '''function(data, type) {
+    if (type !== 'display' || data == null) return data;
+    const escaped = String(data).replace(/[&<>"']/g, character =>
+        ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[character]));
+    return '<div class="report-gene-list" tabindex="0">' + escaped + '</div>';
+}'''
 
 
 def stage_table_runtime():
@@ -88,8 +94,10 @@ def show_compact_table(frame):
         'info':'显示 _START_ 至 _END_ 行，共 _TOTAL_ 行', 'infoEmpty':'没有记录',
         'infoFiltered':'（从 _MAX_ 行中筛选）', 'zeroRecords':'没有匹配的记录',
         'emptyTable':'暂无数据', 'paginate':{'first':'首页','previous':'上一页','next':'下一页','last':'末页'}}
+    enrichment = {'Description', 'GeneRatio', 'p.adjust'} <= set(frame.columns)
+    table_class = ' report-enrichment-table' if enrichment else ''
     markup = f'''{css}
-<div class="report-data-table report-table-pending" data-row-count="{len(frame)}">
+<div class="report-data-table report-table-pending{table_class}" data-row-count="{len(frame)}">
 <p class="report-table-status" role="status">{len(frame):,} {'rows' if english else '行'} · <span>{waiting}</span></p>
 <table id="{table_id}" style="width:100%"{dataset}></table>{embedded}
 <script type="module">
@@ -113,11 +121,23 @@ def show_compact_table(frame):
      }} else payload = JSON.parse(region.querySelector('.report-table-data').textContent);
      const numeric = new Set(payload.numeric);
      const numberRender = {NUMBER_RENDER_JS};
+     const geneListRender = {GENE_LIST_RENDER_JS};
      const text = DataTable.render.text();
      const escapeTitle = value => {{const node=document.createElement('span');node.textContent=value;return node.innerHTML;}};
      const columns = payload.columns.map((title,index) => ({{title:escapeTitle(title),
        type:numeric.has(index)?'num':'string', className:numeric.has(index)?'dt-right':'dt-left',
        render:numeric.has(index)?numberRender:text}}));
+     payload.columns.forEach((title,index) => {{
+       if (region.classList.contains('report-enrichment-table')) {{
+         if (title === 'Description') Object.assign(columns[index], {{width:'380px', className:'dt-left report-description-column'}});
+         else if (title === 'ID') Object.assign(columns[index], {{width:'120px', className:'dt-left report-term-id-column'}});
+         else if (numeric.has(index) || ['GeneRatio','BgRatio'].includes(title))
+           Object.assign(columns[index], {{width:'105px', className:'dt-right report-enrichment-number'}});
+       }}
+       if (title.toLowerCase() === 'geneid') Object.assign(columns[index], {{
+         width:'32rem', className:'dt-left report-gene-list-column', render:geneListRender
+       }});
+     }});
      const rawExport = {{orthogonal:'export'}};
      table._reportTable = new DataTable(table, {{data:payload.data,columns,
        deferRender:true, scrollX:true, autoWidth:true, pageLength:10, order:[],

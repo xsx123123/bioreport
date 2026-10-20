@@ -280,27 +280,15 @@ def run_generate(
         output_lines.append(csv_to_markdown_table(target_deg, delimiter=',', max_rows=deg_limit))
         output_lines.append("\n")
 
-    # -- Enrichment --
-    enrichment_dir = safe_resolve_path(input_files.get('enrichment_dir'), config)
-    enrichment_files = [
-        (suffix, selected_result_files(config, enrichment_dir, suffix, comparisons))
-        for suffix in ("_UP.csv", "_DOWN.csv")
-    ]
-    if any(files for _, files in enrichment_files):
-        output_lines.append("## 8. Enrichment Analysis (Top Terms)\n")
-        
-        # Check for UP and DOWN files
-        for suffix, files in enrichment_files:
-            for f in files:
-                direction = "Upregulated" if "UP" in suffix else "Downregulated"
-                output_lines.append(f"### {direction} Genes Enrichment ({f.stem})\n")
-                output_lines.append(csv_to_markdown_table(
-                    f,
-                    delimiter=',',
-                    max_rows=enrichment_limit,
-                    exclude_columns=['geneID']
-                ))
-                output_lines.append("\n")
+    # -- Enrichment: keep database/comparison/direction identities --
+    from bioreport.enrichment import enrichment_results
+    for result in enrichment_results(config, comparisons):
+        output_lines.append(f'## 8. {result.database} Enrichment ({result.comparison}_{result.direction})')
+        if result.status != 'available':
+            output_lines.append(result.status + ': ' + '; '.join(result.messages))
+            continue
+        frame = result.frame(validate=False).drop(columns=['geneID'], errors='ignore').head(enrichment_limit)
+        output_lines.append(frame.to_markdown(index=False))
 
     # 3. Write Output
     final_content = []

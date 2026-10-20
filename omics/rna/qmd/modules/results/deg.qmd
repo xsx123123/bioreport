@@ -6,7 +6,7 @@
 #| label: table-deg-preview
 #| output: asis
 
-display(Markdown("::: {.panel-tabset}"))
+display(Markdown("::: {.panel-tabset .results-comparisons}"))
 
 for comp in comparisons:
     deg_file_key = f"{comp}_DEG.csv"
@@ -27,7 +27,7 @@ display(Markdown(":::"))
 ```{python}
 #| label: fig-volcano-dynamic
 #| output: asis
-display(Markdown("::: {.panel-tabset}"))
+display(Markdown("::: {.panel-tabset .results-comparisons}"))
 for comp in comparisons:
     deg_file_key = f"{comp}_DEG.csv"
     # 使用配置中的 deg_base_dir

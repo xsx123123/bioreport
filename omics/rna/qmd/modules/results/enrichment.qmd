@@ -2,95 +2,13 @@
 
 本节按比较组和上下调方向读取上游已生成的富集结果 CSV，并展示其中提供的 GO、KEGG 等条目；报告本身不重新执行富集计算。点图（Dotplot）按校正后 P 值筛选并展示主要条目，完整输入表仍可在交互表格中查看。
 
-展示各个比较组的上调 (UP) 富集分析结果。
+按 GO/KEGG 数据库、比较组和上调（UP）/下调（DOWN）方向切换查看结果。
 
 ```{python}
 #| label: plot-enrichments-dynamic-up
 #| output: asis
-
-display(Markdown("::: {.panel-tabset}"))
-
-for comp in comparisons:
-    # 这里我们只展示 UP 的富集，如果需要 DOWN，可以再加一层循环或 tab
-    enrich_key = f"{comp}_UP.csv"
-    # 使用配置中的 enrich_base_dir
-    enrich_file = get_file_path(config, enrich_key, local_base_dir=enrich_base_dir)
-
-    if enrich_file and os.path.exists(enrich_file):
-        display(Markdown(f"### {comp} UP"))
-
-        # 1. Table
-        try:
-            df_enrich = pd.read_csv(enrich_file, sep=None, engine='python')
-            display_gene_expression_table(df_enrich)
-        except Exception as e:
-            print(f"Error reading enrichment table: {e}")
-
-        # 2. Dotplot
-        try:
-            fig, config_plot = draw_fancy_dotplot(
-                enrich_file,
-                top_n=enrichment_settings.get('top_n', 20),
-                p_cutoff=enrichment_settings.get('p_cutoff', 0.1),
-                x_col="GeneRatio",
-                y_col="Description",
-                size_col="Count",
-                color_col="p.adjust",
-                height_num=600, width_num=800, scale_num=4
-            )
-            show_figure(fig, config=config_plot)
-        except Exception as e:
-            print(f"Error plotting enrichment dotplot: {e}")
-
-        display_result_ai(f"rna.results.enrichment__{comp}_UP")
-
-    else:
-        display(Markdown(f"### {comp} UP\n\n无可用的上调基因富集结果。"))
-display(Markdown(":::"))
-```
-
-```{python}
-#| label: plot-enrichments-dynamic-DOWN
-#| output: asis
-display(Markdown("::: {.panel-tabset}"))
-for comp in comparisons:
-    # 这里我们只展示 UP 的富集，如果需要 DOWN，可以再加一层循环或 tab
-    enrich_key = f"{comp}_DOWN.csv"
-    # 使用配置中的 enrich_base_dir
-    enrich_file = get_file_path(config, enrich_key, local_base_dir=enrich_base_dir)
-
-    if enrich_file and os.path.exists(enrich_file):
-        display(Markdown(f"### {comp} DOWN"))
-
-        # 1. Table
-        try:
-            df_enrich = pd.read_csv(enrich_file, sep=None, engine='python')
-            display_gene_expression_table(df_enrich)
-        except Exception as e:
-            print(f"Error reading enrichment table: {e}")
-
-        # 2. Dotplot
-        try:
-            fig, config_plot = draw_fancy_dotplot(
-                enrich_file,
-                top_n=enrichment_settings.get('top_n', 20),
-                p_cutoff=enrichment_settings.get('p_cutoff', 0.1),
-                x_col="GeneRatio",
-                y_col="Description",
-                size_col="Count",
-                color_col="p.adjust",
-                height_num=600, width_num=800, scale_num=4
-            )
-            show_figure(fig, config=config_plot)
-        except Exception as e:
-            print(f"Error plotting enrichment dotplot: {e}")
-
-        display_result_ai(f"rna.results.enrichment__{comp}_DOWN")
-
-    else:
-        display(Markdown(f"### {comp} DOWN\n\n无可用的下调基因富集结果。"))
-
-display(Markdown(":::"))
+from bioreport.enrichment_views import render_enrichment
+render_enrichment(project_info, comparisons, display_result_ai, pdf=False, english=False)
 ```
 
 

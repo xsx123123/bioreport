@@ -699,30 +699,21 @@ def Sample_Info_table_modern(df_final: pd.DataFrame) -> None:
         allow_html=True # 必须开，否则 Group 胶囊和数字字体都不显示
     )
 
-def software_version_table(df_sw,sw_file) -> None:
-    if not df_sw.empty and 'Link' in df_sw.columns:
-        # 将软件名包装为链接
-        df_sw['Software'] = df_sw.apply(
-            lambda x: f'<a href="{x["Link"]}" style="text-decoration: none; color: #2980b9; font-weight: bold;">{x["Software"]}</a>', 
-            axis=1
-        )
-        # 移除 Link 列
-        df_display_sw = df_sw.drop(columns=['Link'])
-        # plot_software_table(df_display_sw)
-        plot_software_table_modern(df_display_sw)
-        
-        # 准备后续用于替换文本的字典 (软件名 -> 版本)
-        # 重新读取原始数据因为 plot_software_table 修改了 df_display_sw 的格式可能不方便直接用
-        # 或者直接从原始 df_sw 提取（注意 Software 列已经加了 HTML 标签，最好用原始 YAML 数据）
-        import yaml
-        with open(sw_file, 'r') as f:
-            sw_list = yaml.safe_load(f)
-            # 生成映射字典: {'FastQC': 'v0.12.1', 'Fastp': 'v0.23.4', ...}
-        sw_ver_map = {item['Software']: item['Version'] for item in sw_list}
-    else:
-        sw_ver_map = {}
+def software_version_table(df_sw, sw_file=None):
+    """Render supplied records without reopening an external version file."""
+    if df_sw.empty or not {'Software', 'Version'} <= set(df_sw):
+        return {}
+    versions = dict(zip(df_sw.Software.astype(str), df_sw.Version.astype(str)))
+    shown = df_sw.copy()
+    if 'Link' in shown:
+        from html import escape
+        shown['Software'] = shown.apply(
+            lambda row: f'<a href="{escape(str(row.Link), quote=True)}">{escape(str(row.Software))}</a>'
+            if isinstance(row.Link, str) and row.Link.startswith(('https://', 'http://'))
+            else escape(str(row.Software)), axis=1)
+    plot_software_table_modern(shown.drop(columns=['Link'], errors='ignore'))
+    return versions
 
-    return sw_ver_map
 
 def load_provenance() -> dict:
     """

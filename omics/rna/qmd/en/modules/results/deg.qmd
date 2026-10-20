@@ -8,7 +8,7 @@ Raw-P classification is distinct from FDR control. Original pvalue and padj valu
 ```{python}
 #| label: table-deg-preview
 #| output: asis
-display(Markdown('::: {.panel-tabset}'))
+display(Markdown('::: {.panel-tabset .results-comparisons}'))
 for comp in comparisons:
     deg_file_key = f'{comp}_DEG.csv'
     deg_file = get_file_path(config, deg_file_key, local_base_dir=deg_base_dir)
@@ -23,7 +23,7 @@ display(Markdown(':::'))
 ```{python}
 #| label: fig-volcano-dynamic
 #| output: asis
-display(Markdown('::: {.panel-tabset}'))
+display(Markdown('::: {.panel-tabset .results-comparisons}'))
 for comp in comparisons:
     deg_file_key = f'{comp}_DEG.csv'
     deg_file = get_file_path(config, deg_file_key, local_base_dir=deg_base_dir)

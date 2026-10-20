@@ -86,7 +86,7 @@ def _normalize_legacy_json(data: Dict[str, Any]) -> Dict[str, Any]:
     normalized["input_files"] = data.get("input_files", {})
 
     # If the legacy file already contains new unified keys, preserve them.
-    for key in ("report", "analysis", "ai", "files"):
+    for key in ("report", "analysis", "ai", "files", "schema_version", "path_base", "enrichment", "software_versions"):
         if key in data:
             normalized[key] = data[key]
 
@@ -147,7 +147,7 @@ def load_config(
     # Detect legacy JSON shape and normalize.
     if not isinstance(data, dict):
         raise ValueError(f"Report config must be a JSON/YAML object: {path}")
-    legacy_format = "project_meta" in data and "report" not in data
+    legacy_format = "project_meta" in data and "project" not in data
     if legacy_format:
         data = _normalize_legacy_json(data)
     else:
@@ -181,21 +181,29 @@ def load_config(
     input_files = data["input_files"]
     if "data_dir" in input_files and (not isinstance(input_files["data_dir"], str) or not input_files["data_dir"]):
         raise ValueError(f"input_files.data_dir must be a nonempty path string in {path}")
-    data_dir = Path(input_files["data_dir"]) if "data_dir" in input_files else path.resolve().parent
+    # An explicit path_base declares root-relative delivery paths (RNAFlow v2).
+    # Without it, retain the existing data_dir-relative contract.
+    path_base = data.get("path_base")
+    root = path.resolve().parent
+    if path_base is not None:
+        root = (root / path_base).resolve()
+    data_dir = Path(input_files["data_dir"]) if "data_dir" in input_files else root
     if not data_dir.is_absolute():
-        data_dir = path.resolve().parent / data_dir
+        data_dir = root / data_dir
     data_dir = data_dir.resolve()
     if "data_dir" in input_files:
         # 保留配置中书写的数据目录（交付目录），供报告展示；运行态仍用解析后的绝对路径。
         data["_data_dir"] = str(input_files["data_dir"])
         input_files["data_dir"] = str(data_dir)
+    input_base = root if path_base is not None else data_dir
+    data["_path_base"] = str(input_base)
     for key, value in input_files.items():
         if key == "data_dir":
             continue
         if not isinstance(value, str) or not value:
             raise ValueError(f"input_files.{key} must be a nonempty path string")
         file_path = Path(value)
-        input_files[key] = str((file_path if file_path.is_absolute() else data_dir / file_path).resolve())
+        input_files[key] = str((file_path if file_path.is_absolute() else input_base / file_path).resolve())
 
     files = data.get("files", {})
     if not isinstance(files, dict):
@@ -204,8 +212,14 @@ def load_config(
         if not isinstance(value, str) or not value:
             raise ValueError(f"files.{key} must be a nonempty path string")
         file_path = Path(value)
-        files[key] = str((file_path if file_path.is_absolute() else data_dir / file_path).resolve())
+        files[key] = str((file_path if file_path.is_absolute() else input_base / file_path).resolve())
     data["files"] = files
+    for database in data.get("enrichment", {}).values():
+        for directions in database.get("contrasts", {}).values():
+            for result in directions.values():
+                for key in ("table", "full_table"):
+                    if result.get(key):
+                        result[key] = str((input_base / result[key]).resolve())
 
     prompt_file = data["ai"].get("prompt_file")
     if prompt_file:
@@ -418,6 +432,9 @@ def load_project_metadata(
     meta_info["analysis"] = data.get("analysis", {})
     meta_info["files"] = data.get("files", {})
     meta_info["ai"] = data.get("ai", {})
+    for key in ("enrichment", "software_versions", "schema_version", "_path_base"):
+        if key in data:
+            meta_info[key] = data[key]
     meta_info["_config_path"] = data.get("_config_path", config_path)
 
     return meta_info

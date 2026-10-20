@@ -72,6 +72,13 @@ def build_provenance(config: dict, sections: list) -> dict:
     pipeline_version = project.get("pipeline_version")
     if pipeline_version:
         provenance["pipeline_version"] = pipeline_version
+    if config.get('software_versions'):
+        provenance['software_versions'] = config['software_versions']
+    if config.get('schema_version'):
+        provenance['upstream_schema_version'] = config['schema_version']
+    source = config.get('_config_path')
+    if source and Path(source).is_file():
+        provenance['config_sha256'] = _sha256_file(Path(source))
     return provenance
 
 
@@ -106,6 +113,14 @@ def input_manifest(config):
                 identity = str(candidate.resolve())
                 if identity not in entries:
                     entries[identity] = artifact_record(candidate, role, display_path(str(candidate), config))
+    # Explicit enrichment sources need not live inside a declared input directory.
+    from bioreport.enrichment import enrichment_results
+    if config.get('enrichment'):
+        for result in enrichment_results(config):
+            for value in (result.path, result.full_table):
+                if value and Path(value).is_file():
+                    candidate = Path(value).resolve()
+                    entries.setdefault(str(candidate), artifact_record(candidate, result.result_id, display_path(str(candidate), config)))
     return list(entries.values())
 
 

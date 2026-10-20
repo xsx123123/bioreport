@@ -13,49 +13,6 @@ Long labels may require multiple panels, which retain a shared color and bubble 
 ```{python}
 #| label: plot-enrichments-dynamic-up
 #| output: asis
-display(Markdown('::: {.panel-tabset}'))
-for comp in comparisons:
-    enrich_key = f'{comp}_UP.csv'
-    enrich_file = get_file_path(config, enrich_key, local_base_dir=enrich_base_dir)
-    if enrich_file and os.path.exists(enrich_file):
-        display(Markdown(f'### {comp} UP'))
-        try:
-            df_enrich = pd.read_csv(enrich_file, sep=None, engine='python')
-            display_gene_expression_table(df_enrich)
-        except Exception as e:
-            print(f'Error reading enrichment table: {e}')
-        try:
-            fig, config_plot = draw_fancy_dotplot(enrich_file, top_n=enrichment_settings.get('top_n', 20), p_cutoff=enrichment_settings.get('p_cutoff', 0.1), x_col='GeneRatio', y_col='Description', size_col='Count', color_col='p.adjust', height_num=600, width_num=800, scale_num=4)
-            show_figure(fig, config=config_plot)
-        except Exception as e:
-            print(f'Error plotting enrichment dotplot: {e}')
-        display_result_ai(f'rna.results.enrichment__{comp}_UP')
-    else:
-        display(Markdown(f'### {comp} UP\n\nNo upregulated gene enrichment results are available.'))
-display(Markdown(':::'))
-```
-
-```{python}
-#| label: plot-enrichments-dynamic-DOWN
-#| output: asis
-display(Markdown('::: {.panel-tabset}'))
-for comp in comparisons:
-    enrich_key = f'{comp}_DOWN.csv'
-    enrich_file = get_file_path(config, enrich_key, local_base_dir=enrich_base_dir)
-    if enrich_file and os.path.exists(enrich_file):
-        display(Markdown(f'### {comp} DOWN'))
-        try:
-            df_enrich = pd.read_csv(enrich_file, sep=None, engine='python')
-            display_gene_expression_table(df_enrich)
-        except Exception as e:
-            print(f'Error reading enrichment table: {e}')
-        try:
-            fig, config_plot = draw_fancy_dotplot(enrich_file, top_n=enrichment_settings.get('top_n', 20), p_cutoff=enrichment_settings.get('p_cutoff', 0.1), x_col='GeneRatio', y_col='Description', size_col='Count', color_col='p.adjust', height_num=600, width_num=800, scale_num=4)
-            show_figure(fig, config=config_plot)
-        except Exception as e:
-            print(f'Error plotting enrichment dotplot: {e}')
-        display_result_ai(f'rna.results.enrichment__{comp}_DOWN')
-    else:
-        display(Markdown(f'### {comp} DOWN\n\nNo downregulated gene enrichment results are available.'))
-display(Markdown(':::'))
+from bioreport.enrichment_views import render_enrichment
+render_enrichment(project_info, comparisons, display_result_ai, pdf=False, english=True)
 ```

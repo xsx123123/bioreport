@@ -49,20 +49,16 @@ overview.append(f"Samples and QC: {metric('样本数')} samples / {metric('分�
 if not comparisons_summary.empty:
     for _, result in comparisons_summary.iterrows():
         overview.append(f"Differential expression: {result['比较组']} at raw P<{summary_config.get('analysis', {}).get('deg', {}).get('pvalue_threshold', 0.05):g}, |log2FC|>{summary_config.get('analysis', {}).get('deg', {}).get('log2fc_threshold', 1.0):g} criteria: {result['满足阈值差异基因']} (upregulated {result['上调']}, downregulated {result['下调']}); additionally {result['padj<0.05 基因数']} genes meet padj<0.05 without a log2FC cutoff.")
-    from pathlib import Path
-    from bioreport.utils.report_utils import get_file_path
-    enrich_dir = summary_config['input_files'].get('enrichment_dir')
+    from bioreport.enrichment import enrichment_results
     cues = []
-    if enrich_dir:
-        for direction, label in [('UP', 'Upregulated'), ('DOWN', 'Downregulated')]:
-            path = get_file_path({'files': summary_config.get('files', {})}, f"{comparisons_summary.iloc[0]['比较组']}_{direction}.csv", local_base_dir=enrich_dir)
-            if path and Path(path).is_file():
-                frame = pd.read_csv(path)
-                if not frame.empty and {'Description', 'p.adjust'} <= set(frame.columns):
-                    top = frame.sort_values('p.adjust', kind='stable').head(3)
-                    names = ', '.join(top.Description.astype(str))
-                    min_p = pd.to_numeric(frame['p.adjust'], errors='coerce').min()
-                    cues.append(f'{label} enrichment terms: {names}; minimum p.adjust {min_p:.2e}). ')
+    for result in enrichment_results(summary_config, [comparisons_summary.iloc[0]['比较组']]):
+        if result.status != 'available':
+            continue
+        frame = result.frame()
+        top = frame[frame['p.adjust'] < result.cutoff].sort_values('p.adjust', kind='stable').head(3)
+        if not top.empty:
+            names = ', '.join(top.Description.astype(str))
+            cues.append(f'{result.database} {result.direction}: {names} (min p.adjust {top["p.adjust"].min():.2e}).')
     overview.extend(cues)
 overview.append('These are descriptive statistics and input term names, not mechanistic conclusions. Review sample consistency and sequencing depth in the corresponding sections.')
 display(Markdown('\n'.join((f'- {line}' for line in overview))))

@@ -1,0 +1,804 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bioreport.local/schemas/rnaflow-delivery-2.0.0.json",
+  "title": "RNAFlow 2.0.0 lightweight delivery contract",
+  "type": "object",
+  "properties": {
+    "report": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout": {
+          "enum": [
+            "single",
+            "website"
+          ]
+        },
+        "modules": {
+          "$ref": "#/$defs/modules"
+        },
+        "sections": {
+          "$ref": "#/$defs/modules"
+        },
+        "module_definitions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "path"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "params": {
+                "type": "object"
+              },
+              "required_inputs": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "output_format": {
+          "oneOf": [
+            {
+              "enum": [
+                "html",
+                "pdf"
+              ]
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "html",
+                  "pdf"
+                ]
+              }
+            }
+          ]
+        },
+        "theme": {
+          "type": "object",
+          "properties": {
+            "light": {
+              "type": "string"
+            },
+            "dark": {
+              "type": "string"
+            }
+          }
+        },
+        "css": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "navbar_right": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "announcement": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "pet": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 96,
+              "maximum": 240
+            }
+          },
+          "additionalProperties": false
+        },
+        "pdf": {
+          "type": "object",
+          "properties": {
+            "sample_rows": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "qc_rows": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "matrix_rows": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "matrix_columns": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "deg_rows": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "enrichment_rows": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "enrichment_top_n": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "qc_detail": {
+              "enum": [
+                "key",
+                "all"
+              ]
+            },
+            "fonts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "mono_fonts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "hvg_top_n": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "qc_sample_coverage": {
+              "enum": [
+                "warn",
+                "error"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "enable_read_only_lock": {
+              "type": "boolean"
+            },
+            "allow_copy_text": {
+              "type": "boolean"
+            },
+            "allow_print": {
+              "type": "boolean"
+            },
+            "owner_password": {
+              "type": "string",
+              "minLength": 1
+            },
+            "owner_password_env": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": [
+        "project_id"
+      ],
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "client": {
+          "type": "string"
+        },
+        "species": {
+          "type": "string"
+        },
+        "genome_version": {
+          "type": "string"
+        },
+        "pipeline_version": {
+          "type": "string"
+        },
+        "report_date": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "analysis_date": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "total_samples": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "group_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "input_files": {
+      "type": "object",
+      "required": [
+        "data_dir",
+        "qc_file",
+        "mapping_file",
+        "tpm_file",
+        "sample_file",
+        "contrasts_file",
+        "deg_dir",
+        "fastp_stats_file",
+        "fastp_report_dir",
+        "fastq_screen_r1_dir",
+        "fastq_screen_r2_dir",
+        "qualimap_dir"
+      ],
+      "additionalProperties": {
+        "$ref": "#/$defs/relative_path"
+      }
+    },
+    "files": {
+      "$ref": "#/$defs/paths"
+    },
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "deg": {
+          "type": "object",
+          "properties": {
+            "log2fc_threshold": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "pvalue_threshold": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "exclusiveMaximum": 1
+            }
+          }
+        },
+        "enrichment": {
+          "type": "object",
+          "properties": {
+            "p_cutoff": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "top_n": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "heatmap": {
+          "type": "object",
+          "properties": {
+            "top_n": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "pca": {
+          "$ref": "#/$defs/dimensions"
+        },
+        "distribution": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/dimensions"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "threshold": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            }
+          ]
+        },
+        "expression": {
+          "type": "object",
+          "properties": {
+            "preview_rows": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "fastq_screen": {
+          "type": "object",
+          "properties": {
+            "axis": {
+              "enum": [
+                "reads",
+                "percent"
+              ]
+            },
+            "legend": {
+              "type": "object",
+              "properties": {
+                "min_fraction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "max_categories": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "aggregate_other": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "qualimap": {
+          "type": "object",
+          "properties": {
+            "coverage": {
+              "type": "object",
+              "properties": {
+                "drop_zero": {
+                  "type": "boolean"
+                },
+                "yscale": {
+                  "enum": [
+                    "linear",
+                    "log"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "volcano": {
+          "type": "object",
+          "properties": {
+            "annotate_top": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "y_axis": {
+              "type": "object",
+              "properties": {
+                "display_cap": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "ai": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "results",
+            "global",
+            "module"
+          ]
+        },
+        "result_rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "api_key_env": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20000
+        },
+        "deg_limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "enrichment_limit": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "path_base": {
+      "const": "."
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "software_versions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "Software",
+          "Version"
+        ],
+        "properties": {
+          "Software": {
+            "type": "string",
+            "minLength": 1
+          },
+          "Version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "Link": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "enrichment": {
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "go": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "method": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "cutoff": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "cutoff"
+              ]
+            },
+            "contrasts": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "UP": {
+                    "$ref": "#/$defs/enrichment_result"
+                  },
+                  "DOWN": {
+                    "$ref": "#/$defs/enrichment_result"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "UP",
+                  "DOWN"
+                ]
+              },
+              "propertyNames": {
+                "pattern": "^.+_vs_.+$"
+              }
+            }
+          },
+          "additionalProperties": true,
+          "required": [
+            "enabled"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "method",
+                  "parameters",
+                  "contrasts"
+                ]
+              }
+            }
+          ]
+        },
+        "kegg": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "method": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "cutoff": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "cutoff"
+              ]
+            },
+            "contrasts": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "UP": {
+                    "$ref": "#/$defs/enrichment_result"
+                  },
+                  "DOWN": {
+                    "$ref": "#/$defs/enrichment_result"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "UP",
+                  "DOWN"
+                ]
+              },
+              "propertyNames": {
+                "pattern": "^.+_vs_.+$"
+              }
+            }
+          },
+          "additionalProperties": true,
+          "required": [
+            "enabled"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "method",
+                  "parameters",
+                  "contrasts"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "go",
+        "kegg"
+      ]
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "modules": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "paths": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": {
+        "$ref": "#/$defs/relative_path"
+      }
+    },
+    "dimensions": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 100
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 100
+        }
+      }
+    },
+    "enrichment_result": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "available",
+            "no_results",
+            "unavailable",
+            "disabled",
+            "failed"
+          ]
+        },
+        "table": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/relative_path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "full_table": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/relative_path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "term_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "available"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "table"
+            ],
+            "properties": {
+              "table": {
+                "$ref": "#/$defs/relative_path"
+              },
+              "term_count": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "no_results"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "term_count": {
+                "const": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*[\\\\])(?![A-Za-z]:)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    }
+  },
+  "description": "Portable delivery metadata with GO/KEGG CSV references; enrichment rows remain in CSV files.",
+  "required": [
+    "schema_version",
+    "path_base",
+    "project",
+    "input_files",
+    "software_versions",
+    "enrichment"
+  ],
+  "additionalProperties": false
+}

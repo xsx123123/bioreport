@@ -152,7 +152,14 @@ def selected_modules(config: dict) -> list[str]:
             definition = registered[module]
             required_inputs.extend(definition.required_inputs)
             optional_inputs.extend(definition.optional_inputs)
-    missing = sorted({key for key in required_inputs if not input_files.get(key)})
+    from .software import software_records
+    alternatives = set()
+    if 'software_versions' in config and 'software_versions_file' in required_inputs:
+        software_records(config)
+        alternatives.add('software_versions_file')
+    if config.get('enrichment'):
+        alternatives.add('enrichment_dir')
+    missing = sorted({key for key in required_inputs if not input_files.get(key) and key not in alternatives})
     optional_inputs = [key for key in optional_inputs if key in input_files]
     if missing:
         raise ValueError(f"Selected modules require input_files: {', '.join(missing)}")

@@ -35,14 +35,14 @@ display(Markdown(f'The upstream pipeline is RNAFlow (version: {pipeline_version}
 from bioreport.config import load_config, display_path
 from bioreport.modules import selected_modules
 from bioreport.registry import get_registry
-from bioreport.utils.visualize_utils import load_software_data
+from bioreport.software import software_records, software_source
 from bioreport.utils.render_output import show_print_table, typst_note
 from IPython.display import display, Markdown
 import os
 cfg = load_config()
 selected = [get_registry().canonical(m) for m in selected_modules(cfg)]
-path = cfg['input_files'].get('software_versions_file')
-records = load_software_data(path) if path and os.path.isfile(path) else None
+path = software_source(cfg)
+records = software_records(cfg)
 
 def uses(name):
     return any((m == name or m.startswith(name + '.') for m in selected))

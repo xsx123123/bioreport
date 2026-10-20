@@ -184,21 +184,14 @@ def _run_result_interpretations(config, config_path, template_dir, ai_config, mo
                 break
         if chunks:
             results.append((logical_id, label, label, None, "\n\n".join(chunks)[:24000], visual_files.get(logical_id)))
-    for key, suffix, kind in (("deg_dir", "_DEG.csv", "DEG"), ("enrichment_dir", ".csv", "富集")):
+    for key, suffix, kind in (("deg_dir", "_DEG.csv", "DEG"),):
         root = input_path(key)
         if not root or not root.is_dir():
             continue
         for path in sorted(root.glob(f"*{suffix}")):
             name = path.name[:-len(suffix)]
-            if kind == "富集":
-                match = re.fullmatch(r"(.+)_(UP|DOWN)", name)
-                if not match:
-                    continue
-                comparison, direction = match.groups()
-                logical_id = f"rna.results.enrichment__{comparison}_{direction}"
-            else:
-                comparison, direction = name, None
-                logical_id = f"rna.results.deg__{comparison}"
+            comparison, direction = name, None
+            logical_id = f"rna.results.deg__{comparison}"
             try:
                 frame = pd.read_csv(path, sep=None, engine="python")
             except Exception as exc:
@@ -207,6 +200,15 @@ def _run_result_interpretations(config, config_path, template_dir, ai_config, mo
             limit = int(ai_config.get("result_rows", 30 if kind == "DEG" else 20))
             evidence = frame.head(max(1, min(limit, 100))).to_csv(index=False)
             results.append((logical_id, kind, comparison, direction, evidence, visual_files.get(logical_id)))
+    from .enrichment import enrichment_results
+    for result in enrichment_results(config):
+        if result.status != 'available':
+            continue
+        frame = result.frame(validate=False)
+        limit = max(1, min(int(ai_config.get('result_rows', 20)), 100))
+        evidence = frame.head(limit).to_csv(index=False)
+        results.append((result.result_id, f'{result.database} 富集'.strip(), result.comparison,
+                        result.direction, evidence, visual_files.get(result.result_id)))
     # Result cards should be short factual annotations. Disable expensive
     # reasoning by default and cap output unless the user explicitly opts out.
     result_ai_config = dict(ai_config)
@@ -291,6 +293,12 @@ def _visual_result_files(output_dir: Path | None, template_dir: Path) -> dict[st
         source = next((path for path in paths if path.is_file() and not path.is_symlink()), None)
         if source is None:
             continue
+        evidence = figure.get('content') or {}
+        if evidence.get('kind') == 'enrichment':
+            database = evidence.get('database', '')
+            prefix = f'{database}__' if database else ''
+            logical_id = f"rna.results.enrichment__{prefix}{evidence['comparison']}_{evidence['direction']}"
+            candidates.setdefault('by_id', {})[logical_id] = source
         caption = str(figure.get("caption", ""))
         candidates.setdefault("all", []).append((caption, source))
     def first(match):
@@ -315,6 +323,7 @@ def _visual_result_files(output_dir: Path | None, template_dir: Path) -> dict[st
             if match:
                 direction = "UP" if match.group(2) == "上调" else "DOWN"
                 mapped[f"rna.results.enrichment__{match.group(1)}_{direction}"] = path
+    mapped.update(candidates.get('by_id', {}))
     resolved = {}
     png_dir = template_dir / "data" / "ai_visuals"
     for key, source in mapped.items():

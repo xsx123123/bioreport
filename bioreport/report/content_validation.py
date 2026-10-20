@@ -28,8 +28,8 @@ def validate_content(config, manifest):
         evidence = block.get('content')
         if not isinstance(evidence,dict): continue
         if evidence.get('kind')=='software_versions':
-            from bioreport.utils.visualize_utils import load_software_data
-            source=load_software_data(files['software_versions_file'])
+            from bioreport.software import software_records
+            source=software_records(config)
             versions=dict(zip(source.Software.astype(str),source.Version.astype(str)))
             index=block['headers'].index('Version')
             for row in block['rows']:
@@ -59,28 +59,28 @@ def validate_content(config, manifest):
             expected_caption = f'Upregulated {up}, downregulated {down}' if language(config) == 'en' else f'上调 {up}、下调 {down}'
             check('deg_caption:'+evidence['comparison'], expected_caption in block['caption'], True)
         if evidence.get('kind')=='enrichment':
-            identity = (evidence['comparison'],evidence['direction'])
+            identity = (evidence['comparison'],evidence.get('database',''),evidence['direction'])
             enriched[identity]['figures' if block['type']=='figure' else 'tables'].append(block)
     from bioreport.modules import selected_modules
     from bioreport.registry import get_registry
     modules = [get_registry().canonical(m) for m in selected_modules(config)]
-    if any(m in modules for m in ('rna.results','rna.results.enrichment')):
-        from bioreport.utils.report_utils import get_comparisons_from_csv, get_file_path
-        for comp in get_comparisons_from_csv(files['contrasts_file']):
-            for direction in ('UP','DOWN'):
-                source=get_file_path({'files':config.get('files',{})},f'{comp}_{direction}.csv',local_base_dir=files['enrichment_dir'])
-                if source and Path(source).is_file():
-                    frame=pd.read_csv(source)
-                    cfg=config['analysis']['enrichment']
-                    if (frame['p.adjust']<cfg.get('p_cutoff',.1)).any():
-                        enriched[(comp,direction)]
+    from bioreport.enrichment import enrichment_results
+    sources = {r.identity:r for r in enrichment_results(config)} if any(
+        m in modules for m in ('rna.results','rna.results.enrichment')) else {}
+    for identity, result in sources.items():
+        if result.status == 'available':
+            frame = result.frame()
+            if (frame['p.adjust'] < result.cutoff).any():
+                enriched[identity]
     for identity, group in enriched.items():
-        from bioreport.utils.report_utils import get_file_path
-        comp,direction=identity
-        source = get_file_path({'files':config.get('files',{})},f'{comp}_{direction}.csv',local_base_dir=files['enrichment_dir'])
-        frame = pd.read_csv(source)
+        comp,database,direction=identity
+        result = sources.get(identity)
+        if result is None:
+            check('enrichment_unknown_source:'+str(identity), False, True)
+            continue
+        frame = result.frame()
         cfg = config['analysis']['enrichment']
-        selected = frame[frame['p.adjust']<cfg.get('p_cutoff',.1)].sort_values('p.adjust',kind='stable')
+        selected = frame[frame['p.adjust'] < result.cutoff].sort_values('p.adjust',kind='stable')
         valid = parse_gene_ratios(selected.GeneRatio).notna() & pd.to_numeric(selected.Count,errors='coerce').ge(0)
         expected = selected[valid].head(cfg['top_n'])
         actual = [i for b in group['figures'] for i in b['content']['indices']]

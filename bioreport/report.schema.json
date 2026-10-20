@@ -401,7 +401,11 @@
         },
         "scope": {
           "type": "string",
-          "enum": ["results", "global", "module"]
+          "enum": [
+            "results",
+            "global",
+            "module"
+          ]
         },
         "result_rows": {
           "type": "integer",
@@ -447,6 +451,120 @@
           "minimum": 1
         }
       }
+    },
+    "path_base": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "software_versions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "Software",
+          "Version"
+        ],
+        "properties": {
+          "Software": {
+            "type": "string",
+            "minLength": 1
+          },
+          "Version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "Link": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "enrichment": {
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "go": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "method": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "cutoff": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "contrasts": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "UP": {
+                    "$ref": "#/$defs/enrichment_result"
+                  },
+                  "DOWN": {
+                    "$ref": "#/$defs/enrichment_result"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "kegg": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "method": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "cutoff": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "contrasts": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "UP": {
+                    "$ref": "#/$defs/enrichment_result"
+                  },
+                  "DOWN": {
+                    "$ref": "#/$defs/enrichment_result"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
     }
   },
   "$defs": {
@@ -484,6 +602,54 @@
           "minimum": 100
         }
       }
+    },
+    "enrichment_result": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "available",
+            "no_results",
+            "unavailable",
+            "disabled",
+            "failed"
+          ]
+        },
+        "table": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "full_table": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "term_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
     }
   }
 }

@@ -1,0 +1,285 @@
+{
+  "schema_version": "2.0.0",
+  "path_base": ".",
+  "stats": {
+    "total_samples": 15,
+    "group_count": 5
+  },
+  "input_files": {
+    "data_dir": "data",
+    "qc_file": "data/index/multiqc_qc_general_stats.txt",
+    "mapping_file": "data/index/multiqc_mapping_general_stats.txt",
+    "tpm_file": "data/index/merge_rsem_tpm.tsv",
+    "sample_file": "data/index/sample.csv",
+    "fastp_report_dir": "data/fastp_trim_report/multiqc_short_read_trim_report_data",
+    "fastp_stats_file": "data/fastp_trim_report/multiqc_general_stats.txt",
+    "fastq_screen_r1_dir": "data/fastq_screen_report/fastq_screen_multiqc_r1/multiqc_r1_fastq_screen_report_data",
+    "fastq_screen_r2_dir": "data/fastq_screen_report/fastq_screen_multiqc_r2/multiqc_r2_fastq_screen_report_data",
+    "qualimap_dir": "data/QualiMap/multiqc_data",
+    "contrasts_file": "data/index/contrasts.csv",
+    "deg_dir": "data/res/DEG"
+  },
+  "enrichment": {
+    "go": {
+      "enabled": true,
+      "method": "clusterProfiler::enricher",
+      "parameters": {
+        "gene_col": "ENSEMBL",
+        "padj_th": 0.05,
+        "lfc_th": 1,
+        "cutoff": 0.05,
+        "gene_regex": "gene:/"
+      },
+      "contrasts": {
+        "Salt_A_vs_WTSalt": {
+          "UP": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_A_vs_WTSalt_GO_UP.csv",
+            "full_table": null,
+            "term_count": 751,
+            "messages": []
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_A_vs_WTSalt_GO_DOWN.csv",
+            "full_table": null,
+            "term_count": 858,
+            "messages": []
+          }
+        },
+        "Salt_B_vs_WTSalt": {
+          "UP": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_B_vs_WTSalt_GO_UP.csv",
+            "full_table": null,
+            "term_count": 885,
+            "messages": []
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_B_vs_WTSalt_GO_DOWN.csv",
+            "full_table": null,
+            "term_count": 898,
+            "messages": []
+          }
+        },
+        "Salt_C_vs_WTSalt": {
+          "UP": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_C_vs_WTSalt_GO_UP.csv",
+            "full_table": null,
+            "term_count": 870,
+            "messages": []
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_C_vs_WTSalt_GO_DOWN.csv",
+            "full_table": null,
+            "term_count": 926,
+            "messages": []
+          }
+        },
+        "Salt_A_vs_WT1Salt": {
+          "UP": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_A_vs_WT1Salt_GO_UP.csv",
+            "full_table": null,
+            "term_count": 821,
+            "messages": []
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_A_vs_WT1Salt_GO_DOWN.csv",
+            "full_table": null,
+            "term_count": 973,
+            "messages": []
+          }
+        },
+        "Salt_B_vs_WT1Salt": {
+          "UP": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_B_vs_WT1Salt_GO_UP.csv",
+            "full_table": null,
+            "term_count": 796,
+            "messages": []
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_B_vs_WT1Salt_GO_DOWN.csv",
+            "full_table": null,
+            "term_count": 922,
+            "messages": []
+          }
+        },
+        "Salt_C_vs_WT1Salt": {
+          "UP": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_C_vs_WT1Salt_GO_UP.csv",
+            "full_table": null,
+            "term_count": 788,
+            "messages": []
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_C_vs_WT1Salt_GO_DOWN.csv",
+            "full_table": null,
+            "term_count": 954,
+            "messages": []
+          }
+        }
+      }
+    },
+    "kegg": {
+      "enabled": true,
+      "method": "clusterProfiler::enrichKEGG",
+      "parameters": {
+        "gene_col": "ENSEMBL",
+        "padj_th": 0.05,
+        "lfc_th": 1,
+        "cutoff": 0.05,
+        "organism": "sly",
+        "id_mapping": "id_map",
+        "min_gs": 10,
+        "max_gs": null,
+        "plot": false
+      },
+      "contrasts": {
+        "Salt_A_vs_WTSalt": {
+          "UP": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_A_vs_WTSalt_KEGG_UP_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_A_vs_WTSalt_KEGG_UP_enrichments_full.csv",
+            "term_count": 15,
+            "messages": []
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_A_vs_WTSalt_KEGG_DOWN_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_A_vs_WTSalt_KEGG_DOWN_enrichments_full.csv",
+            "term_count": 4,
+            "messages": []
+          }
+        },
+        "Salt_B_vs_WTSalt": {
+          "UP": {
+            "status": "no_results",
+            "table": "data/res/Enrichments/Salt_B_vs_WTSalt_KEGG_UP_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_B_vs_WTSalt_KEGG_UP_enrichments_full.csv",
+            "term_count": 0,
+            "messages": [
+              "No significant KEGG enrichment"
+            ]
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_B_vs_WTSalt_KEGG_DOWN_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_B_vs_WTSalt_KEGG_DOWN_enrichments_full.csv",
+            "term_count": 24,
+            "messages": []
+          }
+        },
+        "Salt_C_vs_WTSalt": {
+          "UP": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_C_vs_WTSalt_KEGG_UP_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_C_vs_WTSalt_KEGG_UP_enrichments_full.csv",
+            "term_count": 5,
+            "messages": []
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_C_vs_WTSalt_KEGG_DOWN_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_C_vs_WTSalt_KEGG_DOWN_enrichments_full.csv",
+            "term_count": 17,
+            "messages": []
+          }
+        },
+        "Salt_A_vs_WT1Salt": {
+          "UP": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_A_vs_WT1Salt_KEGG_UP_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_A_vs_WT1Salt_KEGG_UP_enrichments_full.csv",
+            "term_count": 19,
+            "messages": []
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_A_vs_WT1Salt_KEGG_DOWN_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_A_vs_WT1Salt_KEGG_DOWN_enrichments_full.csv",
+            "term_count": 11,
+            "messages": []
+          }
+        },
+        "Salt_B_vs_WT1Salt": {
+          "UP": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_B_vs_WT1Salt_KEGG_UP_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_B_vs_WT1Salt_KEGG_UP_enrichments_full.csv",
+            "term_count": 6,
+            "messages": []
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_B_vs_WT1Salt_KEGG_DOWN_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_B_vs_WT1Salt_KEGG_DOWN_enrichments_full.csv",
+            "term_count": 26,
+            "messages": []
+          }
+        },
+        "Salt_C_vs_WT1Salt": {
+          "UP": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_C_vs_WT1Salt_KEGG_UP_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_C_vs_WT1Salt_KEGG_UP_enrichments_full.csv",
+            "term_count": 6,
+            "messages": []
+          },
+          "DOWN": {
+            "status": "available",
+            "table": "data/res/Enrichments/Salt_C_vs_WT1Salt_KEGG_DOWN_enrichments.csv",
+            "full_table": "data/res/Enrichments/Salt_C_vs_WT1Salt_KEGG_DOWN_enrichments_full.csv",
+            "term_count": 20,
+            "messages": []
+          }
+        }
+      }
+    }
+  },
+  "project": {
+    "project_id": "X101SC26098749-Z01-J001",
+    "client": "jzhang",
+    "species": "Solanum lycopersicum",
+    "genome_version": "ITAG4.1",
+    "pipeline_version": "0.2.0",
+    "analysis_date": "2026-10-20"
+  },
+  "software_versions": [
+    {
+      "Software": "fastp",
+      "Version": "1.0.1"
+    },
+    {
+      "Software": "Samtools",
+      "Version": "1.22.1"
+    },
+    {
+      "Software": "FastQ Screen",
+      "Version": "0.16.0"
+    },
+    {
+      "Software": "MultiQC",
+      "Version": "1.31"
+    }
+  ],
+  "ai": {
+    "enabled": false
+  },
+  "report": {
+    "type": "rna-seq",
+    "layout": "single",
+    "output_format":[
+      "html",
+      "pdf"
+    ]
+  }
+}

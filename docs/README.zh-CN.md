@@ -18,7 +18,8 @@ html 示例报告
 
 ## ✨ 核心功能
 
-- **统一配置**：JSON 或 YAML 驱动报告类型、标题、导航、章节、AI、分析参数和交付格式；`configs/report.example.json` 展示配置结构，`bioreport/report.schema.json` 定义字段类型与参数范围，`input_files` 中的相对路径以 `data_dir` 为根。
+- **统一配置**：JSON 或 YAML 驱动报告类型、标题、导航、章节、AI、分析参数和交付格式；`configs/report.example.json` 展示配置结构，`bioreport/report.schema.json` 定义字段类型与参数范围。未声明 `path_base` 时输入路径相对于 `data_dir`；RNAFlow 新交付使用显式 `path_base: "."`，路径相对于 JSON 所在目录。
+- **RNAFlow 精简交付**：[JSON 规范](RNAFlow-JSON规范.md)、[独立 Schema](../configs/rnaflow.delivery.schema.json) 和 [示例配置](../configs/report.rnaflow.example.json) 定义 GO/KEGG CSV 路径引用与内嵌软件版本，无需在 JSON 中保存完整富集条目。
 - **模块组合**：通用引擎通过 `report.modules` 按顺序组合 `index`、`workflow`、`provenance`、`ai`、`about` 等共享模块；当前内置的 `qc.*`、`results.*` 细分模块（如 `qc.fastp`、`results.deg`、`results.enrichment`）属于 RNA-seq 模板。其他组学或自定义流程可通过 `report.module_definitions` 引用外部 QMD，后续将逐步补充各组学的原生模块、数据契约和分析组件。
 - **双格式输出**：通用引擎支持 `report.output_format: [html, pdf]` 生成 HTML 和 PDF；HTML 保留 Plotly/Itables 交互能力，PDF 使用静态图和 Typst 排版，并支持 PDF 语义与版式校验。当前 RNA-seq 单页模板提供六个导航页面，其他组学将沿用同一交付接口并使用各自的章节模板。
 - **多报告变体**：同一套数据和代码可输出完整版、精简版、无 AI 版等报告，并可通过模块列表和 PDF 参数控制内容密度。

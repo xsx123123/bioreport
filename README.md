@@ -19,6 +19,7 @@ The same project configuration can produce interactive HTML and print-ready PDF 
 ## Features
 
 - **Unified configuration**: JSON or YAML controls report metadata, modules, analysis parameters, AI, and output formats.
+- **RNAFlow delivery contract**: [JSON specification](docs/RNAFlow-JSON规范.md), [standalone Schema](configs/rnaflow.delivery.schema.json), and [lightweight example](configs/report.rnaflow.example.json) define portable GO/KEGG CSV references and inline software versions.
 - **Composable modules**: The engine composes shared modules such as `index`, `workflow`, `provenance`, `ai`, and `about`. The built-in `qc.*` and `results.*` modules, including `qc.fastp`, `results.deg`, and `results.enrichment`, are currently RNA-seq-specific. Other omics workflows can use external QMD modules through `report.module_definitions`; native modules, data contracts, and analysis components for additional omics types are planned.
 - **HTML and PDF delivery**: The engine supports `report.output_format: [html, pdf]` for HTML and Typst-based PDF delivery. The current RNA-seq single-page template exposes six navigable pages; other omics types will use the same delivery interface with their own chapter templates.
 - **Interactive HTML**: Plotly figures and searchable Itables tables are embedded for offline use.

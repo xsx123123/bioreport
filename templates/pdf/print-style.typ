@@ -35,6 +35,9 @@
 }
 #show heading.where(level: 2): it => block(sticky: true, above: 5mm, below: 3mm)[#text(size: 14pt, fill: rgb("#24476a"), weight: "bold")[#it]]
 #show heading.where(level: 3): it => block(sticky: true, above: 3mm, below: 2mm)[#text(size: 11pt, weight: "bold")[#it]]
+#show heading.where(level: 4): it => block(sticky: true, above: 3mm, below: 2mm)[#text(size: 10.5pt, weight: "bold")[#it]]
+#show heading.where(level: 5): it => block(sticky: true, above: 2mm, below: 1.5mm)[#text(size: 10.5pt, weight: "bold")[#it]]
+#show heading.where(level: 6): it => block(sticky: true, above: 2mm, below: 1.5mm)[#text(size: 10.5pt, weight: "bold")[#it]]
 #show figure.caption: set text(size: 9pt, fill: rgb("#53636a"))
 #show cite: it => { metadata("bioreport-citation"); it }
 #show bibliography: it => context {
@@ -130,10 +133,23 @@
   block(breakable: not fits, body)
 })
 
-#let report-metrics(items) = grid(columns: (1fr, 1fr, 1fr), gutter: 4mm,
-  ..items.map(item => block(width: 100%, inset: 4mm, fill: rgb("#eaf0f7"), radius: 2mm)[
-    #text(size: 10pt, fill: rgb("#53636a"), item.at(0))
-    #linebreak()
-    #text(size: 21pt, weight: "bold", fill: rgb("#24476a"), item.at(1))
+#let report-metrics(items) = layout(size => {
+  if items.len() == 0 { return [] }
+  let label-width = (size.width - 8mm) / 3 - 8mm
+  let labels = items.map(item => block(width: label-width)[
+    #set par(justify: false, first-line-indent: 0pt, leading: .45em)
+    #text(size: 10pt, fill: rgb("#53636a"), report-cell(item.at(0)))
   ])
-)
+  let label-height = calc.max(..labels.map(body => measure(body, width: label-width).height))
+  grid(columns: (1fr, 1fr, 1fr), gutter: 4mm,
+    ..items.enumerate().map(((i, item)) => block(width: 100%, breakable: false, inset: 4mm, fill: rgb("#eaf0f7"), radius: 2mm)[
+      #report-observation("metric-" + str(i), "metric", "start")
+      #set par(justify: false, first-line-indent: 0pt)
+      #grid(rows: (label-height, auto), row-gutter: 1.5mm,
+        labels.at(i),
+        [#report-observation("metric-" + str(i), "metric", "value")#text(size: 21pt, weight: "bold", fill: rgb("#24476a"), item.at(1))],
+      )
+      #report-observation("metric-" + str(i), "metric", "end")
+    ])
+  )
+})

@@ -309,6 +309,67 @@ figcaption, .figure-caption {
 
 /* Reserve a readable table placeholder until viewport-triggered initialization. */
 .report-data-table { min-width: 0; margin-block: 1rem; }
+/* Enrichment gene lists retain full values without stretching every row. */
+.report-data-table .report-gene-list-column { min-width: 28rem; width: 32rem; }
+.report-data-table .report-gene-list {
+  width: 32rem; max-width: 32rem; max-height: 6rem; overflow: auto;
+  white-space: normal; overflow-wrap: anywhere; text-align: left;
+  line-height: 1.5; overscroll-behavior: contain;
+}
+.report-data-table .report-gene-list:focus-visible {
+  outline: 2px solid var(--br-primary, #1d5fbf); outline-offset: 2px;
+}
+.enrichment-comparisons > .nav-tabs { flex-wrap: wrap; }
+.enrichment-comparisons > .tab-content { padding: 1rem; border-radius: 0 0 .5rem .5rem; }
+
+/* Results comparison controls: scoped independently of navbar and QC tabs. */
+:root {
+  --br-tab-track: #f1f3f5; --br-tab-text: #495057; --br-tab-active: #ffffff;
+  --br-tab-accent: #1e6fff; --br-tab-hover: rgba(255,255,255,.6);
+  --br-tab-shadow: 0 1px 3px rgba(0,0,0,.12);
+  --br-table-hover: rgba(0,0,0,.03);
+}
+:root[data-report-theme="dark"], :root[data-bs-theme="dark"], body.quarto-dark {
+  --br-tab-track: #212529; --br-tab-text: #c7d0dd; --br-tab-active: #2b3035;
+  --br-tab-accent: #9bc2ff; --br-tab-hover: rgba(255,255,255,.07);
+  --br-tab-shadow: 0 1px 3px rgba(0,0,0,.3);
+  --br-table-hover: rgba(255,255,255,.05);
+}
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav {
+  display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; margin-bottom: 12px;
+  background: var(--br-tab-track); border: 0; border-radius: 10px;
+}
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item { margin: 0; }
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link {
+  border: 0; border-radius: 8px; padding: 6px 14px; font-size: 14px;
+  color: var(--br-tab-text); text-decoration: none; white-space: nowrap;
+  transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
+}
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link:hover { background: var(--br-tab-hover); }
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link.active {
+  background: var(--br-tab-active); color: var(--br-tab-accent); font-weight: 600; box-shadow: var(--br-tab-shadow);
+}
+#quarto-document-content .enrichment-directions > ul.nav { background: transparent; border: 0; gap: 4px; padding: 0; margin-bottom: 12px; }
+#quarto-document-content .enrichment-directions > ul.nav > .nav-item > .nav-link {
+  font-size: 13px; padding: 4px 12px; border: 0; border-bottom: 2px solid transparent;
+  border-radius: 0; color: var(--br-tab-text); background: transparent; text-decoration: none;
+}
+#quarto-document-content .enrichment-directions > ul.nav > .nav-item > .nav-link.active { color: var(--br-tab-accent); border-bottom-color: var(--br-tab-accent); font-weight: 600; }
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons,.enrichment-directions) > ul.nav > .nav-item > .nav-link:focus-visible { outline: 2px solid var(--br-tab-accent); outline-offset: 2px; }
+#quarto-document-content .report-enrichment-table .report-description-column { min-width: 360px; width: 380px; max-width: 420px; white-space: normal; line-height: 1.5; text-align: left !important; }
+#quarto-document-content .report-enrichment-table .report-term-id-column { min-width: 120px; white-space: nowrap; }
+#quarto-document-content .report-enrichment-table .report-enrichment-number { min-width: 90px; max-width: 120px; white-space: nowrap; text-align: right !important; }
+#quarto-document-content .report-enrichment-table table.dataTable tbody td { font-size: 13px !important; }
+#quarto-document-content .report-enrichment-table table.dataTable tbody tr:hover > td { background: var(--br-table-hover) !important; }
+@media (max-width: 767px) {
+  #quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav {
+    flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-inline: contain;
+  }
+  #quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item { flex: 0 0 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link { transition: none; }
+}
 .report-table-status { color: var(--br-muted, #64748b); font-size: .85rem; margin: .25rem 0 .75rem; }
 .report-table-pending { min-height: 20rem; }
 .report-table-pending::after {
