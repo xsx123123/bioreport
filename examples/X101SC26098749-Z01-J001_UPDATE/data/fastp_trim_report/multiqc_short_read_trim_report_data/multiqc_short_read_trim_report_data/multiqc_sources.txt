@@ -1,0 +1,16 @@
+Module	Section	Sample Name	Source
+fastp	all_sections	AC1	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/AC1.trimed.json
+fastp	all_sections	AC2	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/AC2.trimed.json
+fastp	all_sections	AC3	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/AC3.trimed.json
+fastp	all_sections	AC4	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/AC4.trimed.json
+fastp	all_sections	AC5	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/AC5.trimed.json
+fastp	all_sections	AC6	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/AC6.trimed.json
+fastp	all_sections	Salt1	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/Salt1.trimed.json
+fastp	all_sections	Salt2	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/Salt2.trimed.json
+fastp	all_sections	Salt3	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/Salt3.trimed.json
+fastp	all_sections	Salt4	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/Salt4.trimed.json
+fastp	all_sections	Salt5	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/Salt5.trimed.json
+fastp	all_sections	Salt6	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/Salt6.trimed.json
+fastp	all_sections	Salt7	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/Salt7.trimed.json
+fastp	all_sections	Salt8	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/Salt8.trimed.json
+fastp	all_sections	Salt9	/data/jzhang/project/Temp/X101SC26098749-Z01-J001/result/01.workflow/01.qc/short_read_trim/Salt9.trimed.json
