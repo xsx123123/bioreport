@@ -50,6 +50,24 @@ def translate(value, lang=None):
     value = _PATTERN.sub(lambda match: _CATALOG[match.group()], value)
     return value.replace("].", "]. ")
 
+def populate_language_control(soup, button, lang, target):
+    """Share the same accessible language segments across delivery layouts."""
+    button.clear()
+    button.name = 'div'
+    button['class'] = 'report-language-control'
+    button['role'] = 'group'
+    button['aria-label'] = 'Report language' if lang == 'en' else '报告语言'
+    for key in ('href', 'type', 'title', 'data-language-target'):
+        button.attrs.pop(key, None)
+    for code, label in (('zh', '中文'), ('en', 'EN')):
+        segment = soup.new_tag('button', attrs={'type': 'button', 'data-language': code,
+            'aria-pressed': str(code == lang).lower()})
+        segment.string = label
+        if code != lang:
+            segment['data-language-target'] = target
+        button.append(segment)
+
+
 def add_language_switch(path, config, lang, layout='single'):
     """Attach offline-safe navigation between complete language editions."""
     from .config import report_artifact_name
@@ -72,26 +90,9 @@ def add_language_switch(path, config, lang, layout='single'):
         if button is None:
             button = soup.new_tag('button', attrs={'data-report-language':'', 'class':'report-control', 'type':'button'})
             (soup.select_one('.navbar') or soup.body).append(button)
-        button.clear()
-        icon = soup.new_tag('svg', attrs={
-            'class': 'report-language-icon', 'viewBox': '0 0 24 24',
-            'aria-hidden': 'true', 'focusable': 'false',
-        })
-        icon.append(soup.new_tag('circle', attrs={'cx':'12','cy':'12','r':'10'}))
-        icon.append(soup.new_tag('path', attrs={'d':'M2 12h20M12 2a15.3 15.3 0 0 1 0 20M12 2a15.3 15.3 0 0 0 0 20'}))
-        button.append(icon)
-        label = soup.new_tag('span')
-        label.string = '中文' if lang == 'en' else 'English'
-        button.append(label)
-        button['data-language-target'] = target
-        button.name = 'a'
-        button.attrs.pop('type', None)
-        button['href'] = target
-        button['hreflang'] = 'zh-CN' if other == 'zh' else 'en'
-        button['aria-label'] = 'Switch to Chinese' if lang == 'en' else 'Switch to English'
-        button['title'] = button['aria-label']
+        populate_language_control(soup, button, lang, target)
         script = soup.new_tag('script')
-        script.string = 'window.BIOREPORT_LANGUAGE_EDITION = ' + json.dumps(lang) + ';' + "document.addEventListener('click', function(e) { const a = e.target.closest('[data-language-target]'); if (!a || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); e.stopImmediatePropagation(); location.href = a.href + location.hash; }, true);"
+        script.string = 'window.BIOREPORT_LANGUAGE_EDITION = ' + json.dumps(lang) + ';' + "document.addEventListener('click', function(e) { const a = e.target.closest('[data-language-target]'); if (!a || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); e.stopImmediatePropagation(); const change = new CustomEvent('report-language-switch', {cancelable:true}); if (!a.closest('[data-report-language]').dispatchEvent(change)) return; location.href = a.dataset.languageTarget + location.hash; }, true);"
         soup.head.insert(0, script)
         page.write_text(str(soup), encoding='utf-8')
 
@@ -108,6 +109,9 @@ def combine_language_editions(chinese_path, english_path, output_path, title='Bi
 *{{box-sizing:border-box}}html,body{{height:100%;margin:0}}body{{font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#26364a;background:#f3f7fb}}
 iframe{{position:absolute;inset:0;display:block;width:100%;height:100%;border:0;background:#fff}}
 iframe[hidden]{{display:block;visibility:hidden;pointer-events:none}}
+iframe:not([hidden]){{animation:report-edition-in 200ms ease}}
+@keyframes report-edition-in{{from{{opacity:0}}to{{opacity:1}}}}
+@media(prefers-reduced-motion:reduce){{iframe:not([hidden]){{animation:none}}}}
 .loading{{position:absolute;inset:0;z-index:2;display:grid;place-items:center;color:#63748a;background:#fff}}
 .loading[hidden]{{display:none}}
 </style></head><body><div class="loading" id="loading" role="status">正在载入报告...</div><iframe id="report" title="中文报告"></iframe>
@@ -183,11 +187,13 @@ iframe[hidden]{{display:block;visibility:hidden;pointer-events:none}}
       }
       const button = target.contentDocument.querySelector('[data-report-language]');
       if (button) {
-        button.textContent = language === 'zh' ? '中文 / English' : 'English / 中文';
         button.setAttribute('aria-label', language === 'zh' ? '当前语言：中文；切换到 English' : 'Current language: English; switch to 中文');
+        button.addEventListener('report-language-switch', event => { event.preventDefault(); openEdition(language === 'zh' ? 'en' : 'zh').catch(showError); });
         button.onclick = event => {
           event?.preventDefault();
-          openEdition(language === 'zh' ? 'en' : 'zh').catch(showError);
+          const segment = event?.target?.closest('[data-language]');
+          if (event && !segment) return;
+          if (segment?.dataset.language !== language) openEdition(language === 'zh' ? 'en' : 'zh').catch(showError);
         };
       }
       frames.set(language, target);

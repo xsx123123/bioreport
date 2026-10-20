@@ -19,9 +19,9 @@ with sync_playwright() as pw:
   assert not any('plotly.min.js' in n['url'] or 'table-' in n['url'] or '/mermaid/' in n['url'] for n in home_requests)
   result['checks'].append('home excludes Plotly, Mermaid runtime and full DEG data')
   page.screenshot(path=str(a.output/'desktop.png'))
-  t=time.perf_counter();page.locator('a[data-report-language]').focus();page.keyboard.press('Enter');page.wait_for_url('**/site-en-index.html');page.locator('.report-navbar').wait_for();result['timings']['language_switch_s']=time.perf_counter()-t
+  t=time.perf_counter();page.locator('[data-report-language] [aria-pressed="false"]').focus();page.keyboard.press('Enter');page.wait_for_url('**/site-en-index.html');page.locator('.report-navbar').wait_for();result['timings']['language_switch_s']=time.perf_counter()-t
   assert page.locator('html').get_attribute('lang')=='en';result['checks'].append('keyboard language switch and English state')
-  page.locator('a[data-report-language]').click();page.wait_for_url('**/site-zh-index.html')
+  page.locator('[data-report-language] [aria-pressed="false"]').click();page.wait_for_url('**/site-zh-index.html')
   t=time.perf_counter();page.goto(a.url+'/qmd/site-zh-results.html',wait_until='domcontentloaded');page.locator('#quarto-document-content').wait_for();result['timings']['results_visible_s']=time.perf_counter()-t
   table=page.locator('.report-data-table[data-row-count="23075"]');table.scroll_into_view_if_needed();table.locator('table[data-ready=true]').wait_for(timeout=30000);result['timings']['deg_search_ready_s']=time.perf_counter()-t
   node=table.locator('table[data-ready=true]');assert node.evaluate('(n)=>n._reportTable.rows().count()')==23075

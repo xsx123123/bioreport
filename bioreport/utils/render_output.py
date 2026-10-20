@@ -281,12 +281,29 @@ def show_table(table, **kwargs) -> None:
     else:
         # Use DataTables' native scrolling rather than clipping wide matrices.
         kwargs.setdefault('scrollX', True)
+        from .html_table import export_button_text
+        buttons = []
+        for button in kwargs.get('buttons', []):
+            action = {'extend': button} if isinstance(button, str) else dict(button)
+            kind = action.get('extend', '').removesuffix('Html5')
+            if kind in {'copy', 'csv', 'excel'}:
+                action['text'] = export_button_text(kind)
+            buttons.append(action)
+        if 'buttons' in kwargs:
+            kwargs['buttons'] = buttons
         from itables import JavascriptFunction
         kwargs.setdefault('drawCallback', JavascriptFunction("""function() {
             const api = this.api();
             api.table().node()._reportTable = api;
             const scroll = api.table().container().querySelector('.dt-scroll-body, .dataTables_scrollBody');
             if (scroll) {
+                if (!scroll._reportScrollHint) {
+                    const hint = () => scroll.parentElement.classList.toggle('report-scroll-more', scroll.scrollWidth - scroll.clientWidth - scroll.scrollLeft > 2);
+                    scroll.addEventListener('scroll', hint, {passive:true});
+                    if (window.ResizeObserver) new ResizeObserver(hint).observe(scroll);
+                    scroll._reportScrollHint = hint;
+                }
+                requestAnimationFrame(scroll._reportScrollHint);
                 scroll.tabIndex = 0;
                 scroll.setAttribute('role', 'region');
                 scroll.setAttribute('aria-label', 'Scrollable report data table');

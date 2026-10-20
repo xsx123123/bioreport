@@ -13,7 +13,14 @@ function environment(supported = true) {
   const loading = {hidden:false, append(node) {this.retry=node;}};
   let decodes=0;
   function makeFrame() {
-    const button = {attrs:{}, setAttribute(k,v) {this.attrs[k]=v;}};
+    const listeners = {};
+    const button = {attrs:{}, setAttribute(k,v) {this.attrs[k]=v;},
+      addEventListener(name, callback) {listeners[name]=callback;},
+      requestSwitch() {
+        const event={defaultPrevented:false,preventDefault(){this.defaultPrevented=true;}};
+        listeners['report-language-switch'](event);
+        assert(event.defaultPrevented, 'Shell must cancel standalone navigation');
+      }};
     const result = {id:'', hidden:false, assignments:0,
       contentWindow:{location:{hash:''}},
       contentDocument:{documentElement:{dataset:{reportTheme:'light'}},querySelector(sel) {return sel==='[data-report-language]'?button:null;}},
@@ -40,9 +47,16 @@ async function until(check) {
   await until(()=>env.loading.hidden);
   const active=()=>env.document.getElementById('report');
   assert(active().button.attrs['aria-label'].includes('当前语言'));
+  const initialFrame=active();
+  initialFrame.button.onclick({preventDefault(){},target:{closest(){return {dataset:{language:'zh'}};}}});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.strictEqual(active(),initialFrame,'Clicking the active segment must preserve the frame');
+  initialFrame.button.onclick({preventDefault(){},target:{closest(){return null;}}});
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.strictEqual(active(),initialFrame,'Clicking group padding must not switch languages');
   active().contentWindow.location.hash='#report-page-4';
   for(let i=0;i<10;i++) {
-    active().button.onclick();
+    active().button.requestSwitch();
     await until(()=>env.loading.hidden);
     assert(active().source.includes(`lang="${i%2===0?'en':'zh'}`));
     assert.equal(active().contentWindow.location.hash,'#report-page-4');

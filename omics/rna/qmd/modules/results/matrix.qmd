@@ -1,4 +1,4 @@
-### 基因表达矩阵 (Gene Expression Matrix)
+### 基因表达矩阵（Gene Expression Matrix） {#基因表达矩阵-gene-expression-matrix}
 
 在此展示了各样本中所有基因的标准化表达量（TPM）。该矩阵是后续差异分析、热图绘制及功能富集的基础数据。您可以通过表格上方的工具栏进行搜索、筛选，或下载完整数据进行个性化探究。
 

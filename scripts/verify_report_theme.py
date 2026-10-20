@@ -27,7 +27,7 @@ def audit(source, output, axe=None, desktop_only=False, pages=None):
         print('Report loaded', flush=True)
         for language in ['zh', 'en']:
             if language == 'en':
-                page.frame_locator('#report').locator('[data-report-language]').click()
+                page.frame_locator('#report').locator('[data-report-language] [aria-pressed="false"]').click()
                 page.wait_for_function("document.querySelector('#report')?.contentDocument?.documentElement?.lang === 'en'", timeout=120000)
                 page.locator('#loading').wait_for(state='hidden', timeout=120000)
             report = page.locator('#report').element_handle().content_frame()

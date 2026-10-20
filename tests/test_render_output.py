@@ -76,3 +76,21 @@ def test_html_table_includes_offline_assets(monkeypatch):
     assert "S1" in shown[2].data
     for item in shown:
         assert not re.search(r'<(?:script|link|img)[^>]+(?:src|href)=[\'"]https?://', item.data)
+
+
+def test_export_button_presentation_preserves_existing_actions(monkeypatch):
+    monkeypatch.delenv('BIOREPORT_OUTPUT_FORMAT', raising=False)
+    monkeypatch.delenv('BIOREPORT_SHARED_ASSET_DIR', raising=False)
+    monkeypatch.setenv('BIOREPORT_LANGUAGE', 'zh')
+    monkeypatch.setattr(render_output, 'ensure_table_runtime', lambda: None)
+    captured = {}
+    monkeypatch.setattr(render_output, 'show_interactive_table', lambda table, **kwargs: captured.update(kwargs))
+    export = {'extend': 'excelHtml5', 'text': '📊 Excel', 'exportOptions': {'columns': [0]}, 'filename': 'original'}
+    render_output.show_table(pd.DataFrame({'sample': ['S1']}), buttons=['copy', 'csv', export])
+    assert [b['extend'] for b in captured['buttons']] == ['copy', 'csv', 'excelHtml5']
+    assert all('<svg ' in b['text'] for b in captured['buttons'])
+    assert '复制' in captured['buttons'][0]['text']
+    assert captured['buttons'][2]['exportOptions'] == export['exportOptions']
+    assert captured['buttons'][2]['filename'] == 'original'
+    assert export['text'] == '📊 Excel'
+    assert 'report-scroll-more' in str(captured['drawCallback'])

@@ -40,31 +40,36 @@
     const themeButton = document.querySelector('.report-navbar button[data-report-theme]');
     function setLanguage(language) {
       const edition = window.BIOREPORT_LANGUAGE_EDITION;
-      const target = languageButton?.dataset.languageTarget;
+      const target = languageButton?.querySelector('[data-language-target]')?.dataset.languageTarget;
       if (edition && target && language !== edition) {
         try { localStorage.setItem('bioreport.report-language', language); } catch (_) {}
         location.href = target + location.hash;
       }
     }
-    function setTheme(theme) {
+    function setTheme(theme, remember = false) {
       const dark = theme === 'dark';
       document.documentElement.dataset.reportTheme = dark ? 'dark' : 'light';
       document.documentElement.dataset.bsTheme = dark ? 'dark' : 'light';
       document.body.dataset.mode = dark ? 'dark' : 'light';
       if (themeButton) {
-        const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
+        const english = (window.BIOREPORT_LANGUAGE_EDITION || document.documentElement.lang).startsWith('en');
+        const label = english ? (dark ? 'Switch to light mode' : 'Switch to dark mode') : (dark ? '切换到浅色模式' : '切换到深色模式');
+        themeButton.setAttribute('aria-pressed', String(dark));
         themeButton.setAttribute('aria-label', label);
         themeButton.title = label;
         themeButton.querySelector('.report-theme-icon-dark')?.toggleAttribute('hidden', dark);
         themeButton.querySelector('.report-theme-icon-light')?.toggleAttribute('hidden', !dark);
       }
-      try { localStorage.setItem('bioreport.report-theme', dark ? 'dark' : 'light'); } catch (_) {}
+      if (remember) {
+        try { localStorage.setItem('bioreport.report-theme', dark ? 'dark' : 'light'); } catch (_) {}
+      }
     }
-    languageButton?.addEventListener('click', () => {
-      setLanguage(document.documentElement.dataset.reportLanguage === 'en' ? 'zh' : 'en');
+    languageButton?.addEventListener('click', event => {
+      const language = event.target.closest('[data-language]')?.dataset.language;
+      if (language) setLanguage(language);
     });
     themeButton?.addEventListener('click', () => {
-      setTheme(document.documentElement.dataset.reportTheme === 'dark' ? 'light' : 'dark');
+      setTheme(document.documentElement.dataset.reportTheme === 'dark' ? 'light' : 'dark', true);
     });
     if (window.BIOREPORT_LANGUAGE_EDITION) document.documentElement.dataset.reportLanguage = window.BIOREPORT_LANGUAGE_EDITION;
     let savedTheme;
@@ -97,6 +102,26 @@
       window.dispatchEvent(new Event('resize'));
     });
 
+    const toc = document.querySelector('#TOC');
+    const tocTitle = toc?.querySelector('h2');
+    if (tocTitle) tocTitle.textContent = (window.BIOREPORT_LANGUAGE_EDITION || document.documentElement.lang).startsWith('en') ? 'Contents' : '本页目录';
+    const updateToc = () => {
+      const selected = pages.length ? pages.find(page => !page.hidden) : document.querySelector('main');
+      if (!selected || !toc) return;
+      const headings = Array.from(selected.querySelectorAll('h2[id], h3[id], section[id] > h2, section[id] > h3')).filter(heading => heading.getClientRects().length);
+      let active = headings[0];
+      for (const heading of headings) if (heading.getBoundingClientRect().top <= 160) active = heading;
+      for (const link of toc.querySelectorAll('a')) {
+        const target = findTarget(link.hash);
+        const current = Boolean(active && (target === active || target === active.parentElement));
+        link.classList.toggle('report-toc-active', current);
+        if (current) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      }
+    };
+    window.addEventListener('scroll', updateToc, {passive: true});
+    window.addEventListener('hashchange', () => requestAnimationFrame(updateToc));
+    requestAnimationFrame(updateToc);
     if (!pages.length) return;
     // Quarto renders Mermaid at window.load, when inactive pages have no size.
     // Claim these diagrams first and render only after their page becomes visible.
@@ -151,6 +176,7 @@
         else link.removeAttribute('aria-current');
       }
       syncDocumentTitle(selected);
+      requestAnimationFrame(updateToc);
       for (const link of document.querySelectorAll('#TOC a[data-scroll-target]')) {
         const heading = findTarget(link.getAttribute('data-scroll-target'));
         const item = link.closest('li');

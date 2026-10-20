@@ -613,8 +613,10 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             body += _module_ai_slot(canonical, english)
         chapters = [(canonical, heading, body)]
         if canonical == "rna.index":
-            overview, separator, samples = body.partition(("\n## Sample Information" if english else "\n## 样本信息 (Sample Info)"))
-            if separator:
+            sample_heading = r"^## Sample Information(?: \{[^}\n]+\})?$" if english else r"^## 样本信息\s*[（(]Sample Info[）)](?: \{[^}\n]+\})?$"
+            parts = re.split(sample_heading, body, maxsplit=1, flags=re.MULTILINE)
+            if len(parts) == 2:
+                overview, samples = parts
                 chapters = [
                     (canonical, "项目概述", overview),
                     ("rna.sample-info", "样本信息", samples),
@@ -712,8 +714,7 @@ def _report_navigation(pages, tr):
         f'<a href="#{page_id}" aria-controls="{page_id}" class="nav-link">{escape(title)}</a>'
         for page_id, title in pages
     ]
-    menu_links = "\n".join(page_links[:-1])
-    trailing_link = page_links[-1] if page_links else ""
+    menu_links = "\n".join(page_links)
     navigation = (
         '```{=html}\n<nav class="navbar report-navbar" aria-label="Report navigation">\n'
         '<div class="report-brand">'
@@ -732,7 +733,6 @@ def _report_navigation(pages, tr):
         '<svg class="report-theme-icon report-theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.4A8.4 8.4 0 0 1 8.6 3.8 8.5 8.5 0 1 0 20.2 15.4Z"/></svg>'
         '<svg class="report-theme-icon report-theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>'
         '</button>'
-        f'{trailing_link}\n'
         '<a href="https://www.hzau.edu.cn/" target="_blank" rel="noopener noreferrer" aria-label="Huazhong Agricultural University website">'
         '<img src="../logo/Huazhong_Agricultural_University_logo.svg" alt="Huazhong Agricultural University"></a></div>\n'
         '</nav>\n```\n\n'

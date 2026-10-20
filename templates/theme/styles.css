@@ -151,6 +151,8 @@ figcaption, .figure-caption {
   --br-surface: #fff;
   --br-surface-soft: #f8fafc;
   --br-surface-hover: #eff6ff;
+  --br-control-surface: #f1f5f9;
+  --br-control-muted: #64748b;
 }
 :root[data-report-theme="dark"] {
   --br-primary: #93c5fd;
@@ -161,6 +163,8 @@ figcaption, .figure-caption {
   --br-surface: #171c24;
   --br-surface-soft: #222a35;
   --br-surface-hover: #293442;
+  --br-control-surface: var(--br-surface-soft);
+  --br-control-muted: var(--br-muted);
 }
 #quarto-document-content .cell,
 #quarto-document-content .cell-output-display,
@@ -311,4 +315,66 @@ figcaption, .figure-caption {
   content: ""; display: block; height: 12rem; border: 1px solid var(--br-border, #e2e8f0);
   border-radius: .4rem;
   background: repeating-linear-gradient(to bottom, var(--br-surface-soft, #f8fafc) 0 2rem, var(--br-surface, #fff) 2rem 4rem);
+}
+
+/* Compact report preferences; shared by both language editions. */
+.report-navbar .report-menu-right { gap: 8px; align-items: center; }
+.report-navbar .report-menu-right > a:last-child { margin-inline-start: 12px; }
+.report-navbar .report-language-control {
+  display: inline-flex; align-items: center; gap: 0; height: 36px;
+  box-sizing: border-box; padding: 3px; border-radius: 18px;
+  background: var(--br-control-surface); flex-shrink: 0;
+}
+.report-language-control button {
+  border: 0; border-radius: 15px; padding: 0 12px; height: 30px;
+  color: var(--br-control-muted); background: transparent; font: inherit; cursor: pointer;
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+.report-language-control button[aria-pressed="true"] { background: var(--bs-primary, #1d5fbf); color: #fff; }
+.report-navbar .report-theme-control { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 50%; border: 1px solid var(--br-border); }
+.report-theme-icon { animation: report-icon-in 200ms ease; }
+@keyframes report-icon-in { from { transform: rotate(-30deg); opacity: 0; } to { transform: rotate(0); opacity: 1; } }
+#quarto-document-content h1 { font-size: 32px; font-weight: 700; line-height: 1.4; }
+#quarto-document-content h2 { font-size: 24px; font-weight: 600; line-height: 1.4; }
+#quarto-document-content h3 { font-size: 18px; font-weight: 600; line-height: 1.4; }
+html { scroll-behavior: smooth; }
+#TOC a.report-toc-active { color: var(--br-primary); border-left: 2px solid var(--br-primary); }
+#quarto-document-content table.dataTable { margin-block: 0 !important; }
+#quarto-document-content :is(.dt-layout-row, .dataTables_wrapper > .d-flex, .dt-container > .d-flex) { margin-block: 0 8px !important; min-height: 0; }
+#quarto-document-content .dt-scroll { position: relative; }
+#quarto-document-content .dt-scroll.report-scroll-more::after {
+  content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 24px;
+  pointer-events: none; background: linear-gradient(to right, transparent, var(--br-border));
+}
+button.dt-button { height: 32px; border-color: var(--br-border) !important; transition: none; }
+button.dt-button svg { width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  .report-theme-icon { animation: none; }
+  .report-language-control button { transition: none; }
+}
+/* Quarto collapses nested TOC lists; the routed chapter should expose its anchors. */
+#TOC ul.collapse { display: block; }
+.report-control { transition: transform 200ms ease, opacity 200ms ease; }
+.report-language-control button:hover { opacity: .85; }
+.report-language-control button:focus-visible { outline: 2px solid var(--br-primary); outline-offset: 2px; }
+
+button.dt-button:hover { background: var(--br-control-surface) !important; }
+#quarto-document-content button.dt-button {
+  box-sizing: border-box; height: 32px; border-radius: 6px !important;
+  border: 1px solid var(--br-border) !important;
+  background: var(--br-surface) !important; color: var(--br-text) !important;
+  padding: 4px 12px !important;
+}
+#quarto-document-content button.dt-button:hover { background: var(--br-control-surface) !important; }
+#quarto-document-content .dataTables_scroll { position: relative; }
+#quarto-document-content .dataTables_scroll.report-scroll-more::after {
+  content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 24px;
+  pointer-events: none; background: linear-gradient(to right, transparent, var(--br-border));
+}
+#quarto-document-content :is(.dataTables_filter, .dt-search, .dataTables_length, .dt-length, .dt-buttons) {
+  margin-bottom: 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .report-control, .report-language-control button { transition: none; }
 }

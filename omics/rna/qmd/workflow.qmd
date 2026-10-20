@@ -22,7 +22,7 @@ input_files = load_project_metadata()['input_files']
 
 本分析流程涵盖了从原始数据质控、参考基因组比对、表达水平定量到差异表达分析及功能富集的完整环节，确保了分析结果的严谨性与可靠性。
 
-## 流程图 (Pipeline)
+## 流程图（Pipeline） {#流程图-pipeline}
 
 下图直观地展示了本项目的数据处理与分析逻辑流向，涵盖了从原始测序数据到最终生物学结果解读的关键节点。
 
@@ -120,7 +120,7 @@ graph LR
     linkStyle default stroke:#7f8c8d,stroke-width:1px,fill:none;
 ```
 
-## 软件版本 (Software)
+## 软件版本（Software） {#软件版本-software}
 
 本项目所涉及的所有生物信息学软件及其具体版本如下表所示。您可以点击软件名称快速跳转至“详细方法”中对应的分析步骤。
 
@@ -140,21 +140,21 @@ sw_ver_map = software_version_table(df_sw,sw_file)
 
 ::: {.panel-tabset}
 
-## 中文 (Chinese)
+## 中文（Chinese） {#中文-chinese}
 
-#### 数据预处理与质量控制 (Data Preprocessing and Quality Control) {#data-preprocessing-and-quality-control}
+#### 数据预处理与质量控制（Data Preprocessing and Quality Control） {#data-preprocessing-and-quality-control}
 
 原始测序数据首先进行了全面的质量控制。使用 **`FastQC`** (`{python} sw_ver_map.get('FastQC', 'v0.12.x')`)[@andrews2010fastqc]和 **`MultiQC`** (`{python} sw_ver_map.get('MultiQC', 'v1.x')`)评估原始 reads 的完整性和测序质量[@MultiQC]。为了筛查潜在的跨物种污染，使用 **`Fastq Screen`** (`{python} sw_ver_map.get('Fastq Screen', 'v0.15.x')`) 进行了比对检测[@FastQ_Screen]。为获得高质量的洁净数据（clean reads），使用 **`Fastp`** (`{python} sw_ver_map.get('Fastp', 'v0.23.x')`) [@chen2018fastp] 软件在默认参数设置下切除接头序列（adapter）并过滤低质量碱基。
 
-#### 序列比对与表达定量 (Read Alignment and Quantification) {#read-alignment-and-quantification}
+#### 序列比对与表达定量（Read Alignment and Quantification） {#read-alignment-and-quantification}
 
 将清洗后的 reads 比对至参考基因组。比对过程使用 **`STAR`** (`{python} sw_ver_map.get('STAR', 'v2.7.x')`)[@dobin2013star]软件的 two-pass 模式，以增强对剪接位点（splice junction）的发现能力。比对后的 BAM 文件使用 **`Samtools`** (`{python} sw_ver_map.get('Samtools', 'v1.x')`)[@li2009sequence]进行排序（sorting）和构建索引（indexing）。使用 **`Qualimap`** (`{python} sw_ver_map.get('Qualimap', 'v2.2.x')`)[@okonechnikov2016qualimap]和 `Samtools stats` 评估比对质量、覆盖度分布及插入片段大小。为了进行可视化展示，使用 **`deepTools`** (`{python} sw_ver_map.get('deepTools', 'v3.5.x')`) 的 bamCoverage 模块生成了覆盖度轨迹文件（BigWig格式）[@ramirez2014deeptools]。基因和转录本的表达水平使用 **`RSEM`** (`{python} sw_ver_map.get('RSEM', 'v1.3.x')`) 进行定量，计算期望计数（expected counts）、TPM 以及 FPKM 值[@li2011rsem]。
 
-#### 差异表达与功能富集分析 (Differential Expression and Functional Analysis) {#differential-expression-and-functional-analysis}
+#### 差异表达与功能富集分析（Differential Expression and Functional Analysis） {#differential-expression-and-functional-analysis}
 
 基于原始计数矩阵，使用 **`DESeq2`** (`{python} sw_ver_map.get('DESeq2', 'v1.40.x')`)进行实验组间的差异表达分析。报告中的火山图依据配置的原始 P 值和 $|\log_2(\text{FoldChange})|$ 阈值标记差异基因[@love2014moderated]。随后，对差异表达基因进行了基因本体论 (GO) 和 KEGG 通路富集分析，使用的工具包为 **`clusterProfiler`** (`{python} sw_ver_map.get('clusterProfiler', 'v4.x')`)[@yu2012clusterprofiler]。
 
-#### 高级下游分析 (Advanced Downstream Analyses) {#advanced-downstream-analyses}
+#### 高级下游分析（Advanced Downstream Analyses） {#advanced-downstream-analyses}
 
 为深入探索转录组的复杂性，本研究还进行了以下专项分析：
 
@@ -163,7 +163,7 @@ sw_ver_map = software_version_table(df_sw,sw_file)
 *   **变异检测 (Variant Calling)**： 依据 **`GATK Best Practices`** (`{python} sw_ver_map.get('GATK', 'v4.x')`) 流程鉴定 SNP 和 Indel 变异。分析步骤包括使用 **`Picard`** (`{python} sw_ver_map.get('Picard', 'v2.x')`) 进行重复标记 (Duplicate Marking)、碱基质量分数重校正 (BQSR) 以及变异过滤[@mckenna2010genome]。
 *   **基因融合检测 (Gene Fusion)**： 基于 STAR 的比对结果，使用 **`Arriba`** (`{python} sw_ver_map.get('Arriba', 'v2.x')`) 检测潜在的基因融合事件[@uhrig2021accurate]。
 
-## English
+## 英文方法（English） {#english}
 
 #### Data Preprocessing and Quality Control {#en-data-preprocessing-and-quality-control}
 

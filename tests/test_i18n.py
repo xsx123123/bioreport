@@ -22,12 +22,13 @@ def test_language_switch_preserves_page_fragment_and_links_edition(tmp_path):
     add_language_switch(page, config, "zh")
     soup = BeautifulSoup(page.read_text(), "html.parser")
     link = soup.select_one("[data-language-target]")
-    assert link["href"] == "P1_report.en.html"
-    assert link["hreflang"] == "en"
+    assert link["data-language-target"] == "P1_report.en.html"
+    assert link["data-language"] == "en"
+    assert link["aria-pressed"] == "false"
+    assert soup.select_one('[data-language="zh"]')["aria-pressed"] == "true"
     assert "location.hash" in soup.script.text
-    assert link.select_one("svg.report-language-icon") is not None
-    assert link.select_one("span").text == "English"
-    assert link.get("title") == "Switch to English"
+    assert link.text == "EN"
+    assert soup.select_one("[data-report-language]")["role"] == "group"
 
 
 def test_single_html_contains_both_language_editions(tmp_path):
@@ -88,3 +89,23 @@ def test_expected_delivery_manifest_requires_every_rna_format_and_language(tmp_p
     (tmp_path / "P1_report.en.pdf").unlink()
     write_delivery_manifests(config, provenance, tmp_path)
     assert "report_language_coverage" in {e["error"] for e in validate_delivery_manifests(config, tmp_path)["errors"]}
+
+
+def test_website_language_segments_match_the_current_page(tmp_path):
+    from bs4 import BeautifulSoup
+    from bioreport.website import finalize_website
+    qmd = tmp_path / 'qmd'
+    qmd.mkdir()
+    for lang in ('zh', 'en'):
+        (qmd / f'site-{lang}-index.html').write_text(
+            '<html><head></head><body><nav class="report-navbar">'
+            '<button data-report-language>English</button>'
+            '</nav></body></html>', encoding='utf-8')
+    finalize_website(tmp_path, {'report': {'type': 'rna-seq'}})
+    for lang, other in [('zh', 'en'), ('en', 'zh')]:
+        soup = BeautifulSoup((qmd / f'site-{lang}-index.html').read_text(), 'html.parser')
+        group = soup.select_one('[data-report-language]')
+        assert group['role'] == 'group'
+        assert len(group.select('button')) == 2
+        assert group.select_one('[aria-pressed="true"]')['data-language'] == lang
+        assert group.select_one('[aria-pressed="false"]')['data-language-target'] == f'site-{other}-index.html'

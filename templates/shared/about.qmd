@@ -168,7 +168,7 @@ BioReport 作为独立组件运行的同时，与 **CygnusX BioOps** 生态中�
 
 ## 演进规划与致谢
 
-### 演进方向 (Roadmap)
+### 演进方向（Roadmap） {#演进方向-roadmap}
 
 ::: {.roadmap-grid}
 ::: {.roadmap-card}

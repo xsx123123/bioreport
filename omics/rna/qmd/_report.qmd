@@ -22,19 +22,19 @@ format:
     df-print: paged
 ---
 
-# 项目概况 (Project Info)
+# 项目概况（Project Info） {#项目概况-project-info}
 {{< include index.qmd >}}
 
-# 分析流程 (Workflow)
+# 分析流程（Workflow） {#分析流程-workflow}
 {{< include workflow.qmd >}}
 
-# 质量控制 (QC Report)
+# 质量控制（QC Report） {#质量控制-qc-report}
 {{< include qc.qmd >}}
 
-# 分析结果 (Results)
+# 分析结果（Results） {#分析结果-results}
 {{< include results.qmd >}}
 
-# 关于 (About)
+# 关于（About） {#关于-about}
 {{< include about.qmd >}}
 
 ---

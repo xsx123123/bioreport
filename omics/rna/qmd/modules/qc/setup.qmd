@@ -20,7 +20,7 @@ def display_result_ai(result_id):
 ```
 
 
-## 测序质量 (Quality Control)
+## 测序质量（Quality Control） {#测序质量-quality-control}
 
 本部分汇总所选质控模块的测序质量评估结果。
 

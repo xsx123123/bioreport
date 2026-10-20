@@ -261,7 +261,7 @@ def test_selected_result_fragments_keep_shared_setup_once(tmp_path):
     assert "plot-enrichments-dynamic-up" in content
     assert "plot-pca" not in content
     assert "fig-volcano-dynamic" not in content
-    assert "图注说明: Enrichment Dotplot" in content
+    assert "功能富集气泡图图注说明（Enrichment Dotplot）" in content
 
 
 def test_selected_qc_fragments_keep_shared_setup_once(tmp_path):

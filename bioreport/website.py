@@ -6,7 +6,7 @@ import shutil
 
 def finalize_website(directory: Path, config: dict):
     from bs4 import BeautifulSoup
-    from .i18n import languages
+    from .i18n import languages, populate_language_control
     for lang in languages(config):
         for page in (directory / 'qmd').glob(f'site-{lang}-*.html'):
             soup = BeautifulSoup(page.read_text(encoding='utf-8'), 'html.parser')
@@ -23,13 +23,7 @@ def finalize_website(directory: Path, config: dict):
             other = 'en' if lang == 'zh' else 'zh'
             button = soup.select_one('[data-report-language]')
             if button:
-                button.name = 'a'
-                button.attrs.pop('type', None)
-                button['href'] = page.name.replace(f'site-{lang}-', f'site-{other}-')
-                button['data-language-target'] = button['href']
-                button['aria-label'] = f'Current language: {lang}; switch to {other}'
-                button['title'] = button['aria-label']
-                button.string = '中文 / English'
+                populate_language_control(soup, button, lang, page.name.replace(f'site-{lang}-', f'site-{other}-'))
             for link in soup.select('.report-navbar a.nav-link'):
                 if link.get('href') == page.name:
                     link['aria-current'] = 'page'

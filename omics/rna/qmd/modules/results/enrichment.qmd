@@ -1,4 +1,4 @@
-### 富集分析结果 (Enrichments)
+### 富集分析结果（Enrichments） {#富集分析结果-enrichments}
 
 本节按比较组和上下调方向读取上游已生成的富集结果 CSV，并展示其中提供的 GO、KEGG 等条目；报告本身不重新执行富集计算。点图（Dotplot）按校正后 P 值筛选并展示主要条目，完整输入表仍可在交互表格中查看。
 
@@ -116,7 +116,7 @@ display(Markdown(":::"))
 :::
 
 ::: {.callout-note appearance="minimal" icon=false collapse="true"}
-### 图注说明: Enrichment Dotplot (功能富集气泡图)
+### 功能富集气泡图图注说明（Enrichment Dotplot） {#图注说明-enrichment-dotplot-功能富集气泡图}
 
 此气泡图直观展示了显著富集的生物学通路（GO Terms 或 KEGG Pathways）。
 

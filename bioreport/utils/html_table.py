@@ -50,6 +50,13 @@ def show_local_table(frame):
     show_compact_table(frame)
 
 
+def export_button_text(kind):
+    """Present existing export actions without changing their data or callbacks."""
+    label = ('Copy' if language() == 'en' else '复制') if kind == 'copy' else kind.upper() if kind == 'csv' else 'Excel'
+    path = '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>' if kind == 'copy' else '<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>'
+    return '<svg viewBox="0 0 24 24" aria-hidden="true">' + path + '</svg>' + label
+
+
 def show_compact_table(frame):
     payload = json.dumps(compact_payload(frame), ensure_ascii=False, separators=(',', ':'), allow_nan=False)
     digest = hashlib.sha256(payload.encode()).hexdigest()[:20]
@@ -81,7 +88,6 @@ def show_compact_table(frame):
         'info':'显示 _START_ 至 _END_ 行，共 _TOTAL_ 行', 'infoEmpty':'没有记录',
         'infoFiltered':'（从 _MAX_ 行中筛选）', 'zeroRecords':'没有匹配的记录',
         'emptyTable':'暂无数据', 'paginate':{'first':'首页','previous':'上一页','next':'下一页','last':'末页'}}
-    copy_label = 'Copy' if english else '复制'
     markup = f'''{css}
 <div class="report-data-table report-table-pending" data-row-count="{len(frame)}">
 <p class="report-table-status" role="status">{len(frame):,} {'rows' if english else '行'} · <span>{waiting}</span></p>
@@ -116,13 +122,21 @@ def show_compact_table(frame):
      table._reportTable = new DataTable(table, {{data:payload.data,columns,
        deferRender:true, scrollX:true, autoWidth:true, pageLength:10, order:[],
        dom:'<"d-flex justify-content-between align-items-center mb-3"Blf>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
-       buttons:[{{extend:'copy',text:{json.dumps(copy_label)},footer:false,exportOptions:rawExport}},
-                {{extend:'csv',text:'CSV',footer:false,exportOptions:rawExport}}],
+       buttons:[{{extend:'copy',text:{json.dumps(export_button_text('copy'))},footer:false,exportOptions:rawExport}},
+                {{extend:'csv',text:{json.dumps(export_button_text('csv'))},footer:false,exportOptions:rawExport}}],
        language:{json.dumps(locale, ensure_ascii=False)},
        drawCallback:function() {{
          const api=this.api();api.table().node()._reportTable=api;
          const scroll=api.table().container().querySelector('.dt-scroll-body');
-         if(scroll) {{scroll.tabIndex=0;scroll.setAttribute('role','region');
+         if(scroll) {{
+           const hint=()=>scroll.parentElement.classList.toggle('report-scroll-more',scroll.scrollWidth-scroll.clientWidth-scroll.scrollLeft>2);
+           if(!scroll._reportScrollHint) {{
+             scroll.addEventListener('scroll',hint,{{passive:true}});
+             if(window.ResizeObserver) new ResizeObserver(hint).observe(scroll);
+             scroll._reportScrollHint=hint;
+           }}
+           requestAnimationFrame(hint);
+           scroll.tabIndex=0;scroll.setAttribute('role','region');
            scroll.setAttribute('aria-label',{json.dumps('Scrollable report data table' if english else '可横向滚动的数据表格')});}}
        }}
      }});
