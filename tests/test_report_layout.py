@@ -143,9 +143,10 @@ def test_saved_multiqc_html_keeps_qualimap_and_star(monkeypatch):
     directory=root/'examples/rna-seq/data/QualiMap/multiqc_data'
     qc_vis.visualize_multiqc_logs(str(directory), ['QualiMap'])
     assert len(seen)==4 and all(fig.data for fig in seen)
+    assert all(not fig.layout.title.text for fig in seen)
     seen.clear()
     qc_vis.visualize_multiqc_logs(str(directory), ['STAR'])
-    assert len(seen)==1 and 'STAR' in seen[0].layout.title.text
+    assert len(seen)==1 and not seen[0].layout.title.text
 
 
 def test_fastq_screen_reports_missing_samples_instead_of_dropping_bars(tmp_path,monkeypatch):

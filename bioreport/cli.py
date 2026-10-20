@@ -216,10 +216,16 @@ def print_task_overview(config: dict, provenance: dict, output_dir: str) -> None
     console.print(Panel(content, title="Run Overview", title_align="left", border_style="cyan", padding=(0, 1)))
 
 
-def load_config_with_fallback(config_path: str | None) -> dict:
+def load_config_with_fallback(config_path: str | None, *, show_help_on_missing: bool = False) -> dict:
     logger.info(f"Loading configuration: {config_path or 'default search paths'}")
     try:
         return load_config(config_path)
+    except FileNotFoundError as e:
+        if show_help_on_missing and config_path is None:
+            show_help()
+            raise SystemExit(0) from e
+        logger.critical(f"Failed to parse configuration: {e}")
+        sys.exit(1)
     except Exception as e:
         logger.critical(f"Failed to parse configuration: {e}")
         sys.exit(1)
@@ -634,7 +640,10 @@ def main():
         console.print("Copy configs/report.example.json and fill in the project settings.")
         return
 
-    config = load_config_with_fallback(args.config)
+    if args.command == "validate":
+        config = load_config_with_fallback(args.config, show_help_on_missing=True)
+    else:
+        config = load_config_with_fallback(args.config)
     if args.command == "validate":
         try:
             formats = output_formats(config)

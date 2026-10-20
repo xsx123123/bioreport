@@ -24,6 +24,19 @@ def test_validate_resolves_and_checks_input_paths(tmp_path, monkeypatch, capsys)
     assert 'are valid' in capsys.readouterr().out
 
 
+def test_validate_without_config_prints_help(monkeypatch, capsys):
+    monkeypatch.setattr(cli, 'load_config', lambda config_path: (_ for _ in ()).throw(
+        FileNotFoundError('No report config found')
+    ))
+    monkeypatch.setattr(sys, 'argv', ['bioreport', 'validate'])
+
+    with pytest.raises(SystemExit) as error:
+        cli.main()
+
+    assert error.value.code == 0
+    assert 'BioReport' in capsys.readouterr().out
+
+
 @pytest.mark.parametrize('case', ['missing', 'directory', 'unconfigured', 'unknown_module'])
 def test_validate_rejects_invalid_inputs(tmp_path, monkeypatch, case):
     inputs = {'tpm_file': 'missing.tsv'}

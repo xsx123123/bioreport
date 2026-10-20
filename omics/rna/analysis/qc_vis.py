@@ -130,6 +130,12 @@ def _dataset_figure(identifier, plot, dataset):
     return fig, title
 
 
+def _prepare_html_qc_figure(fig):
+    """Keep the report heading as the sole title for HTML QC charts."""
+    fig.update_layout(title=None)
+    return fig
+
+
 def _visualize_from_json(analysis_dir: str, target_modules: Optional[List[str]] = None) -> None:
     """Render interactive plots from a saved MultiQC report, including all stages."""
     path = _saved_multiqc_path(analysis_dir)
@@ -147,6 +153,7 @@ def _visualize_from_json(analysis_dir: str, target_modules: Optional[List[str]] 
                 fig, _ = _prepare_print_qc(fig, identifier, title)
             rendered += 1
             display(Markdown(f'**{title}**'))
+            _prepare_html_qc_figure(fig)
             show_figure(fig, config={'displaylogo':False,'toImageButtonOptions':{
                 'format':'png','filename':identifier,'height':600,'width':1200,'scale':4}})
     if not rendered:
@@ -272,6 +279,7 @@ def visualize_multiqc_logs(analysis_dir: str, target_modules: Optional[List[str]
                         _show_print_qc(fig, item_name, str(fig.layout.title.text or item_name))
                     else:
                         display(Markdown(f"**{module_name}** - **{item_name}** Visualization"))
+                        _prepare_html_qc_figure(fig)
                         show_figure(fig, config=my_config)
                     
                     # --- 显示图注 (Caption) ---
