@@ -6,9 +6,8 @@ FastQ Screen aligns sampled reads to a panel of reference genomes to assess spec
 ```{python}
 #| label: fastq-screen-pair
 #| output: asis
-from bioreport.utils.render_output import figure_group
-with figure_group('fastq-screen-reads'):
-    for read in ('r1', 'r2'):
-        visualize_multiqc_logs(analysis_dir=input_files[f'fastq_screen_{read}_dir'], target_modules=['fastq_screen'])
-        display_result_ai(f'rna.qc.screen__{read.upper()}')
+from omics.rna.analysis.qc_vis import visualize_fastq_screen_pair
+visualize_fastq_screen_pair(input_files['fastq_screen_r1_dir'], input_files['fastq_screen_r2_dir'])
+display_result_ai('rna.qc.screen__R1')
+display_result_ai('rna.qc.screen__R2')
 ```

@@ -15,7 +15,7 @@
 // CJK glyphs need visibly more leading than Typst's Latin-tuned default.
 // 正文两端对齐（justify）+ 首行缩进；标题、列表、代码与表格沿用默认左对齐。
 // 不整体 set align —— 保持段落样式为默认，all:true 的首段缩进才在标题后生效。
-#set par(justify: true, leading: 0.85em, spacing: 1.1em, linebreaks: "optimized",
+#set par(justify: true, leading: 0.75em, spacing: 0.85em, linebreaks: "optimized",
   first-line-indent: (amount: 2em, all: true))
 // 列表缩进对齐正文首行缩进（2em），使条目作为正文的次级层级呈现。
 #set list(indent: 2em)
@@ -53,7 +53,7 @@
 #let report-observation(id, kind, part) = context [#metadata((id: id, kind: kind, part: part, page: here().position().page, y: here().position().y.pt()))<bioreport-layout>]
 #let report-figure(path, caption, ratio, preferred-height: none, id: "figure") = {
   let height = if preferred-height == none { calc.min(166mm * ratio, 190mm) } else { preferred-height }
-  block(sticky: true)[#figure(
+  block(sticky: false)[#figure(
     [#report-observation(id, "figure", "image")#image(path, width: 100%, height: height, fit: "contain")],
     caption: [#report-observation(id, "figure", "caption")#text(caption)], placement: none,
   )]
@@ -66,7 +66,7 @@
   }
 }
 #let report-table(headers, rows, numeric, keep-together: true, note: none, caption: "数据概览", id: "table") = layout(size => {
-  let widths = headers.map(h => if h == "SHA256" { 4fr } else if h in ("Description", "通路名称", "数据目录内路径", "统计口径", "Path Relative to Data Directory", "Definition") { 3fr } else if h in ("Gene ID", "Sample", "样本", "项目", "比较组", "Item", "Comparison") { 1.8fr } else { 1fr })
+  let widths = headers.map(h => if h in ("满足阈值差异基因", "padj<0.05 基因数", "参与检验的基因总数", "DEGs Meeting Cutoffs", "Genes with padj < 0.05", "Genes Tested") { 1.7fr } else if h == "SHA256" { 4fr } else if h in ("Description", "通路名称", "数据目录内路径", "统计口径", "Path Relative to Data Directory", "Definition") { 3fr } else if h in ("Gene ID", "Sample", "样本", "项目", "比较组", "Item", "Comparison") { 1.8fr } else { 1fr })
   let body = [
     #report-table-counter.step()
     #block(width: 100%, sticky: true, below: 2mm)[
@@ -84,14 +84,14 @@
       align: (x, y) => if y == 0 { center } else if numeric.at(x) { right } else { left },
       stroke: (x, y) => (bottom: .35pt + rgb("#dce3ec")),
       fill: (x, y) => if y == 0 { rgb("#315f65") } else if calc.even(y) { rgb("#f1f6f5") } else { rgb("#ffffff") },
-      table.header(repeat: true, ..headers.enumerate().map(((j, h)) => [#if j == 0 { report-observation(id, "table", "header") }#text(weight: "bold", fill: rgb("#ffffff"), report-cell(h))#if j == 0 { report-continuation(id) }])),
+      table.header(repeat: true, ..headers.enumerate().map(((j, h)) => [#if j == 0 { report-observation(id, "table", "header") }#text(weight: "bold", fill: rgb("#ffffff"), report-cell(if h == "满足阈值差异基因" {"阈值内差异基因"} else if h == "参与检验的基因总数" {"检验基因总数"} else {h}))#if j == 0 { report-continuation(id) }])),
       ..rows.enumerate().map(((i, row)) => row.enumerate().map(((j, cell)) =>
         [#if j == 0 { report-observation(id, "table", "row-" + str(i)) }#if headers.at(j) == "SHA256" { text(font: report-mono-fonts, cell) } else { report-cell(cell) }])).flatten(),
     )
   ]
   let fits = measure(body, width: size.width).height <= 225mm
   report-observation(id, "table", if keep-together and fits { "small" } else { "large" })
-  block(breakable: not (keep-together and fits), sticky: keep-together and fits, above: 3mm, below: 3mm)[
+  block(breakable: not (keep-together and fits), sticky: false, above: 3mm, below: 3mm)[
     #body
     #if note != none { v(1.5mm); text(size: 9pt, fill: rgb("#53636a"))[#note] }
   ]
@@ -109,14 +109,14 @@
     #table(columns: (40mm, 58mm, 68mm), inset: (x: 6pt, y: 5pt), align: left,
       stroke: (x, y) => (bottom: .35pt + rgb("#dce3ec")),
       fill: (x, y) => if y == 0 { rgb("#315f65") } else if calc.even(y) { rgb("#f1f6f5") } else { rgb("#ffffff") },
-      table.header(repeat: true, ..headers.enumerate().map(((j, h)) => [#if j == 0 { report-observation(id, "table", "header") }#text(weight: "bold", fill: rgb("#ffffff"), report-cell(h))#if j == 0 { report-continuation(id) }])),
+      table.header(repeat: true, ..headers.enumerate().map(((j, h)) => [#if j == 0 { report-observation(id, "table", "header") }#text(weight: "bold", fill: rgb("#ffffff"), report-cell(if h == "满足阈值差异基因" {"阈值内差异基因"} else if h == "参与检验的基因总数" {"检验基因总数"} else {h}))#if j == 0 { report-continuation(id) }])),
       ..rows.enumerate().map(((i, row)) => row.enumerate().map(((j, cell)) =>
         [#if j == 0 { report-observation(id, "table", "row-" + str(i)) }#if j == 0 { text(size: 6.5pt, report-cell(cell)) } else if j == 2 { text(font: report-mono-fonts, size: 8pt, cell) } else { report-cell(cell) }])).flatten(),
     )
   ]
   let fits = measure(body, width: size.width).height <= 225mm
   report-observation(id, "table", if keep-together and fits { "small" } else { "large" })
-  block(breakable: not (keep-together and fits), sticky: keep-together and fits, above: 3mm, below: 3mm)[
+  block(breakable: not (keep-together and fits), sticky: false, above: 3mm, below: 3mm)[
     #body
     #if note != none { v(1.5mm); text(size: 9pt, fill: rgb("#53636a"))[#note] }
   ]
@@ -126,7 +126,7 @@
 // when it fits a page. Oversized groups flow without reducing typography.
 #let report-figure-group(items, columns: 1) = layout(size => {
   let body = grid(columns: columns, gutter: 4mm, ..items)
-  let fits = measure(body, width: size.width).height <= 225mm
+  let fits = measure(body, width: size.width).height <= 110mm
   block(breakable: not fits, body)
 })
 

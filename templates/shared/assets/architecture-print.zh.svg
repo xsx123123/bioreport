@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="410" viewBox="0 0 900 410"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#52657d"/></marker></defs><rect width="900" height="410" fill="white"/>
+<path d="M285 62 H315" fill="none" stroke="#52657d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M450 100 V140 H150 V165" fill="none" stroke="#52657d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M750 100 V130 H450 V165" fill="none" stroke="#52657d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M285 202 H315" fill="none" stroke="#52657d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M450 240 V305" fill="none" stroke="#52657d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M450 240 V270 H150 V305" fill="none" stroke="#52657d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M585 202 H615" fill="none" stroke="#52657d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<path d="M750 240 V280 H450 V305" fill="none" stroke="#52657d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<path d="M585 342 H615" fill="none" stroke="#52657d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M285 342 H315" fill="none" stroke="#52657d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="15" y="25" width="270" height="75" rx="8" fill="#eff6ff" stroke="#94a3b8"/><text x="150" y="70" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-weight="600" font-size="24" fill="#24476a">JSON / YAML 配置</text>
+<rect x="315" y="25" width="270" height="75" rx="8" fill="#eff6ff" stroke="#94a3b8"/><text x="450" y="70" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-weight="600" font-size="24" fill="#24476a">模块注册与组合</text>
+<rect x="615" y="25" width="270" height="75" rx="8" fill="#eff6ff" stroke="#94a3b8"/><text x="750" y="70" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-weight="600" font-size="24" fill="#24476a">已有分析结果</text>
+<rect x="15" y="165" width="270" height="75" rx="8" fill="#eff6ff" stroke="#94a3b8"/><text x="150" y="210" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-weight="600" font-size="24" fill="#24476a">Quarto / Jupyter</text>
+<rect x="315" y="165" width="270" height="75" rx="8" fill="#eff6ff" stroke="#94a3b8"/><text x="450" y="210" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-weight="600" font-size="24" fill="#24476a">统计汇总与绘图</text>
+<rect x="615" y="165" width="270" height="75" rx="8" fill="#eff6ff" stroke="#94a3b8"/><text x="750" y="210" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-weight="600" font-size="24" fill="#24476a">可选 AI 解读</text>
+<rect x="15" y="305" width="270" height="75" rx="8" fill="#eff6ff" stroke="#94a3b8"/><text x="150" y="350" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-weight="600" font-size="24" fill="#24476a">HTML 交互报告</text>
+<rect x="315" y="305" width="270" height="75" rx="8" fill="#eff6ff" stroke="#94a3b8"/><text x="450" y="350" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-weight="600" font-size="24" fill="#24476a">PDF / Typst 报告</text>
+<rect x="615" y="305" width="270" height="75" rx="8" fill="#eff6ff" stroke="#94a3b8"/><text x="750" y="350" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-weight="600" font-size="24" fill="#24476a">日志与溯源校验</text>
+</svg>

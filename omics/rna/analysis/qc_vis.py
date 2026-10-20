@@ -3,15 +3,37 @@
 
 import os
 import json
+from pathlib import Path
 import plotly.graph_objects as go
 from IPython.display import display, Markdown
 from bioreport.utils.render_output import show_figure, is_pdf
 from typing import Optional, List, Dict, Any
 
+
+
+def _qc_config():
+    from bioreport.config import load_config
+    try:
+        return load_config()
+    except FileNotFoundError:
+        # Standalone plot helpers can operate without a report configuration.
+        return {}
+
+
+def _saved_multiqc_path(directory):
+    """Accept a report data directory or its single wrapper directory."""
+    path = Path(directory)/'multiqc_data.json'
+    if path.is_file():
+        return path
+    candidates = list(Path(directory).rglob('multiqc_data.json'))
+    if len(candidates) > 1:
+        raise ValueError(f'Ambiguous MultiQC report directory: {directory}')
+    return candidates[0] if candidates else path
+
+
 def _percent_axis_enabled() -> bool:
     """横轴口径开关：analysis.fastq_screen.axis = percent | reads（默认 reads）。"""
-    from bioreport.config import load_config
-    axis = load_config().get('analysis', {}).get('fastq_screen', {}).get('axis', 'reads')
+    axis = _qc_config().get('analysis', {}).get('fastq_screen', {}).get('axis', 'reads')
     if axis not in ('reads', 'percent'):
         raise ValueError("analysis.fastq_screen.axis must be 'reads' or 'percent'")
     return axis == 'percent'
@@ -35,8 +57,7 @@ def _to_percent(fig):
 
 def _qualimap_coverage_options() -> Dict[str, Any]:
     """QualiMap 覆盖度曲线展示选项：剔除 0X 无覆盖 bin 与纵轴刻度口径。"""
-    from bioreport.config import load_config
-    options = load_config().get('analysis', {}).get('qualimap', {}).get('coverage', {})
+    options = _qc_config().get('analysis', {}).get('qualimap', {}).get('coverage', {})
     drop_zero = options.get('drop_zero', True)
     yscale = options.get('yscale', 'linear')
     if not isinstance(drop_zero, bool):
@@ -111,7 +132,7 @@ def _dataset_figure(identifier, plot, dataset):
 
 def _visualize_from_json(analysis_dir: str, target_modules: Optional[List[str]] = None) -> None:
     """Render interactive plots from a saved MultiQC report, including all stages."""
-    path = os.path.join(analysis_dir, 'multiqc_data.json')
+    path = _saved_multiqc_path(analysis_dir)
     with open(path, encoding='utf-8') as handle:
         plots = json.load(handle).get('report_plot_data', {})
     rendered = 0
@@ -122,6 +143,8 @@ def _visualize_from_json(analysis_dir: str, target_modules: Optional[List[str]] 
         for dataset in plot.get('datasets', []):
             fig, title = _dataset_figure(identifier, plot, dataset)
             if not fig.data: continue
+            if 'coverage_histogram' in identifier:
+                fig, _ = _prepare_print_qc(fig, identifier, title)
             rendered += 1
             display(Markdown(f'**{title}**'))
             show_figure(fig, config={'displaylogo':False,'toImageButtonOptions':{
@@ -142,7 +165,7 @@ def visualize_multiqc_logs(analysis_dir: str, target_modules: Optional[List[str]
                                                   Value 为 Markdown 格式的说明文本。
     """
     
-    json_path = os.path.join(analysis_dir, 'multiqc_data.json')
+    json_path = _saved_multiqc_path(analysis_dir)
     if os.path.isfile(json_path):
         if is_pdf():
             with open(json_path, encoding='utf-8') as source:
@@ -204,6 +227,7 @@ def visualize_multiqc_logs(analysis_dir: str, target_modules: Optional[List[str]
         modules_to_visualize = found_modules
 
     # --- 🎨 6. 开始绘图 (Standard Method) ---
+    source_written = False
     for module_name in modules_to_visualize:
         
         modules_plots = all_plots.get(module_name, [])
@@ -237,7 +261,8 @@ def visualize_multiqc_logs(analysis_dir: str, target_modules: Optional[List[str]
                     if is_pdf() and hasattr(mqc_plot_obj, 'model_dump'):
                         serialized = mqc_plot_obj.model_dump(mode='json')
                         _visualize_pdf_json({'report_plot_data':{f'{module_name}_{item_name}':serialized}},
-                                            analysis_dir,[module_name])
+                                            analysis_dir,[module_name],emit_source=not source_written)
+                        source_written = True
                         if plot_captions and item_name in plot_captions:
                             from bioreport.utils.render_output import typst_note
                             typst_note(plot_captions[item_name])
@@ -263,87 +288,170 @@ def visualize_multiqc_logs(analysis_dir: str, target_modules: Optional[List[str]
                 print(f"❌ 绘制失败 [{module_name} - {item_name}]: {e}")
 
 
-def _show_print_qc(fig, identifier, title):
-    from bioreport.config import load_config
+def _prepare_print_qc(fig, identifier, title, *, aggregate=True):
     from bioreport.utils.print_theme import plain
-    config = load_config()
+    config = _qc_config()
     detail = config.get('report',{}).get('pdf',{}).get('qc_detail','key')
     key = (str(identifier)+' '+plain(title)).lower()
     if detail != 'all' and not any(value in key for value in [
             'filtered reads', 'filtered_reads', 'sequence quality', 'sequence_quality',
             'mapped reads', 'mapped_reads', 'coverage histogram', 'coverage_histogram',
             'alignment scores', 'alignment_scores', 'star_alignment']):
-        return
+        return None
     coverage_plot = 'coverage histogram' in key or 'coverage_histogram' in key
-    # Coverage curves encode sample identity with color; group identity stays in the legend.
+    aliases = {}
     sample_file = config.get('input_files', {}).get('sample_file')
     if sample_file and os.path.isfile(sample_file):
         import pandas as pd
         from bioreport.utils.print_theme import group_palette
-        sample_palette = ['#4477AA', '#EE6677', '#228833', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB', '#44AA99', '#DDCC77', '#AA4499']
+        from bioreport.utils.pdf_results import ordered_samples
         metadata = pd.read_csv(sample_file)
         if 'group' in metadata:
             palette = group_palette(metadata['group'])
-            aliases = {}
+            order = ordered_samples(metadata)
             for _, row in metadata.iterrows():
-                for column in ['sample','sample_name']:
+                for column in ('sample', 'sample_name'):
                     if column in metadata:
                         aliases[str(row[column])] = (str(row.get('sample_name',row[column])),str(row['group']))
-            for trace_index, trace in enumerate(fig.data):
-                if trace.type == 'scatter' and trace.name in aliases:
-                    sample, group = aliases[trace.name]
-                    if coverage_plot:
-                        trace.line.color = sample_palette[trace_index % len(sample_palette)]
-                        trace.line.dash = 'solid'
-                        trace.name = f'{sample}（组{group}）'
-                    else:
-                        trace.line.color = palette[group]
-                        # Preserve replicate identity through the sample legend.
-                        trace.line.dash = ['solid','dash','dot','dashdot'][list(aliases).index(trace.name)%4]
-                        trace.name = sample
-            from bioreport.utils.pdf_results import ordered_samples
-            order = ordered_samples(metadata)
-            if all(t.type=='scatter' and 'lines' in (t.mode or 'lines') for t in fig.data):
-                fig.data = sorted(fig.data,key=lambda t:next((i for i, sample in enumerate(order) if t.name == sample or t.name.startswith(sample+'（组')),len(order)))
-            if fig.data and all(t.type=='bar' for t in fig.data):
-                def identity(value):
-                    for alias in sorted(aliases,key=len,reverse=True):
-                        if str(value).startswith(alias):
-                            sample, group = aliases[alias]
-                            suffix = str(value)[len(alias):].removesuffix('_screen')
-                            return sample+suffix, order.index(sample) if sample in order else len(order)
-                    return str(value), len(order)
-                horizontal = fig.data[0].orientation=='h'
-                for trace in fig.data:
+            def identity(value):
+                for alias in sorted(aliases, key=len, reverse=True):
+                    if str(value) == alias or str(value).startswith(alias+'_'):
+                        return aliases[alias]
+                return str(value), str(value)
+            groups = {}
+            for trace in fig.data:
+                if trace.type == 'scatter':
+                    sample, group = identity(trace.name)
+                    groups[sample] = group
+                    trace.name = sample
+                    trace.line.color = palette.get(group, '#4477AA')
+                    trace.line.dash = ['solid','dash','dot','dashdot'][order.index(sample)%4] if sample in order else 'solid'
+                elif trace.type == 'bar':
+                    horizontal = trace.orientation == 'h'
                     values = list(trace.y if horizontal else trace.x)
-                    positions = sorted(range(len(values)),key=lambda i:identity(values[i])[1])
+                    positions = sorted(range(len(values)), key=lambda i: order.index(identity(values[i])[0]) if identity(values[i])[0] in order else len(order))
                     labels = [identity(values[i])[0] for i in positions]
+                    groups.update({identity(v)[0]:identity(v)[1] for v in values})
                     numbers = list(trace.x if horizontal else trace.y)
                     if horizontal:
                         trace.y, trace.x = labels, [numbers[i] for i in positions]
                     else:
                         trace.x, trace.y = labels, [numbers[i] for i in positions]
-                if horizontal: fig.update_layout(yaxis_autorange='reversed')
+            fig.update_layout(meta={**(fig.layout.meta or {}), 'sample_groups': groups})
+            if fig.data and all(t.type=='bar' and t.orientation=='h' for t in fig.data):
+                fig.update_yaxes(autorange='reversed')
     is_screen = 'fastq screen' in key or 'fastq_screen' in key
-    if is_screen:
+    if is_screen and aggregate:
         from bioreport.utils.print_theme import aggregate_bar_categories
         legend = config.get('analysis', {}).get('fastq_screen', {}).get('legend', {})
         fig = aggregate_bar_categories(fig, **{k: legend[k] for k in
             ('min_fraction','max_categories','aggregate_other') if k in legend})
     coverage_note = ''
-    if 'coverage histogram' in key:
+    if coverage_plot:
         fig, coverage_note = _apply_coverage_options(identifier, fig)
+        fig = _group_coverage(fig)
+        coverage_note += '横轴截断至 0–100X；每组曲线为样本均值，色带为 min–max 范围。'
     label = plain(title)
     x = plain(fig.layout.xaxis.title.text)
     y = plain(fig.layout.yaxis.title.text)
     aggregation_note = 'Other 为仅显示层聚合，原始类别完整保留在输入数据中。' if is_screen else ''
-    show_figure(fig, caption=f"{label}。{coverage_note}横轴：{x or '输入图表坐标'}；纵轴：{y or '输入图表统计量'}。颜色与图例对应输入样本或统计类别。{aggregation_note}")
+    return fig, f"{label}。{coverage_note}横轴：{x or '输入图表坐标'}；纵轴：{y or '输入图表统计量'}。{aggregation_note}"
 
+
+
+def _show_print_qc(fig, identifier, title):
+    prepared = _prepare_print_qc(fig, identifier, title)
+    if prepared:
+        show_figure(prepared[0], caption=prepared[1])
+
+
+def _group_coverage(fig):
+    """Display-only group means/ranges at saved coverage bins; input stays intact."""
+    import numpy as np
+    from bioreport.utils.print_theme import group_palette
+    groups = (fig.layout.meta or {}).get('sample_groups', {})
+    members = {}
+    for trace in fig.data:
+        members.setdefault(groups.get(trace.name, trace.name), []).append(trace)
+    palette = group_palette(members)
+    result = go.Figure(layout=fig.layout)
+    for group, traces in members.items():
+        # Exact bin alignment: missing bins are excluded, never invented as zeros.
+        bins = sorted({float(x) for t in traces for x in t.x if 0 <= float(x) <= 100})
+        mappings = [dict(zip(map(float,t.x),map(float,t.y))) for t in traces]
+        values = np.array([[mapping.get(x,np.nan) for x in bins] for mapping in mappings])
+        low, high = np.nanmin(values,axis=0), np.nanmax(values,axis=0)
+        color = palette[group]
+        rgb = ','.join(str(int(color[i:i+2],16)) for i in (1,3,5))
+        result.add_trace(go.Scatter(x=bins+bins[::-1], y=high.tolist()+low[::-1].tolist(),
+            mode='lines',line=dict(width=0), fill='toself', fillcolor=f'rgba({rgb},0.2)',
+            name=group,legendgroup=group,showlegend=False,hoverinfo='skip'))
+        result.add_trace(go.Scatter(x=bins,y=np.nanmean(values,axis=0),mode='lines',
+            name=group,legendgroup=group,line=dict(color=color,dash='solid'),showlegend=True))
+    result.update_layout(meta={**(fig.layout.meta or {}),'coverage_groups':True},
+                         legend=dict(orientation='h',y=1.03,yanchor='bottom'),
+                         margin=dict(t=110,b=60,l=75,r=35),
+                         title=dict(y=.98,yanchor='top'))
+    result.update_xaxes(range=[0,100])
+    return result
+
+
+def visualize_fastq_screen_pair(r1_dir, r2_dir):
+    """Two read panels, one shared category palette/legend and numeric scale."""
+    import numpy as np
+    from plotly.subplots import make_subplots
+    from bioreport.config import display_path
+    from bioreport.utils.print_theme import aggregate_bar_categories, PALETTE
+    from bioreport.utils.render_output import typst_note
+    figures = []
+    for read, directory in (('R1',r1_dir),('R2',r2_dir)):
+        json_path = _saved_multiqc_path(directory)
+        with open(json_path,encoding='utf-8') as handle:
+            plots = json.load(handle).get('report_plot_data',{})
+        matches = [(key,plot,ds) for key,plot in plots.items() if 'fastq_screen' in key.lower()
+                   for ds in plot.get('datasets',[]) if plot.get('plot_type')=='bar plot']
+        if len(matches) != 1:
+            raise ValueError(f'Expected one FastQ Screen dataset for {read}: {directory}')
+        key,plot,ds = matches[0]
+        _assert_sample_coverage(key, list(map(str,ds.get('samples',[]))),directory)
+        fig,title = _dataset_figure(key,plot,ds)
+        if is_pdf():
+            fig,_ = _prepare_print_qc(fig,key,title,aggregate=False)
+        figures.append(fig)
+    # Aggregate jointly so Other and named categories have identical meanings.
+    merged = go.Figure()
+    categories = list(dict.fromkeys(t.name for f in figures for t in f.data))
+    counts = [len(f.data[0].x) for f in figures]
+    for name in categories:
+        vals = []
+        for f,n in zip(figures,counts):
+            trace = next((t for t in f.data if t.name==name),None)
+            vals.extend(list(trace.x) if trace is not None else [0]*n)
+        merged.add_trace(go.Bar(x=vals,y=list(range(sum(counts))),name=name,orientation='h'))
+    legend = _qc_config().get('analysis',{}).get('fastq_screen',{}).get('legend',{})
+    merged = aggregate_bar_categories(merged, **{k:legend[k] for k in ('min_fraction','max_categories','aggregate_other') if k in legend})
+    pair = make_subplots(rows=1,cols=2,subplot_titles=('R1','R2'),horizontal_spacing=.14)
+    maximum = 0
+    for col,fig in enumerate(figures,1):
+        offset = sum(counts[:col-1])
+        total = np.zeros(counts[col-1])
+        for i,trace in enumerate(merged.data):
+            values = list(trace.x)[offset:offset+counts[col-1]]
+            total += np.asarray(values,dtype=float)
+            pair.add_trace(go.Bar(x=values,y=list(fig.data[0].y),orientation='h',name=trace.name,
+                marker_color=PALETTE[i%len(PALETTE)],legendgroup=trace.name,showlegend=col==1),row=1,col=col)
+        maximum = max(maximum,float(np.nanmax(total)))
+    pair.update_layout(barmode='stack',template='simple_white',height=540,width=1100,
+        meta={'paired_screen':True},legend=dict(orientation='h',y=1.24,yanchor='bottom',x=0),margin=dict(t=120,l=80,r=40,b=50))
+    pair.update_xaxes(range=[0,100 if _percent_axis_enabled() else maximum*1.02],title_text=figures[0].layout.xaxis.title.text)
+    pair.update_yaxes(autorange='reversed')
+    show_figure(pair, caption='FastQ Screen R1/R2 双面板：同一样本顺序、坐标范围与物种类别共用图例；Other 仅为显示层聚合。')
+    if is_pdf():
+        typst_note(f'外源污染评估图读取 MultiQC 保存的 FastQ Screen 汇总数据集。完整质控结果（数据目录内相对路径）：R1 {display_path(r1_dir)}；R2 {display_path(r2_dir)}')
 
 def _expected_samples() -> Optional[List[str]]:
     """样本表声明的样本标识（含 sample/sample_name 两个别名），用于覆盖度核对。"""
-    from bioreport.config import load_config
-    path = load_config().get('input_files', {}).get('sample_file')
+    path = _qc_config().get('input_files', {}).get('sample_file')
     if not path or not os.path.isfile(path):
         return None
     import pandas as pd
@@ -369,7 +477,6 @@ def _sample_coverage(samples: List[str], expected: Optional[List[str]]) -> Dict[
 
 def _assert_sample_coverage(identifier: str, samples: List[str], analysis_dir: str) -> None:
     """缺样显性化：0 个样本直接失败；部分缺失按配置报错或写入正文提示。"""
-    from bioreport.config import load_config
     from bioreport.utils.print_theme import plain
     expected = _expected_samples()
     if expected is None:
@@ -379,7 +486,7 @@ def _assert_sample_coverage(identifier: str, samples: List[str], analysis_dir: s
         raise ValueError(f'{identifier}: MultiQC 汇总未包含任何样本，无法绘制 {analysis_dir}')
     if not coverage['missing']:
         return
-    report = load_config().get('report', {}).get('pdf', {})
+    report = _qc_config().get('report', {}).get('pdf', {})
     strict = report.get('qc_sample_coverage', 'warn')
     if strict not in ('warn', 'error'):
         raise ValueError("report.pdf.qc_sample_coverage must be 'warn' or 'error'")
@@ -392,12 +499,12 @@ def _assert_sample_coverage(identifier: str, samples: List[str], analysis_dir: s
     typst_note(message)
 
 
-def _visualize_pdf_json(data, analysis_dir, targets):
+def _visualize_pdf_json(data, analysis_dir, targets, *, emit_source=True):
     """Export each real MultiQC dataset, including filtering/read stages."""
-    from bioreport.config import load_config, display_path
+    from bioreport.config import display_path
     from bioreport.utils.render_output import typst_note
     from bioreport.utils.print_theme import plain
-    detail = load_config().get('report',{}).get('pdf',{}).get('qc_detail','key')
+    detail = _qc_config().get('report',{}).get('pdf',{}).get('qc_detail','key')
     plots = data.get('report_plot_data', {})
     matched = 0
     for identifier, plot in plots.items():
@@ -428,6 +535,8 @@ def _visualize_pdf_json(data, analysis_dir, targets):
                 _show_print_qc(fig, identifier, caption)
     if not matched:
         raise ValueError(f'No QC plot datasets for {targets} in {analysis_dir}')
+    if not emit_source:
+        return
     # 底部数据源说明按模块区分：只有 fastp 存在 Before/After filtering 过滤阶段，
     # 其余模块（FastQ Screen、QualiMap 等）不引用“过滤曲线”措辞，避免张冠李戴。
     lowered = [str(t).lower() for t in (targets or [])]

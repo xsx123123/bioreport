@@ -199,7 +199,7 @@
     function routeNavClick(event, link) {
       if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
-      event.stopPropagation();
+      event.stopImmediatePropagation();
       if (location.hash !== link.hash) {
         try { history.pushState(null, '', link.hash); }
         catch (_) { location.hash = link.hash; }
@@ -213,7 +213,7 @@
     document.addEventListener('click', event => {
       const link = event.target.closest('a[href^="#"]');
       if (link && !link.closest('.report-navbar') && findTarget(link.hash)?.closest('.report-page')) {
-        selectPage(link.hash);
+        routeNavClick(event, link);
       }
     }, true);
     window.addEventListener('hashchange', () => selectPage(location.hash, true));

@@ -13,10 +13,11 @@ if metadata is not None:
     columns = ordered_samples(metadata, matrix.columns)
 else:
     columns = list(matrix.columns)
-shown = matrix[columns[:pdf_settings.get('matrix_columns', 6)]].reset_index()
+from bioreport.utils.pdf_results import expression_preview
+shown = expression_preview(matrix, columns[:pdf_settings.get('matrix_columns', 6)]).reset_index()
 shown = shown.rename(columns={shown.columns[0]: 'Gene ID'})
 shown = gene_columns(apply_gene_annotation(shown, project_info))
-preview(shown, tpm_file, limit=pdf_settings.get('matrix_rows', 8), caption='TPM Expression Matrix Preview')
+preview(shown, tpm_file, limit=pdf_settings.get('matrix_rows', 8), caption='TPM Expression Matrix Preview', order_note='mean TPM across all samples, descending')
 display_result_ai('rna.results.matrix__table')
 typst_note(f"Body shows {min(len(columns), pdf_settings.get('matrix_columns', 6))} / {len(matrix.columns)} sample columns.")
 if not project_info.get('input_files', {}).get('gene_annotation_file'):

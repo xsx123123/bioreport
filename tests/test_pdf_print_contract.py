@@ -157,7 +157,7 @@ def test_panel_splitting_preserves_cluster_order_values_and_color_scale():
     z=np.arange(5*43).reshape(5,43)
     fig=go.Figure(go.Heatmap(z=z,x=[f'S{i}' for i in range(43)],y=[f'G{i}' for i in range(5)],zmin=-2,zmax=2))
     panels=print_panels(fig)
-    assert [len(p.data[0].x) for p,_ in panels]==[12,12,12,7]
+    assert [len(p.data[0].x) for p,_ in panels]==[22,21]
     np.testing.assert_array_equal(np.concatenate([p.data[0].z for p,_ in panels],axis=1),z)
     assert all(p.data[0].zmin==-2 and p.data[0].zmax==2 for p,_ in panels)
     assert list(fig.data[0].x)==[f'S{i}' for i in range(43)]
@@ -196,7 +196,7 @@ def test_long_enrichment_labels_split_by_line_budget_and_cjk_fonts_are_embedded_
     assert len(pieces)>2 and sum(len(piece) for _,piece in pieces)==14
     fig,_=draw_fancy_dotplot(frame.iloc[:2],p_cutoff=None,wrap_width=28)
     assert fig.layout.xaxis.title.text=='<b>Gene ratio</b>'
-    assert 'Adjusted P value' in fig.layout.coloraxis.colorbar.title.text
+    assert '校正后 P 值' in fig.layout.coloraxis.colorbar.title.text
     assert any(t.name.startswith('Count:') for t in fig.data if t.name)
     cjk=go.Figure(go.Scatter(x=[1,2],y=[2,3],mode='lines',name='处理组'))
     cjk.update_layout(xaxis_title='样本位置',yaxis_title='表达量')
@@ -235,21 +235,27 @@ def test_multiqc_print_keeps_read_stages_separate_and_has_full_detail_mode(tmp_p
     assert any('Insert' in c for _,c in seen)
 
 
-def test_qualimap_coverage_uses_per_sample_solid_lines_and_group_labels(tmp_path,monkeypatch):
+def test_qualimap_coverage_uses_group_means_ranges_and_truncated_axis(tmp_path,monkeypatch):
     from omics.rna.analysis import qc_vis
     metadata=tmp_path/'samples.csv'
     pd.DataFrame({'sample':['a_raw','b_raw','c_raw'],
                   'sample_name':['a','b','c'],'group':['1','1','2']}).to_csv(metadata,index=False)
     cfg={'report':{'pdf':{'qc_detail':'key'}},'input_files':{'sample_file':str(metadata)}}
     monkeypatch.setattr('bioreport.config.load_config',lambda:cfg)
-    fig=go.Figure([go.Scatter(x=[1,2],y=[2,3],mode='lines',name=name) for name in ['a_raw','b_raw','c_raw']])
+    fig=go.Figure([go.Scatter(x=[0,1,2,150],y=values,mode='lines',name=name) for name,values in [('a_raw',[100,2,4,0]),('b_raw',[200,4,8,1]),('c_raw',[300,8,16,2])]])
     seen=[]
     monkeypatch.setattr(qc_vis,'show_figure',lambda figure,caption=None:seen.append(figure))
     qc_vis._show_print_qc(fig,'qualimap-coverage-histogram','Coverage histogram')
     result=seen[0]
-    assert [trace.name for trace in result.data]==['a（组1）','b（组1）','c（组2）']
-    assert len({trace.line.color for trace in result.data})==3
-    assert {trace.line.dash for trace in result.data}=={'solid'}
+    means = [t for t in result.data if t.showlegend]
+    assert [t.name for t in means] == ['1','2']
+    np.testing.assert_array_equal(means[0].y,[3,6])
+    np.testing.assert_array_equal(means[1].y,[8,16])
+    band = result.data[0]
+    assert band.fill == 'toself' and band.showlegend is False
+    np.testing.assert_array_equal(band.y,[4,8,4,2])
+    assert list(result.layout.xaxis.range)==[0,100]
+    assert all(list(t.x)==[1,2] for t in means)
 
 
 def test_pdf_options_are_validated(tmp_path):
@@ -293,3 +299,101 @@ def test_multiqc_serialized_object_supports_all_datasets(monkeypatch,tmp_path):
     monkeypatch.setattr(render_output,'display',lambda *args:None)
     qc_vis.visualize_multiqc_logs(str(tmp_path),['fastp'])
     assert len(seen)==4 and sum('Before filtering' in caption for _,caption in seen)==2
+
+
+def test_fifteen_samples_fit_all_print_plot_capacities():
+    names = [f'S{i}' for i in range(15)]
+    figures = [
+        go.Figure(go.Heatmap(x=names, y=['G1'], z=[list(range(15))])),
+        go.Figure(go.Bar(x=list(range(15)), y=names, orientation='h')),
+        go.Figure(go.Violin(x=names, y=list(range(15)))),
+        go.Figure([go.Scatter(x=[1,2],y=[i,i+1],mode='lines',name=n) for i,n in enumerate(names)]),
+    ]
+    assert all(len(print_panels(fig)) == 1 for fig in figures)
+
+
+def test_panels_keep_whole_groups_and_identical_numeric_axes():
+    names = [f'S{i}' for i in range(30)]
+    groups = {name: 'A' if i < 16 else 'B' for i,name in enumerate(names)}
+    fig = go.Figure([go.Bar(x=list(range(30)),y=names,orientation='h'),
+                     go.Bar(x=[3]*30,y=names,orientation='h')])
+    fig.update_layout(barmode='stack',meta={'sample_groups':groups})
+    panels = print_panels(fig)
+    assert [len(p.data[0].y) for p,_ in panels] == [16,14]
+    assert panels[0][0].layout.xaxis.range == panels[1][0].layout.xaxis.range
+    assert panels[0][0].layout.xaxis.range[1] >= 32
+    assert [v for p,_ in panels for v in p.data[0].y] == names
+
+
+def test_matrix_preview_ranks_all_samples_before_selecting_columns():
+    from bioreport.utils.pdf_results import expression_preview
+    matrix = pd.DataFrame({'A':[0.,3.,3.,0.], 'B':[20.,0.,0.,0.]},index=['late','tie1','tie2','zero'])
+    original = matrix.copy(deep=True)
+    shown = expression_preview(matrix,['A'])
+    assert list(shown.index) == ['late','tie1','tie2','zero']
+    assert list(shown.columns) == ['A']
+    pd.testing.assert_frame_equal(matrix,original)
+
+
+def test_static_volcano_has_ten_visible_labels_anchored_to_real_points(tmp_path,monkeypatch):
+    import matplotlib.figure
+    saved=[]
+    original=matplotlib.figure.Figure.savefig
+    def save(figure,*args,**kwargs):
+        saved.append(figure)
+        return original(figure,*args,**kwargs)
+    monkeypatch.setattr(matplotlib.figure.Figure,'savefig',save)
+    frame=pd.DataFrame({'Symbol':[f'Gene_{i}' for i in range(14)],
+                        'log2FoldChange':[2.]*7+[-2.]*7,
+                        'pvalue':[10.**(-i) for i in range(10,17)]*2})
+    before=frame.copy(deep=True)
+    fig=plot_volcano_pvalue(frame,'',col_logfc='log2FoldChange',col_pval='pvalue',
+                            fc_cutoff=1,pval_cutoff=.05,display_cap=12,annotate_top=5)
+    export_vector(fig,tmp_path/'volcano.svg')
+    axis=saved[0].axes[0]
+    labels=[a for a in axis.texts if a.get_text().startswith('Gene_')]
+    assert len(labels)==10
+    expected={f'Gene_{i}' for i in [2,3,4,5,6,9,10,11,12,13]}
+    assert {a.get_text() for a in labels}==expected
+    assert all(a.arrow_patch is not None and a.xy[1]==12 for a in labels)
+    assert len({a.get_position() for a in labels})==10
+    pd.testing.assert_frame_equal(frame,before)
+
+
+def test_enrichment_colorbar_follows_report_language(monkeypatch):
+    frame=pd.DataFrame({'Description':['term'], 'GeneRatio':['2/10'], 'Count':[2], 'p.adjust':[.01]})
+    for lang,title in [('zh','校正后 P 值'),('en','Adjusted P value')]:
+        monkeypatch.setenv('BIOREPORT_LANGUAGE',lang)
+        fig,_=draw_fancy_dotplot(frame,p_cutoff=None)
+        assert title in fig.layout.coloraxis.colorbar.title.text
+
+
+def test_fastq_screen_pair_preserves_reads_and_shared_legend(tmp_path,monkeypatch):
+    from omics.rna.analysis import qc_vis
+    metadata=tmp_path/'samples.csv'
+    pd.DataFrame({'sample':['a','b'],'sample_name':['a','b'],'group':['A','B']}).to_csv(metadata,index=False)
+    cfg={'report':{'pdf':{'qc_detail':'key'}},'input_files':{'sample_file':str(metadata)}}
+    monkeypatch.setattr('bioreport.config.load_config',lambda:cfg)
+    monkeypatch.setenv('BIOREPORT_OUTPUT_FORMAT','pdf')
+    monkeypatch.setattr(render_output,'display',lambda *args:None)
+    seen=[]
+    monkeypatch.setattr(qc_vis,'show_figure',lambda fig,caption=None:seen.append(fig))
+    paths=[]
+    for read,values in [('r1',[10,20]),('r2',[30,40])]:
+        directory=tmp_path/read/read
+        directory.mkdir(parents=True)
+        data={'report_plot_data':{'fastq_screen_plot':{'plot_type':'bar plot',
+              'pconfig':{'title':'FastQ Screen: Mapped Reads'},'datasets':[{
+              'trace_params':{'orientation':'h'},'samples':['a','b'],
+              'cats':[{'name':'Target','data':values},{'name':'OtherSpecies','data':[1,2]}]}]}}}
+        (directory/'multiqc_data.json').write_text(json.dumps(data))
+        paths.append(str(directory.parent))
+    qc_vis.visualize_fastq_screen_pair(*paths)
+    assert len(seen)==1
+    fig=seen[0]
+    assert fig.layout.meta['paired_screen']
+    assert fig.layout.xaxis.range==fig.layout.xaxis2.range
+    assert sum(t.showlegend is True for t in fig.data)==2
+    assert list(fig.data[0].x)==[10,20]
+    assert list(fig.data[2].x)==[30,40]
+    assert len(print_panels(fig))==1

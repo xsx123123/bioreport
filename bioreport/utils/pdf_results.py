@@ -4,7 +4,7 @@ import pandas as pd
 from .render_output import show_print_table, typst_note
 
 
-def preview(frame, path, sort_by=None, limit=10, columns=None, *, evidence=None, caption=None):
+def preview(frame, path, sort_by=None, limit=10, columns=None, *, evidence=None, caption=None, order_note=None):
     from decimal import Decimal
     from ..config import display_path
     total = len(frame)
@@ -24,9 +24,16 @@ def preview(frame, path, sort_by=None, limit=10, columns=None, *, evidence=None,
         ordered = frame.sort_values(sort_by, kind='stable', na_position='last') if sort_by else frame
     if columns: ordered = ordered[[c for c in columns if c in ordered]]
     show_print_table(ordered, limit=limit, caption=caption, evidence={"source":str(path), "indices":list(ordered.head(limit).index), **(evidence or {})})
-    order_note = (f'{sort_by} 升序、同值按 |log2FC| 降序' if sort_by in ['pvalue','padj','p.adjust','qvalue']
+    order_note = order_note or (f'{sort_by} 升序、同值按 |log2FC| 降序' if sort_by in ['pvalue','padj','p.adjust','qvalue']
                   else sort_by or '输入顺序')
     typst_note(f"预览 {min(limit,total)} / {total} 行；排序：{order_note}。完整结果（数据目录内相对路径）：{display_path(path)}")
+
+
+
+def expression_preview(matrix, columns):
+    """Rank on every input sample before selecting the displayed columns."""
+    means = matrix.mean(axis=1)
+    return matrix.loc[means.sort_values(ascending=False, kind='stable').index, columns].copy()
 
 
 def raw_probability_columns(path, frame):

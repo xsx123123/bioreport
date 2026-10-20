@@ -8,18 +8,20 @@ title: Delivery Files and Report Notes
 
 Configuration selects modules and binds inputs and display settings. Shared analysis functions supply figures and tables to format-specific content templates. Optional AI interpretation is prepared before final rendering and requires scientific review.
 
+```{=typst}
+#report-figure(
+  "assets/architecture-print.en.svg",
+  "BioReport architecture: configuration, module composition, analysis results and HTML/PDF delivery. Print-specific vector overview of configuration, upstream results and report delivery.",
+  0.456,
+  id: "report-architecture",
+)
+```
+
 ## Delivery Files and Data Paths
 
 PDF presents selected figures and Top N previews. Complete expression matrices, differential-test records and enrichment tables remain in the delivered data directory. The table below maps configuration keys to source paths for further analysis in Excel, R or Python.
 
-```{=typst}
-#report-figure(
-  "assets/architecture.en.svg",
-  "BioReport architecture: configuration, module composition, analysis results and HTML/PDF delivery. The diagram shares its architecture.mmd source with README.",
-  0.707,
-  id: "report-architecture",
-)
-```
+
 
 ```{python}
 #| label: pdf-delivery

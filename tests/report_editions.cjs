@@ -14,7 +14,7 @@ function environment(supported = true) {
   let decodes=0;
   function makeFrame() {
     const listeners = {};
-    const button = {attrs:{}, setAttribute(k,v) {this.attrs[k]=v;},
+    const button = {tagName:'DIV',attrs:{}, setAttribute(k,v) {this.attrs[k]=v;},
       addEventListener(name, callback) {listeners[name]=callback;},
       requestSwitch() {
         const event={defaultPrevented:false,preventDefault(){this.defaultPrevented=true;}};
@@ -54,6 +54,14 @@ async function until(check) {
   initialFrame.button.onclick({preventDefault(){},target:{closest(){return null;}}});
   await new Promise(resolve=>setTimeout(resolve,20));
   assert.strictEqual(active(),initialFrame,'Clicking group padding must not switch languages');
+  // Single-file reports can retain the template's legacy button.
+  initialFrame.button.tagName='BUTTON';
+  initialFrame.button.onclick({preventDefault(){},target:{closest(){return null;}}});
+  await until(()=>env.loading.hidden);
+  assert(active().source.includes('lang="en'));
+  active().button.requestSwitch();
+  await until(()=>env.loading.hidden);
+  assert.strictEqual(active(),initialFrame);
   active().contentWindow.location.hash='#report-page-4';
   for(let i=0;i<10;i++) {
     active().button.requestSwitch();

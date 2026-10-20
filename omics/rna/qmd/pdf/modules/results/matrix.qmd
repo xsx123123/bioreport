@@ -1,6 +1,6 @@
 ## 表达矩阵预览
 
-上游流程通过 `RSEM` 构建全基因组基因水平的表达丰度矩阵，并采用 **TPM（Transcripts Per Million）** 作为标准化定量指标。TPM 在计算时先后对基因外显子有效长度和样本测序总读段数进行了归一化处理，使得每个样本所有基因的 TPM 总和恒等于 $10^6$，从而支持不同样本间同一基因表达量的直接对比。下表按配置行数、沿输入顺序预览表达矩阵记录（完整表达矩阵包含全部注释基因，详见交付数据文件）。
+上游流程通过 `RSEM` 构建全基因组基因水平的表达丰度矩阵，并采用 **TPM（Transcripts Per Million）** 作为标准化定量指标。TPM 在计算时先后对基因外显子有效长度和样本测序总读段数进行了归一化处理，使得每个样本所有基因的 TPM 总和恒等于 $10^6$，从而支持不同样本间同一基因表达量的直接对比。下表按全样本平均 TPM 降序预览表达矩阵记录（默认 Top 8）（完整表达矩阵包含全部注释基因，详见交付数据文件）。
 
 ```{python}
 #| label: pdf-matrix
@@ -11,10 +11,11 @@ if metadata is not None:
     from bioreport.utils.pdf_results import ordered_samples
     columns = ordered_samples(metadata, matrix.columns)
 else: columns = list(matrix.columns)
-shown = matrix[columns[:pdf_settings.get('matrix_columns',6)]].reset_index()
+from bioreport.utils.pdf_results import expression_preview
+shown = expression_preview(matrix, columns[:pdf_settings.get('matrix_columns', 6)]).reset_index()
 shown = shown.rename(columns={shown.columns[0]:'Gene ID'})
 shown = gene_columns(apply_gene_annotation(shown, project_info))
-preview(shown, tpm_file, limit=pdf_settings.get('matrix_rows',8), caption='基因表达量矩阵（TPM）预览')
+preview(shown, tpm_file, limit=pdf_settings.get('matrix_rows',8), caption='基因表达量矩阵（TPM）预览', order_note='全样本平均 TPM 降序')
 display_result_ai('rna.results.matrix__table')
 typst_note(f'正文展示 {min(len(columns),pdf_settings.get("matrix_columns",6))} / {len(matrix.columns)} 个样本列。')
 if not project_info.get('input_files', {}).get('gene_annotation_file'):

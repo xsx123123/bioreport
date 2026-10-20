@@ -1,4 +1,4 @@
--- Keep a heading's first prose paragraph with the following reading unit.
+-- Headings stay with their first paragraph; prose can flow before a large figure.
 -- Metadata is invisible and records the actual first-paragraph page.
 function Blocks(blocks)
   local result = pandoc.List()
@@ -6,7 +6,7 @@ function Blocks(blocks)
   local heading_id = ''
   for _, block in ipairs(blocks) do
     if after_heading and block.t == 'Para' then
-      result:insert(pandoc.RawBlock('typst', '#block(sticky: true)['))
+      result:insert(pandoc.RawBlock('typst', '#block(sticky: false, breakable: true)['))
       block.content:insert(1, pandoc.RawInline('typst', '#report-observation(' .. pandoc.json.encode(heading_id) .. ', "intro", "start")'))
       result:insert(block)
       result:insert(pandoc.RawBlock('typst', ']'))
@@ -26,7 +26,7 @@ end
 
 function Div(div)
   if div.classes:includes('report-lead') then
-    local blocks = pandoc.List({pandoc.RawBlock('typst', '#block(sticky: true)[')})
+    local blocks = pandoc.List({pandoc.RawBlock('typst', '#block(sticky: false, breakable: true)[')})
     blocks:extend(div.content)
     blocks:insert(pandoc.RawBlock('typst', ']'))
     return blocks

@@ -293,5 +293,10 @@
   " 项": " records",
   "是": "Yes",
   "否": "No",
-  "TPM > 1 的基因数量": "Number of genes with TPM > 1"
+  "TPM > 1 的基因数量": "Number of genes with TPM > 1",
+  "校正后 P 值": "Adjusted P value",
+  "全样本平均 TPM 降序": "mean TPM across all samples, descending",
+  "横轴截断至 0–100X；每组曲线为样本均值，色带为 min–max 范围。": "The x-axis is truncated to 0–100X; curves show group means and shaded bands show the min–max range. ",
+  "FastQ Screen R1/R2 双面板：同一样本顺序、坐标范围与物种类别共用图例；Other 仅为显示层聚合。": "FastQ Screen R1/R2 panels use the same sample order, axis range and shared species legend. Other is a display-only aggregation.",
+  "主图显示全部基因行名。": "All gene row names are shown in the main figure."
 }

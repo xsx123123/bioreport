@@ -96,15 +96,26 @@ assert.strictEqual(toggleNode.attrs['aria-expanded'],'false');
 toggleNode.click();
 assert.strictEqual(toggleNode.attrs['aria-expanded'],'true');
 assert.strictEqual(navbarClassList.contains('report-nav-open'),true);
-for(let i=0;i<6;i++){context.location.hash='#'+pages[i].id;links[i].click({button:0,preventDefault(){},stopPropagation(){}});check(i);assert.strictEqual(toggleNode.attrs['aria-expanded'],'false');}
+for(let i=0;i<6;i++){context.location.hash='#'+pages[i].id;links[i].click({button:0,preventDefault(){},stopImmediatePropagation(){}});check(i);assert.strictEqual(toggleNode.attrs['aria-expanded'],'false');}
 assert.strictEqual(bodyClassList.active,true);
 context.location.hash='#report-page-4';events.hashchange();check(3);
 assert.strictEqual(bodyClassList.active,false);
-homeLink.click({button:0,preventDefault(){},stopPropagation(){}});
+homeLink.click({button:0,preventDefault(){},stopImmediatePropagation(){}});
 check(0);
 assert.strictEqual(toggleNode.attrs['aria-expanded'],'false');
 const heading=Object.entries(data.headings).find(([id,p])=>p===pages[3].id);
 context.location.hash='#'+encodeURIComponent(heading[0]);events.hashchange();check(3);
+// Offline srcdoc TOC links must use the same guarded history path as navbar links.
+const savedPushState=context.history.pushState;
+context.history.pushState=()=>{throw new Error('srcdoc origin rejects pushState');};
+let prevented=false, stopped=false;
+const tocLink={hash:'#fastp-details',closest(){return null;}};
+documentEvents.click({button:0,target:{closest(){return tocLink;}},
+  preventDefault(){prevented=true;},stopImmediatePropagation(){stopped=true;}});
+assert(prevented && stopped);
+assert.strictEqual(context.location.hash,'#fastp-details');
+check(3);
+context.history.pushState=savedPushState;
 context.location.hash='#%invalid';events.hashchange();check(0);
 context.location.hash='#missing';events.hashchange();check(0);
 context.location.hash='#'+pages[2].id;events.popstate();check(2);

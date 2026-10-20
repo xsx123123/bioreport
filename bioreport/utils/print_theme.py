@@ -27,60 +27,117 @@ def plain(value):
     return html.unescape(re.sub(r'<[^>]*>', '', value.replace('<br>', '\n'))).strip()
 
 
+# Heatmaps retain the full clustering until more than 40 sample columns.
+UNSPLIT_TYPES = {'heatmap': 40}
+
+
+def _sample_batches(names, capacity, groups):
+    """Pack complete groups; a large group remains intact on its own panel."""
+    from collections import OrderedDict
+    grouped = OrderedDict()
+    for name in names:
+        grouped.setdefault(groups.get(str(name), str(name)), []).append(name)
+    batches, current = [], []
+    for members in grouped.values():
+        if current and len(current) + len(members) > capacity:
+            batches.append(current)
+            current = []
+        current.extend(members)
+    if current:
+        batches.append(current)
+    return batches
+
+
 def print_panels(figure):
-    """Split dense displays without recomputing statistics or clustering."""
+    """Use plot-specific page capacities without recomputing results."""
     import numpy as np
     import plotly.graph_objects as go
     traces = list(figure.data)
     meta = figure.layout.meta or {}
-    if isinstance(meta, dict) and meta.get('enrichment'):
+    if not isinstance(meta, dict):
+        meta = {}
+    if meta.get('enrichment') or meta.get('paired_screen') or meta.get('coverage_groups'):
         return [(figure, '')]
     if len(traces) == 1 and traces[0].type == 'heatmap':
         trace = traces[0]
         names = list(trace.x)
-        if len(names) <= 12: return [(figure, '')]
+        capacity = UNSPLIT_TYPES['heatmap']
+        if len(names) <= capacity:
+            return [(figure, '')]
+        # Balanced contiguous slices avoid a tiny last panel; never recluster.
+        chunks = np.array_split(np.arange(len(names)), int(np.ceil(len(names)/capacity)))
+        z = np.asarray(trace.z)
+        vmin = trace.zmin if trace.zmin is not None else figure.layout.coloraxis.cmin
+        vmax = trace.zmax if trace.zmax is not None else figure.layout.coloraxis.cmax
         panels = []
-        for start in range(0, len(names), 12):
+        for indices in chunks:
             panel = go.Figure(figure)
-            panel.data[0].x = names[start:start+12]
-            panel.data[0].z = np.asarray(trace.z)[:,start:start+12]
-            panels.append((panel, f'聚类后样本列 {start+1}–{min(start+12,len(names))} / {len(names)}；沿用整图的基因与样本聚类顺序及色标'))
+            panel.data[0].x = [names[i] for i in indices]
+            panel.data[0].z = z[:, indices]
+            panel.data[0].zmin = float(np.nanmin(z)) if vmin is None else vmin
+            panel.data[0].zmax = float(np.nanmax(z)) if vmax is None else vmax
+            panel.update_layout(meta={**meta, 'show_gene_names': True})
+            panels.append((panel, f'聚类后样本列 {indices[0]+1}–{indices[-1]+1} / {len(names)}；沿用整图聚类顺序与完整色标'))
         return panels
-    if traces and all(t.type in ['violin','box'] for t in traces):
+    kind = None
+    if traces and all(t.type in ('violin', 'box') for t in traces):
+        kind, capacity = 'distribution', 20
         names = list(meta.get('sample_order') or dict.fromkeys(str(v) for t in traces for v in t.x))
-        if len(names) <= 12: return [(figure, '')]
-        panels = []
-        for start in range(0, len(names), 12):
-            subset = names[start:start+12]
-            panel = go.Figure(layout=figure.layout)
-            panel.update_layout(meta={**meta, 'sample_order':subset})
-            for trace in traces:
-                keep = [i for i,v in enumerate(trace.x) if str(v) in subset]
-                if not keep: continue
-                copy = go.Figure(data=[trace]).data[0]
-                copy.x = [trace.x[i] for i in keep]
-                copy.y = [trace.y[i] for i in keep]
-                panel.add_trace(copy)
-            panels.append((panel, f'样本 {start+1}–{min(start+12,len(names))} / {len(names)}'))
-        return panels
-    if traces and all(t.type == 'bar' for t in traces):
+    elif traces and all(t.type == 'bar' for t in traces):
+        kind, capacity = 'bar', 25
         horizontal = traces[0].orientation == 'h'
         names = list(traces[0].y if horizontal else traces[0].x)
-        if len(names) <= 12: return [(figure, '')]
         if not all(list(t.y if horizontal else t.x) == names for t in traces):
             return [(figure, '')]
-        panels = []
-        for start in range(0,len(names),12):
-            panel = go.Figure(figure)
-            for trace in panel.data:
-                trace.x = list(trace.x)[start:start+12]
-                trace.y = list(trace.y)[start:start+12]
-            panels.append((panel, f'样本 {start+1}–{min(start+12,len(names))} / {len(names)}'))
-        return panels
-    if len(traces) > 12 and all(t.type == 'scatter' and 'lines' in (t.mode or 'lines') for t in traces):
-        return [(go.Figure(data=traces[i:i+12],layout=figure.layout),
-                 f'样本曲线 {i+1}–{min(i+12,len(traces))} / {len(traces)}') for i in range(0,len(traces),12)]
-    return [(figure, '')]
+    elif traces and all(t.type == 'scatter' and 'lines' in (t.mode or 'lines') for t in traces):
+        kind, capacity = 'line', 20
+        names = [t.name for t in traces]
+    else:
+        return [(figure, '')]
+    if len(names) <= capacity:
+        return [(figure, '')]
+    groups = meta.get('sample_groups', {})
+    if kind == 'distribution' and not groups:
+        groups = {str(v): str(t.name) for t in traces for v in t.x}
+    batches = _sample_batches(names, capacity, groups)
+    panels = []
+    # Resolve common numeric limits before subsetting, including stacked totals.
+    horizontal = kind == 'bar' and traces[0].orientation == 'h'
+    if kind == 'bar':
+        values = np.array([t.x if horizontal else t.y for t in traces], dtype=float)
+        maximum = float(np.nanmax(np.nansum(values, axis=0) if figure.layout.barmode in ('stack','relative') else values))
+        minimum = min(0., float(np.nanmin(values)))
+    elif kind in ('line', 'distribution'):
+        values = np.concatenate([np.asarray(t.y, dtype=float) for t in traces])
+        minimum, maximum = float(np.nanmin(values)), float(np.nanmax(values))
+    span = maximum-minimum or 1
+    common_range = [minimum - (0 if kind == 'bar' else .04*span), maximum+.06*span]
+    for index, subset in enumerate(batches):
+        panel = go.Figure(layout=figure.layout)
+        panel.update_layout(meta={**meta, 'sample_order': subset})
+        for trace in traces:
+            if kind == 'line':
+                if trace.name in subset:
+                    panel.add_trace(trace)
+                continue
+            copy = go.Figure(data=[trace]).data[0]
+            labels = trace.y if horizontal else trace.x
+            keep = [i for i,v in enumerate(labels) if v in subset or str(v) in subset]
+            if not keep:
+                continue
+            copy.x = [trace.x[i] for i in keep]
+            copy.y = [trace.y[i] for i in keep]
+            panel.add_trace(copy)
+        if horizontal:
+            if figure.layout.xaxis.range is None:
+                panel.update_xaxes(range=common_range)
+        elif figure.layout.yaxis.range is None:
+            panel.update_yaxes(range=common_range)
+        if kind == 'line' and figure.layout.xaxis.range is None:
+            xs = np.concatenate([np.asarray(t.x,dtype=float) for t in traces])
+            panel.update_xaxes(range=[float(np.nanmin(xs)),float(np.nanmax(xs))])
+        panels.append((panel, f'分组面板 {index+1} / {len(batches)}；{len(subset)} 个样本'))
+    return panels
 
 
 def _annotate_points(axes, x, y, texts):
@@ -147,9 +204,13 @@ def export_vector(figure, path):
     if not isinstance(meta, dict): meta = {}
     enrichment = bool(meta.get('enrichment'))
     width = 6.45
-    height = max(2.7, min(7.0, float(meta.get('print_height', 4.0))))
+    height = max(2.7, min(7.0, float(meta.get('print_height', 3.25))))
     if figure.data and all(t.type=='bar' and t.orientation=='h' for t in figure.data):
-        height = max(2.7, min(7., 1.4 + .3*len(figure.data[0].y)))
+        height = max(2.7, min(7., 1.1 + .18*len(figure.data[0].y)))
+    if meta.get('paired_screen'):
+        height = max(3.5, 1.3 + .20*len(figure.data[0].y))
+    if any(t.type == 'heatmap' for t in figure.data):
+        height = 5.0
     # Built-in fonts (Source Sans 3 + CJK) registered first, DejaVu kept as last resort.
     plot_fonts = init_bioreport_plot_style()
     with plt.rc_context({'font.family': [*plot_fonts, 'DejaVu Sans'], 'font.size': 10,
@@ -185,6 +246,9 @@ def export_vector(figure, path):
                 continue
             if trace.type == 'scatter':
                 mode = trace.mode or 'lines'
+                if trace.fill == 'toself':
+                    ax.fill(x, y, color=color(trace.fillcolor), linewidth=0, label='_nolegend_')
+                    continue
                 if 'lines' in mode:
                     ax.plot(x, y, color=color(trace.line.color, PALETTE[i % len(PALETTE)]),
                             linewidth=1.2, label=label,
@@ -208,7 +272,7 @@ def export_vector(figure, path):
                                          edgecolors='#637083', linewidths=.5)
                         cax = out.add_axes([.88,.48,.022,.30]); cb = out.colorbar(pts, cax=cax)
                         cb.set_ticks(np.linspace(minimum,maximum,4) if maximum>minimum else [minimum])
-                        cb.ax.set_title('Adjusted\nP value', fontsize=8.5, pad=9)
+                        cb.ax.set_title(plain(layout.coloraxis.colorbar.title.text).replace('Adjusted P value', 'Adjusted\nP value'), fontsize=8.5, pad=9)
                         cb.formatter = FuncFormatter(lambda value,pos:f'{value:.1e}'); cb.update_ticks()
                         values = np.unique(np.round(np.quantile(size_values, [.0,.5,1])).astype(int))
                         handles = [Line2D([],[],marker='o',linestyle='',markerfacecolor='#8b9cad',
@@ -273,8 +337,8 @@ def export_vector(figure, path):
                 mesh = ax.imshow(z,aspect='auto',cmap='RdBu_r',vmin=vmin,vmax=vmax,
                                  interpolation='nearest',rasterized=len(z)>200)
                 ax.grid(False); ax.set_xticks(range(len(x))); ax.set_xticklabels(['\n'.join(textwrap.wrap(str(v),18)) for v in x],rotation=90 if len(x)>8 else 40,ha='right')
-                if len(z)<=40:
-                    ax.set_yticks(range(len(y))); ax.set_yticklabels(y,fontsize=7)
+                if len(z)<=60 or meta.get('show_gene_names'):
+                    ax.set_yticks(range(len(y))); ax.set_yticklabels(y,fontsize=6 if len(z)>40 else 7)
                 else: ax.set_yticks([])
                 cb=out.colorbar(mesh,ax=ax,pad=.02,fraction=.035);cb.set_label('Z-score',fontsize=9)
                 groups=meta.get('sample_groups',{}); cmap=meta.get('group_colors',{})
@@ -315,9 +379,16 @@ def export_vector(figure, path):
                 dense_bar = any(t.type=='bar' and t.orientation=='h' and len(t.y)>8 for t in figure.data)
                 stacked_bar = any(t.type=='bar' and t.orientation=='h' and layout.barmode in ['stack','relative']
                                   for t in figure.data)
-                horizontal_legend = (getattr(layout.legend, 'orientation', None) == 'h')
+                horizontal_legend = (getattr(layout.legend, 'orientation', None) == 'h' or 'display_cap' in meta)
                 multi_panel = len(axes) > 1
-                if horizontal_legend or stacked_bar:
+                if meta.get('paired_screen'):
+                    if (xkey,ykey) == keys[0]:
+                        ax.legend(handles, labels, loc='lower left', bbox_to_anchor=(0, 1.15),
+                                  ncol=min(3,len(handles)),frameon=False,fontsize=8)
+                elif multi_panel:
+                    ax.legend(handles, labels, loc='lower left', bbox_to_anchor=(0, 1.16),
+                              ncol=min(4,len(handles)), frameon=False,fontsize=8)
+                elif horizontal_legend or stacked_bar:
                     # Plotly 声明的水平公共图例或横向堆叠柱：图例移到轴外上方，避免叠压点位。
                     title = plain(layout.legend.title.text) if getattr(layout.legend, 'title', None) and layout.legend.title.text else None
                     ax.legend(handles, labels, loc='lower left', bbox_to_anchor=(0, 1.01),
@@ -327,6 +398,23 @@ def export_vector(figure, path):
                     wrapped = ['\n'.join(textwrap.wrap(v.replace('_',' '),26)) for v in labels]
                     ax.legend(handles, wrapped, loc='upper center',bbox_to_anchor=(.5,-.25),ncol=2,frameon=False,fontsize=9)
                 else:ax.legend(loc='best',frameon=False)
+        # Render data-anchored Plotly annotations (including volcano gene leaders).
+        leaders = [a for a in (layout.annotations or []) if a.showarrow and a.xref != 'paper' and a.yref != 'paper']
+        if leaders:
+            ax = next(iter(axes.values()))[0]
+            xmin, xmax = ax.get_xlim(); ymin, ymax = ax.get_ylim()
+            for side in (-1, 1):
+                selected = [a for a in leaders if (-1 if float(a.x)<0 else 1) == side]
+                selected.sort(key=lambda a: float(a.y))
+                for rank, annotation in enumerate(selected):
+                    # Dedicated label lanes keep the capped points' labels apart.
+                    yy = ymin + (ymax-ymin)*(.43 + .46*(rank+1)/max(len(selected),1))
+                    xx = xmin+(xmax-xmin)*(.02 if side<0 else .98)
+                    ax.annotate(plain(annotation.text), (annotation.x, annotation.y),
+                                xytext=(xx,yy), textcoords='data',
+                                ha='left' if side<0 else 'right', va='center',fontsize=7,
+                                bbox=dict(facecolor='white',edgecolor='none',alpha=.85,pad=.5),
+                                arrowprops=dict(arrowstyle='-',color='#637083',lw=.65), zorder=8)
         # PCA subplot labels are real axis titles, not duplicate report headings.
         for annotation in layout.annotations or []:
             if annotation.xref=='paper' and annotation.yref=='paper' and not enrichment:

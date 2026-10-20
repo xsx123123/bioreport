@@ -2,27 +2,12 @@
 
 `FastQ Screen` 将 `FASTQ` 格式的测序数据与一组预设的参考基因组数据库进行比对。该工具旨在量化样本的物种组成，从而检测潜在的生物污染，并验证测序文库的来源是否与预期一致[@wingett2018fastq]
 
-::: {.panel-tabset}
-### FastQ Screen R1
 
 ```{python}
-#| label: fastq-screen-R1
-#| results: asis
-visualize_multiqc_logs(
-    analysis_dir=input_files["fastq_screen_r1_dir"],
-    target_modules=['fastq_screen']
-)
-display_result_ai("rna.qc.screen__R1")
+#| label: fastq-screen-pair
+#| output: asis
+from omics.rna.analysis.qc_vis import visualize_fastq_screen_pair
+visualize_fastq_screen_pair(input_files['fastq_screen_r1_dir'], input_files['fastq_screen_r2_dir'])
+display_result_ai('rna.qc.screen__R1')
+display_result_ai('rna.qc.screen__R2')
 ```
-
-### FastQ Screen R2
-```{python}
-#| label: fastq-screen-R2
-#| results: asis
-visualize_multiqc_logs(
-    analysis_dir=input_files["fastq_screen_r2_dir"],
-    target_modules=['fastq_screen']
-)
-display_result_ai("rna.qc.screen__R2")
-```
-:::

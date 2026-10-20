@@ -36,7 +36,7 @@ def test_pdf_has_own_content_and_print_layout(tmp_path):
     assert "panel-tabset" not in pdf and "callout-" not in pdf
     assert "<div" not in pdf and "<span" not in pdf
     assert "静态图表与结果摘要" in pdf
-    assert "assets/architecture.svg" in pdf
+    assert "assets/architecture-print.zh.svg" in pdf
     assert "技术架构" in pdf
     assert "BioReport 愿景" in pdf
     assert "about-manifesto" in html
@@ -57,7 +57,7 @@ def test_pdf_has_own_content_and_print_layout(tmp_path):
 
     assert "align: (x, y) => if y == 0 { center } else if numeric.at(x) { right } else { left }" in print_style
     assert 'rgb("#315f65")' in print_style and 'fill: rgb("#ffffff")' in print_style
-    assert "block(sticky: true)[#figure(" in print_style
+    assert "block(sticky: false)[#figure(" in print_style
     assert "sci(" in cover and "Group 2 vs Group 1" in cover
     assert "2_vs_1" not in cover
     # 双徽标保留在同一眉栏。

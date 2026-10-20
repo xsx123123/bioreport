@@ -110,6 +110,8 @@ def draw_fancy_dotplot(enrich_file,
 
     # --- 2. 🎨 绘图 ---
 
+    from bioreport.i18n import language
+    colorbar_title = 'Adjusted P value' if language() == 'en' else '校正后 P 值'
     color_scale = "RdYlBu"  
     
     fig = px.scatter(
@@ -158,7 +160,7 @@ def draw_fancy_dotplot(enrich_file,
 
         # colorbar 下移，给标题留出顶部空间
         coloraxis_colorbar=dict(
-            title="<b>Adjusted P value</b>",
+            title=f"<b>{colorbar_title}</b>",
             tickformat=".1e",
             len=0.45,
             thickness=15,

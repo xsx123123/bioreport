@@ -4,15 +4,10 @@
 FastQ Screen aligns sampled reads to a panel of reference genomes to assess species composition and potential contamination. Unique and multiple-species alignment categories help distinguish target-specific sequences from shared regions. Interpret fractions against the reference panel and expected library origin [@wingett2018fastq]. 
 
 ```{python}
-#| label: fastq-screen-R1
-#| results: asis
-visualize_multiqc_logs(analysis_dir=input_files['fastq_screen_r1_dir'], target_modules=['fastq_screen'])
+#| label: fastq-screen-pair
+#| output: asis
+from omics.rna.analysis.qc_vis import visualize_fastq_screen_pair
+visualize_fastq_screen_pair(input_files['fastq_screen_r1_dir'], input_files['fastq_screen_r2_dir'])
 display_result_ai('rna.qc.screen__R1')
-```
-
-```{python}
-#| label: fastq-screen-R2
-#| results: asis
-visualize_multiqc_logs(analysis_dir=input_files['fastq_screen_r2_dir'], target_modules=['fastq_screen'])
 display_result_ai('rna.qc.screen__R2')
 ```

@@ -192,7 +192,7 @@ iframe:not([hidden]){{animation:report-edition-in 200ms ease}}
         button.onclick = event => {
           event?.preventDefault();
           const segment = event?.target?.closest('[data-language]');
-          if (event && !segment) return;
+          if (event && !segment && button.tagName !== 'BUTTON') return;
           if (segment?.dataset.language !== language) openEdition(language === 'zh' ? 'en' : 'zh').catch(showError);
         };
       }

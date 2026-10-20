@@ -12,9 +12,9 @@ BioReport 采用配置驱动的模块化报告架构：系统读取已有分析�
 
 ```{=typst}
 #report-figure(
-  "assets/architecture.svg",
-  "BioReport 技术架构：配置、模块组合、分析结果与 HTML/PDF 交付链路。图源与 README 使用同一份 architecture.mmd。",
-  0.707,
+  "assets/architecture-print.zh.svg",
+  "BioReport 技术架构：配置、模块组合、分析结果与 HTML/PDF 交付链路。按配置、结果读取与双格式交付链路绘制的打印版示意。",
+  0.456,
   id: "report-architecture",
 )
 ```

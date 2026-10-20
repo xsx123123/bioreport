@@ -162,7 +162,7 @@ def plot_volcano_pvalue(
     绘制交互式火山图 (使用 Raw P-value 进行筛选).
 
     annotate_top > 0 时，为上调与下调各取最显著的若干基因添加基因名引线标注；
-    排序口径与预览表一致：先按 padj/pvalue 升序，同值按 |log2FoldChange| 降序。
+    排序口径与预览表一致：先按 pvalue 升序，同值按 |log2FoldChange| 降序。
     """
     
     df = df.copy()
@@ -273,12 +273,11 @@ def _annotate_top_genes(fig, df, col_status, col_logfc, col_pval, col_symbol, di
                            if display_cap is not None else -np.log10(float(row[col_pval]) + 1e-300))
             # 顶部裁剪线上的点会重叠，按序阶梯式下移，并留出引线可见距离。
             capped = display_cap is not None and height >= display_cap
-            offset = -rank if capped else 0
             annotations.append(dict(
                 x=float(row[col_logfc]),
-                y=height - (0.04 * display_cap if display_cap else 0) - offset * (0.05 * (display_cap or 10)),
+                y=height,
                 text=name, showarrow=True, arrowhead=0, arrowsize=.7, arrowwidth=.7, arrowcolor='#8795a5',
-                ax=0, ay=-18 if sign < 0 else 18, xanchor='center',
+                ax=sign * (60 + (rank % 2) * 25), ay=18 + rank * 16 if capped else -18 - rank * 16, xanchor='center',
                 yanchor='bottom' if sign > 0 else 'top',
                 font=dict(size=8.5, color='#243746'),
             ))

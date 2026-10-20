@@ -137,6 +137,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
                 textposition=_pca_label_positions(len(subset), unique_groups.index(group)),
                 marker=dict(size=12, color=color, line=dict(width=1, color='DarkSlateGrey')),
                 name=str(group),
+                hovertemplate=f"%{{text}} ({group})<br>X: %{{x:.3f}}<br>Y: %{{y:.3f}}<extra></extra>",
                 text=subset['Sample'], # 鼠标悬停显示样本名
                 legendgroup=str(group),     # 关键：让两张图的图例联动
                 showlegend=True        # 左图显示图例
@@ -152,6 +153,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
                 textposition=_pca_label_positions(len(subset), unique_groups.index(group) + 1),
                 marker=dict(size=12, color=color, line=dict(width=1, color='DarkSlateGrey')),
                 name=str(group),
+                hovertemplate=f"%{{text}} ({group})<br>X: %{{x:.3f}}<br>Y: %{{y:.3f}}<extra></extra>",
                 text=subset['Sample'],
                 legendgroup=str(group),     # 联动
                 showlegend=False       # 右图不重复显示图例
@@ -166,8 +168,8 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
         height=height_num,
         # 图例提取为左右两子图的顶部公共图例，避免压在左图点位上。
         legend=dict(title_text="Group", orientation="h",
-                    yanchor="bottom", y=1.06, xanchor="center", x=0.5),
-        margin=dict(t=80, b=50, l=50, r=50)
+                    yanchor="bottom", y=1.16, xanchor="right", x=1),
+        margin=dict(t=100, b=50, l=50, r=50)
     )
 
     # 更新坐标轴标签 (带方差百分比)
