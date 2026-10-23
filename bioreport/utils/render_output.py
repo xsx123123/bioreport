@@ -76,9 +76,18 @@ def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
                 if not runtime.exists():
                     runtime.write_text(runtime_source, encoding='utf-8')
                 url = os.environ['BIOREPORT_SHARED_ASSET_URL']
-                display(HTML(f'<script data-bioreport-dependency="plotly" src="{url}/{runtime_name}"></script>'))
+                dependency = f'<script data-bioreport-dependency="plotly" src="{url}/{runtime_name}"></script>'
             else:
-                display(HTML(f'<script data-bioreport-dependency="plotly">{runtime_source}</script>'))
+                dependency = f'<script data-bioreport-dependency="plotly">{runtime_source}</script>'
+            # Keep export controls with the runtime dependency, so standalone
+            # and website reports both work without a network connection.
+            exporter = Path(__file__).resolve().parents[1] / 'assets/js/plotly-export.js'
+            if shared:
+                shutil.copyfile(exporter, directory / exporter.name)
+                export_html = f'<script src="{escape_html(url, quote=True)}/{exporter.name}"></script>'
+            else:
+                export_html = '<script>' + exporter.read_text(encoding='utf-8') + '</script>'
+            display(HTML(dependency + export_html))
             _plotly_loaded = True
         display(HTML(_responsive_figure_html(figure, config, caption=caption)))
         from .asset_audit import record_asset
@@ -170,7 +179,7 @@ def figure_group(block_id, columns=1):
 
 
 def _plotly_filename(figure, caption=None):
-    """Derive a stable PNG name from the visible chart title."""
+    """Derive a stable download name from the visible chart title."""
     title = getattr(getattr(figure, "layout", None), "title", None)
     value = getattr(title, "text", None) if title is not None else None
     value = value or caption or "BioReport Figure"
@@ -182,7 +191,7 @@ def _plotly_filename(figure, caption=None):
 
 
 def _html_plotly_config(figure, config=None, caption=None):
-    """Apply one PNG download policy to every HTML Plotly chart."""
+    """Keep native PNG defaults and supply metadata for the export dialog."""
     normalized = dict(config or {})
     options = dict(normalized.get("toImageButtonOptions") or {})
     dpi = float(normalized.pop("png_dpi", DEFAULT_PNG_DPI))
@@ -221,17 +230,26 @@ def _responsive_figure_html(figure, config, caption=None):
     figure.layout.height = None
     try:
         options = dict(full_html=False, include_plotlyjs=False, config=config)
+        export_settings = json.dumps({
+            'width': export_options.get('width') or width,
+            'height': export_options.get('height') or height,
+            'filename': export_options['filename'],
+            'language': language(),
+        }, ensure_ascii=True).replace('<', '\\u003c')
+        scripts = ["window.BioReportPlotlyExport.attach(document.getElementById('{plot_id}'), "
+                   + export_settings + ');']
         if isinstance(figure.layout.meta, dict) and figure.layout.meta.get('bioreport_responsive_pca'):
-            options['post_script'] = _responsive_pca_script(width, height)
+            scripts.append(_responsive_pca_script(width, height))
             config['responsive'] = False
         elif isinstance(figure.layout.meta, dict) and figure.layout.meta.get('enrichment'):
-            options['post_script'] = """(() => {
+            scripts.append("""(() => {
               const chart = document.getElementById('{plot_id}');
               const region = chart.closest('.report-chart-scroll');
               if (!region) return;
               const hint = region.querySelector('.report-chart-scroll-hint');
               new ResizeObserver(() => {hint.hidden = region.scrollWidth <= region.clientWidth + 1;}).observe(region);
-            })();"""
+            })();""")
+        options['post_script'] = scripts
         html = figure.to_html(**options)
     finally:
         figure.layout.width = saved_width
@@ -314,17 +332,30 @@ def show_table(table, **kwargs) -> None:
     else:
         # Use DataTables' native scrolling rather than clipping wide matrices.
         kwargs.setdefault('scrollX', True)
-        from .html_table import export_button_text
+        kwargs['autoWidth'] = False
+        kwargs.setdefault('pageLength', 10)
+        from .html_table import export_button_text, table_column_defs, NUMBER_RENDER_JS, TABLE_DOM
+        from itables import JavascriptFunction
+        from itables.javascript import _evaluate_show_index
+        frame = table.data if hasattr(table, 'data') else table
+        offset = len(frame.index.names) if _evaluate_show_index(table, kwargs.get('showIndex', 'auto')) else 0
+        definitions = table_column_defs(frame, offset)
+        kwargs['dom'] = TABLE_DOM
+        if not hasattr(table, 'data'):
+            for definition, dtype in zip(definitions, frame.dtypes):
+                if dtype.kind in 'iuf':
+                    definition['render'] = JavascriptFunction(NUMBER_RENDER_JS)
+        kwargs['columnDefs'] = definitions + list(kwargs.get('columnDefs') or [])
         buttons = []
-        for button in kwargs.get('buttons', []):
+        for button in kwargs.get('buttons', ['copy', 'csv']):
             action = {'extend': button} if isinstance(button, str) else dict(button)
             kind = action.get('extend', '').removesuffix('Html5')
             if kind in {'copy', 'csv', 'excel'}:
                 action['text'] = export_button_text(kind)
+                if any(definition.get('visible') is False for definition in definitions):
+                    action['exportOptions'] = {**action.get('exportOptions', {}), 'columns': ':visible'}
             buttons.append(action)
-        if 'buttons' in kwargs:
-            kwargs['buttons'] = buttons
-        from itables import JavascriptFunction
+        kwargs['buttons'] = buttons
         kwargs.setdefault('drawCallback', JavascriptFunction("""function() {
             const api = this.api();
             api.table().node()._reportTable = api;

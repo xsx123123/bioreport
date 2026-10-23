@@ -57,7 +57,7 @@ display(HTML("<div class='report-kpi-grid'>" + ''.join(_kpis) + '</div>'))
 
 ## Sample Information
 
-Sample sequencing and alignment statistics follow the configured input files. Clean reads are reported in millions; insert size applies to paired-end libraries.
+The table lists sequencing and alignment statistics for all `{python} total_samples_count` samples. Mean Q30 is `{python} f"{avg_q30:.1f}"`% (`{python} qc_status_text`). Mapping rate is the percentage of clean reads aligned to the configured reference genome, `{python} project_info['genome']`. Clean reads are reported in millions; insert size applies to paired-end libraries.
 
 ```{python}
 #| label: tbl-samples

@@ -1,129 +1,198 @@
-/* --- DataTables SaaS 风格 (适配亮/暗模式) --- */
-
+/* Shared DataTables presentation: compact booktabs and native horizontal scroll.
+   Covers the legacy wrapper and DataTables 2 in every report tab. */
 :root {
-    --dt-bg: #ffffff;
-    --dt-text: #1f2937;
-    --dt-header-text: #374151;
-    --dt-border: #f3f4f6;
-    --dt-header-border: #e5e7eb;
-    --dt-hover: #f9fafb;
-    --dt-input-bg: #f9fafb;
-    --dt-btn-bg: #ffffff;
-    --dt-btn-hover: #f3f4f6;
+  --br-table-border: #d0d7de;
+  --br-table-toolbar: #57606a;
+  --br-table-stripe: #f8fafc;
+  --br-table-hover: #eef4ff;
+  --br-table-control-hover: #f3f4f6;
+  --br-table-active: #334155;
+  --br-table-active-text: #fff;
 }
-
-/* 黑夜模式变量覆盖 */
-[data-mode="dark"] {
-    --dt-bg: #09090b;          /* Zinc-950 */
-    --dt-text: #e4e4e7;        /* Zinc-200 */
-    --dt-header-text: #a1a1aa; /* Zinc-400 */
-    --dt-border: #27272a;      /* Zinc-800 */
-    --dt-header-border: #3f3f46; /* Zinc-700 */
-    --dt-hover: #26364a;       /* Zinc-900 */
-    --dt-input-bg: #26364a;
-    --dt-btn-bg: #26364a;
-    --dt-btn-hover: #27272a;
+:root[data-report-theme="dark"], :root[data-bs-theme="dark"], body.quarto-dark, [data-mode="dark"] {
+  --br-table-border: #465366;
+  --br-table-toolbar: #a1b0c4;
+  --br-table-stripe: #1d2530;
+  --br-table-hover: #293b52;
+  --br-table-control-hover: #293442;
+  --br-table-active: #d5dce6;
+  --br-table-active-text: #171c24;
 }
-
-.dataTables_wrapper {
-    background: var(--dt-bg) !important;
-    padding: 0px;
-    font-family: "BioReport-Latin", "BioReport-CN", -apple-system, BlinkMacSystemFont, sans-serif;
-    color: var(--dt-text) !important;
+#quarto-document-content :is(.itables, .report-data-table, .dataTables_wrapper, .dt-container) {
+  min-width: 0;
+  max-width: 100%;
+  font-family: inherit !important;
+  font-size: 13px;
+  color: var(--br-text, #334155);
 }
-
-/* 表格主体 */
-table.dataTable {
-    border-collapse: collapse !important;
-    width: 100% !important;
-    border-bottom: 1px solid var(--dt-border) !important;
-    margin: 1.5rem 0 !important;
-    background: var(--dt-bg) !important;
+#quarto-document-content :is(.dataTables_wrapper, .dt-container) {
+  margin: 0;
+  background: var(--br-surface, #fff);
 }
-
-/* 表头 */
-table.dataTable thead th {
-    background-color: var(--dt-bg) !important; 
-    color: var(--dt-header-text) !important;
-    font-weight: 700 !important;
-    font-size: 13px !important;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 2px solid var(--dt-header-border) !important;
-    padding: 16px 12px !important;
-    text-align: center;
+#quarto-document-content :is(.dataTables_scroll, .dt-scroll) { max-width: 100%; min-width: 0; }
+#quarto-document-content :is(.dataTables_scrollBody, .dt-scroll-body) {
+  max-width: 100%;
+  overflow-x: auto !important;
+  overscroll-behavior-inline: contain;
 }
-
-/* 单元格 */
-table.dataTable tbody td {
-    background-color: var(--dt-bg) !important;
-    border-bottom: 1px solid var(--dt-border) !important;
-    padding: 16px 12px !important;
-    font-size: 14px !important;
-    vertical-align: middle !important;
-    color: var(--dt-text) !important;
-    text-align: center !important;
+#quarto-document-content table.dataTable {
+  width: 100% !important;
+  margin: 0 !important;
+  border-collapse: collapse !important;
+  border-spacing: 0;
+  border: 0 !important;
+  border-bottom: 1px solid var(--br-table-border) !important;
+  background: var(--br-surface, #fff) !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
 }
-
-/* 悬停效果 */
-table.dataTable tbody tr:hover td {
-    background-color: var(--dt-hover) !important;
+#quarto-document-content table.dataTable :is(th, td) {
+  box-sizing: border-box;
+  height: 34px;
+  padding: 6px 12px !important;
+  border: 0 !important;
+  vertical-align: middle !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  line-height: 22px !important;
+  letter-spacing: normal;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  text-align: left !important;
+  color: var(--br-text, #334155) !important;
 }
-
-/* 搜索框与长度选择 */
-.dataTables_filter, .dataTables_length {
-    margin-bottom: 15px;
-    color: var(--dt-header-text) !important;
-    font-size: 13px;
+#quarto-document-content table.dataTable :is(th, td) :is(span, a, div) { font-family: inherit !important; }
+#quarto-document-content table.dataTable tbody td span[style*="inline-"] {
+  padding-block: 0 !important;
+  line-height: 22px !important;
 }
-
-.dataTables_filter input, .dataTables_length select {
-    border: 1px solid var(--dt-header-border) !important;
-    border-radius: 6px !important;
-    padding: 6px 12px !important;
-    background-color: var(--dt-input-bg) !important;
-    color: var(--dt-text) !important;
-    outline: none;
+#quarto-document-content table.dataTable thead th {
+  min-width: 0;
+  border-top: 2px solid var(--br-table-border) !important;
+  border-bottom: 1px solid var(--br-table-border) !important;
+  background: var(--br-surface, #fff) !important;
+  font-weight: 600;
+  text-transform: none;
 }
-
-/* 按钮组 */
-.dt-buttons {
-    margin-bottom: 15px;
+#quarto-document-content table.dataTable tbody > tr > :is(td, th) {
+  max-width: none;
+  background: var(--br-surface, #fff) !important;
+  box-shadow: none !important;
 }
-button.dt-button {
-    background: var(--dt-btn-bg) !important;
-    border: 1px solid var(--dt-header-border) !important;
-    color: var(--dt-text) !important;
-    border-radius: 6px !important;
-    font-size: 12px !important;
-    padding: 6px 14px !important;
-    box-shadow: none !important;
-    transition: all 0.2s;
+#quarto-document-content table.dataTable tbody > tr:nth-child(even) > :is(td, th) {
+  background: var(--br-table-stripe) !important;
 }
-button.dt-button:hover {
-    background: var(--dt-btn-hover) !important;
-    border-color: var(--dt-header-text) !important;
+#quarto-document-content table.dataTable tbody > tr:hover > :is(td, th) {
+  background: var(--br-table-hover) !important;
 }
-
-/* 分页器 */
-.dataTables_paginate {
-    margin-top: 20px !important;
-    font-size: 12px !important;
+#quarto-document-content table.dataTable :is(th, td):is(.dt-right, .dt-type-numeric, .report-number-column) {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
 }
-
-.dataTables_paginate .paginate_button {
-    color: var(--dt-text) !important;
-    border-radius: 6px !important;
-    border: 1px solid transparent !important;
+#quarto-document-content table.dataTable .report-number-column { min-width: 110px; }
+/* Scrolling tables keep a zero-height header inside the body for alignment. */
+#quarto-document-content :is(.dt-scroll-body, .dataTables_scrollBody) table.dataTable thead :is(th, td) {
+  height: 0;
+  padding-block: 0 !important;
+  border-block: 0 !important;
+  line-height: 0 !important;
 }
-
-.dataTables_paginate .paginate_button.current {
-    background: var(--dt-hover) !important;
-    color: var(--dt-text) !important;
-    border: 1px solid var(--dt-header-border) !important;
+#quarto-document-content table.dataTable .report-description-column { width: 40%; min-width: 18rem; }
+#quarto-document-content .report-description-text {
+  display: block;
+  width: clamp(18rem, 38vw, 32rem);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 22px;
 }
-
-/* 修复一些 DataTables 默认样式在暗色下的冲突 */
-.dataTables_wrapper .dataTables_info {
-    color: var(--dt-header-text) !important;
+#quarto-document-content table.dataTable .report-term-id-column { min-width: 130px; }
+#quarto-document-content table.dataTable .report-gene-list-column { width: 24rem; min-width: 20rem; }
+#quarto-document-content .report-gene-list {
+  width: 24rem;
+  max-width: 24rem;
+  height: 22px;
+  max-height: 22px;
+  overflow: auto;
+  white-space: nowrap;
+  line-height: 22px;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+#quarto-document-content .report-gene-list::-webkit-scrollbar { display: none; }
+#quarto-document-content .report-gene-list:focus-visible {
+  outline: 2px solid var(--br-primary, #2563eb);
+  outline-offset: 2px;
+}
+#quarto-document-content :is(.dataTables_wrapper, .dt-container) :is(.d-flex, .dt-layout-row) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-block: 0 8px !important;
+  min-height: 0;
+}
+#quarto-document-content :is(.dt-search, .dataTables_filter, .dt-length, .dataTables_length, .dt-info, .dataTables_info, .dt-paging, .dataTables_paginate, .dt-buttons) {
+  margin: 0 !important;
+  padding-block: 0 !important;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--br-table-toolbar) !important;
+}
+#quarto-document-content :is(.dt-search, .dataTables_filter, .dt-length, .dataTables_length) label { font-size: 12px; color: inherit; }
+#quarto-document-content :is(.dt-search, .dataTables_filter) input,
+#quarto-document-content :is(.dt-length, .dataTables_length) select {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--br-table-border) !important;
+  border-radius: 6px;
+  background: var(--br-surface, #fff) !important;
+  color: var(--br-text, #334155) !important;
+  font: inherit;
+}
+#quarto-document-content :is(.dt-search, .dataTables_filter) input { width: min(200px, 50vw); }
+#quarto-document-content button.dt-button,
+#quarto-document-content :is(.dt-container, .dataTables_wrapper) :is(.dt-paging-button, .paginate_button),
+#quarto-document-content :is(.dt-container, .dataTables_wrapper) .page-link {
+  box-sizing: border-box;
+  height: 30px;
+  min-width: 30px;
+  margin: 0 2px;
+  padding: 4px 10px !important;
+  border: 1px solid var(--br-table-border) !important;
+  border-radius: 6px !important;
+  background: var(--br-surface, #fff) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: var(--br-table-toolbar) !important;
+  font: inherit;
+  font-size: 12px;
+  line-height: 20px;
+  text-decoration: none;
+  transition: none;
+}
+#quarto-document-content button.dt-button:hover,
+#quarto-document-content :is(.dt-container, .dataTables_wrapper) :is(.dt-paging-button, .paginate_button):hover,
+#quarto-document-content :is(.dt-container, .dataTables_wrapper) .page-link:hover {
+  background: var(--br-table-control-hover) !important;
+  color: var(--br-text, #334155) !important;
+}
+#quarto-document-content :is(.dt-container, .dataTables_wrapper) :is(.dt-paging-button, .paginate_button).current,
+#quarto-document-content :is(.dt-container, .dataTables_wrapper) .page-item.active .page-link {
+  border-color: var(--br-table-active) !important;
+  background: var(--br-table-active) !important;
+  color: var(--br-table-active-text) !important;
+}
+#quarto-document-content :is(.dt-container, .dataTables_wrapper) :is(.dt-paging-button, .paginate_button).disabled,
+#quarto-document-content :is(.dt-container, .dataTables_wrapper) .page-item.disabled .page-link {
+  opacity: .45;
+  cursor: default;
+}
+@media (max-width: 767px) {
+  #quarto-document-content :is(.dataTables_wrapper, .dt-container) .dt-layout-cell { max-width: 100%; }
+  #quarto-document-content .report-description-text { width: 18rem; }
 }

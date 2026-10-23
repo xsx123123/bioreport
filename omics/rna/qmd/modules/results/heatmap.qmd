@@ -2,7 +2,7 @@
 
 本节纳入样本表与表达矩阵匹配的全部样本，未随机抽样；样本表未列出的矩阵样本不参与热图。PDF 样本列较多时按完整聚类顺序拆分面板，所有面板合计保留全部纳入样本。
 
-通过聚类热图直观展示了高变异基因在不同样本中的表达模式。色阶变化反映了基因表达量的相对高低（Z-Score），聚类树则揭示了样本间及基因间的相似性，有助于快速识别具有特定表达趋势的基因簇。
+通过热图展示高变异基因在不同样本中的表达模式。色阶反映基因表达量的相对高低（Z-Score）；行列顺序使用聚类结果，聚类状态见图表说明。
 
 ```{python}
 #| label: plot-heatmap
@@ -20,6 +20,9 @@ if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
 
     # 在 Quarto 中显示
     show_figure(fig, config=config_plot)
+    display(Markdown(f"实际展示 {fig.layout.meta['heatmap_genes']} 个基因；配置最多 {heatmap_settings.get('top_n', 1000)} 个。"
+                     + ("行列聚类已完成。" if all(fig.layout.meta['clustering'].get(key) for key in ('rows', 'columns'))
+                        else "部分聚类未完成，请结合当前行列顺序解读。")))
     display_result_ai("rna.results.heatmap__figure")
 else:
     raise FileNotFoundError(f"Heatmap requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}")
@@ -39,5 +42,5 @@ else:
      * <span style="color:#2166ac">■</span> **蓝色 (Blue, Z < 0)**: 代表该基因的表达量**低于**平均水平（相对低表达）。
      * **白色**: 代表接近平均水平。
 3. **Cluster Analysis (聚类分析)**:
-   * **基因聚类 (行)**: 具有相似表达模式的基因被聚集在一起，形成了明显的红/蓝颜色模块（Block），揭示了受实验处理影响而协同上调或下调的基因集。
+   * **基因聚类 (行)**: 聚类用于将相似表达模式的基因排列在相邻位置；色块是否明显以及是否对应实验处理，需要结合实际图形与实验设计判断。
 :::

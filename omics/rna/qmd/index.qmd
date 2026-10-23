@@ -164,7 +164,7 @@ display(HTML("<div class='report-kpi-grid'>" + "".join(_kpis) + "</div>"))
 ::: {.callout-note collapse="true"}
 
 ### 详细结论描述（点击展开） {#详细结论描述-点击展开}
-本次项目共分析了 **`{python} total_samples_count`** 个样本，涉及 **`{python} total_groups`** 个实验分组。测序数据质量整体表现`{python} "优秀" if avg_q30 >= 90 else "良好"`。
+本次项目共分析了 **`{python} total_samples_count`** 个样本，涉及 **`{python} total_groups`** 个实验分组。测序质量评价为：`{python} qc_status_text`。
 
 - **测序质量**：平均 Q30 达到 `{python} f"{avg_q30:.1f}"`%，`{python} qc_status_text`。
 - **比对情况**：参考基因组平均比对率为 `{python} f"{mapping_rate:.1f}"`% (`{python} mapping_status_text`)，其中唯一比对率为 `{python} f"{unique_mapping_rate:.1f}"`%。
@@ -174,7 +174,7 @@ display(HTML("<div class='report-kpi-grid'>" + "".join(_kpis) + "</div>"))
 
 ## 样本信息（Sample Info） {#样本信息-sample-info}
 
-本节列出全部 6 个样本的测序数据量与核心质控指标。其中 Q30 为碱基测序质量值 ≥30 的比例（本次平均 95.9%，数据质量优秀）；比对率（Mapping Rate）反映 clean reads 成功比对到参考基因组 GRCm39 的比例。各样本指标整体均衡，无明显离群样本，详细质量评估请见「质量控制」章节。
+本节列出全部 `{python} total_samples_count` 个样本的测序数据量与核心质控指标。其中 Q30 为碱基测序质量值 ≥30 的比例（本次平均 `{python} f"{avg_q30:.1f}"`%，`{python} qc_status_text`）；比对率（Mapping Rate）反映 clean reads 成功比对到参考基因组 `{python} project_info['genome']` 的比例。可通过下表比较各样本的质控指标，详细质量评估请见「质量控制」章节。
 
 ```{python}
 #| label: tbl-samples

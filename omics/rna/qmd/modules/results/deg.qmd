@@ -55,12 +55,12 @@ display(Markdown(":::"))
 此图直观展示了两个分组间基因表达差异的显著性与变化幅度，用于快速筛选具有统计学意义的差异基因（DEGs）。
 
 1. **Axes Interpretation (坐标轴含义)**:
-   * **X-axis ($	ext{log}_2	ext{FoldChange}$)**: 横坐标代表基因表达量的**差异倍数**（取对数）。
+   * **X-axis ($\text{log}_2\text{FoldChange}$)**: 横坐标代表基因表达量的**差异倍数**（取对数）。
      * **正值 (右侧)**: 代表基因在处理组/比较组中表达量**上调**。
      * **负值 (左侧)**: 代表基因在处理组/比较组中表达量**下调**。
-   * **Y-axis ($-	ext{log}_{10}	ext{P-value}$)**: 纵坐标代表差异的**统计学显著性**。数值越高，P 值越小（越接近 0），说明该差异由随机误差导致的概率越低，结果越可靠。
+   * **Y-axis ($-\text{log}_{10}\text{P-value}$)**: 纵坐标代表差异的**统计学显著性**。数值越高，P 值越小（越接近 0），说明该差异由随机误差导致的概率越低，结果越可靠。
 2. **Color Legend (颜色图例)**:
-   * <span style="color:#ef4444">●</span> **Up (上调基因)**: 满足显著性阈值（通常 $P < 0.05$）且差异倍数达到标准（如 $|	ext{log}_2FC| > 1$）的上调基因。
+   * <span style="color:#ef4444">●</span> **Up (上调基因)**: 原始 P 值 < `{python} f"{deg_settings.get('pvalue_threshold', 0.05):g}"` 且 log2FoldChange > `{python} f"{deg_settings.get('log2fc_threshold', 1.0):g}"` 的基因；阈值读取当前 JSON 配置。
    * <span style="color:#3b82f6">●</span> **Down (下调基因)**: 满足显著性阈值且差异倍数达到标准的下调基因。
    * <span style="color:#d1d5db">●</span> **Normal (非显著)**: 未满足筛选条件的基因，通常被认为是表达无显著差异。
 3. **Threshold Lines (阈值线)**:

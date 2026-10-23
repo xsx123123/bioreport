@@ -10,17 +10,17 @@ format:
 
 ## Analysis Workflow
 
-The workflow diagram shows the upstream data processing stages. The software table lists the supplied version records. Methods describe quality control, alignment, expression quantification, differential testing and enrichment; optional analyses depend on the upstream workflow.
-
 ```{python}
 #| label: setup-import
 #| echo: false
-from bioreport.software import software_records, software_source
+from bioreport.software import software_records, software_source, version_label
 from bioreport.utils.report_utils import software_version_table
 from bioreport.config import load_project_metadata
 workflow_config = load_project_metadata()
 input_files = workflow_config['input_files']
 ```
+
+The diagram illustrates common upstream processing stages, including optional analyses. The configured reference genome is `{python} workflow_config['genome']`. The software table lists supplied version records; actual execution and parameters must be established from upstream results and logs.
 
 ```{mermaid}
 %%| label: fig-pipeline-clean
@@ -129,24 +129,24 @@ sw_ver_map = software_version_table(df_sw, sw_file)
 
 #### Data Preprocessing and Quality Control {#en-data-preprocessing-and-quality-control}
 
-Raw sequencing data were first subjected to comprehensive quality control. The integrity and quality of raw reads were assessed using **`FastQC`** (`{python} sw_ver_map.get('FastQC', 'Not supplied')`)[@andrews2010fastqc] and **`MultiQC`** (`{python} sw_ver_map.get('MultiQC', 'Not supplied')`)[@MultiQC].  Potential cross-species contamination was screened using **`Fastq Screen`** (`{python} sw_ver_map.get('Fastq Screen', 'Not supplied')`)[@FastQ_Screen].  To obtain high-quality clean reads, adapter sequences and low-quality bases were trimmed using **`Fastp`** (`{python} sw_ver_map.get('Fastp', 'Not supplied')`) [@chen2018fastp] with default parameters.
+**`FastQC`** (`{python} version_label(sw_ver_map, 'FastQC', 'Not supplied')`)[@andrews2010fastqc] and **`MultiQC`** (`{python} version_label(sw_ver_map, 'MultiQC', 'Not supplied')`)[@MultiQC] can assess read quality. **`Fastq Screen`** (`{python} version_label(sw_ver_map, 'Fastq Screen', 'Not supplied')`)[@FastQ_Screen] supports cross-species screening. **`Fastp`** (`{python} version_label(sw_ver_map, 'Fastp', 'Not supplied')`)[@chen2018fastp] supports adapter and low-quality sequence filtering; actual parameters follow the upstream commands and reports.
 
 #### Read Alignment and Quantification {#en-read-alignment-and-quantification}
 
-Cleaned reads were aligned to the reference genome using **`STAR`** (`{python} sw_ver_map.get('STAR', 'Not supplied')`)[@dobin2013star] in two-pass mode to enhance splice junction discovery. Post-alignment processing, including sorting and indexing, was carried out using **`Samtools`** (`{python} sw_ver_map.get('Samtools', 'Not supplied')`)[@li2009sequence].  Alignment quality, coverage distribution, and insert sizes were evaluated using **`Qualimap`** (`{python} sw_ver_map.get('Qualimap', 'Not supplied')`)[@okonechnikov2016qualimap] and Samtools stats. For visualization, coverage tracks (BigWig files) were generated using **`deepTools`** (`{python} sw_ver_map.get('deepTools', 'Not supplied')`)[@ramirez2014deeptools].  Gene and transcript expression levels were quantified using **`RSEM`** (`{python} sw_ver_map.get('RSEM', 'Not supplied')`)[@li2011rsem] to calculate expected counts, TPM, and FPKM.
+**`STAR`** (`{python} version_label(sw_ver_map, 'STAR', 'Not supplied')`)[@dobin2013star] supports splice-aware alignment to the configured reference genome, `{python} workflow_config['genome']`; the alignment mode must be checked in upstream logs. **`Samtools`** (`{python} version_label(sw_ver_map, 'Samtools', 'Not supplied')`)[@li2009sequence] supports BAM sorting, indexing and statistics, while **`Qualimap`** (`{python} version_label(sw_ver_map, 'Qualimap', 'Not supplied')`)[@okonechnikov2016qualimap] supports alignment quality assessment. **`deepTools`** (`{python} version_label(sw_ver_map, 'deepTools', 'Not supplied')`)[@ramirez2014deeptools] can generate coverage tracks, and **`RSEM`** (`{python} version_label(sw_ver_map, 'RSEM', 'Not supplied')`)[@li2011rsem] can quantify expression. These descriptions do not establish execution of steps without upstream evidence.
 
 #### Differential Expression and Functional Analysis {#en-differential-expression-and-functional-analysis}
 
-Differential expression analysis between experimental groups was performed using **`DESeq2`** (`{python} sw_ver_map.get('DESeq2', 'Not supplied')`)[@love2014moderated] based on the raw count matrix. Volcano plots mark differential genes using the configured raw P-value and $|\log_2(\text{FoldChange})|$ cutoffs. Functional enrichment analyses (GO and KEGG) were conducted using **`clusterProfiler`** (`{python} sw_ver_map.get('clusterProfiler', 'Not supplied')`)[@yu2012clusterprofiler].
+This report reads upstream differential expression and enrichment results without rerunning the tests. **`DESeq2`** (`{python} version_label(sw_ver_map, 'DESeq2', 'Not supplied')`)[@love2014moderated] is commonly used for count-based differential expression testing. Volcano coloring follows the raw P and absolute log2FoldChange cutoffs in JSON. **`clusterProfiler`** (`{python} version_label(sw_ver_map, 'clusterProfiler', 'Not supplied')`)[@yu2012clusterprofiler] supports GO/KEGG enrichment; actual databases and results follow the supplied inputs.
 
 #### Advanced Downstream Analyses {#en-advanced-downstream-analyses}
 
-To explore transcriptomic complexity, several specialized analyses were performed:
+The following tools support optional analyses. Their inclusion here does not establish that the analyses were performed; confirm execution from the supplied upstream results:
 
-*   **Novel Transcript Discovery**: **`StringTie`** (`{python} sw_ver_map.get('StringTie', 'Not supplied')`) was used for de novo transcript assembly[@pertea2020gff], followed by **`GffCompare`** (`{python} sw_ver_map.get('GffCompare', 'Not supplied')`) to compare with reference genome annotations[@pertea2015stringtie].
-*   **Alternative Splicing**: **`rMATS`** (`{python} sw_ver_map.get('rMATS', 'Not supplied')`) was used to detect differential alternative splicing events[@wang2024rmats].
-*   **Variant Calling**: SNPs and Indels were identified following the **`GATK Best Practices`** (`{python} sw_ver_map.get('GATK', 'Not supplied')`) workflow. Analysis steps included Duplicate Marking with **`Picard`** (`{python} sw_ver_map.get('Picard', 'Not supplied')`), Base Quality Score Recalibration (BQSR), and variant filtering[@mckenna2010genome].
-*   **Gene Fusion**: Potential gene fusion events were detected using **`Arriba`** (`{python} sw_ver_map.get('Arriba', 'Not supplied')`) based on STAR alignment results[@uhrig2021accurate].
+*   **Novel Transcript Discovery**: **`StringTie`** (`{python} version_label(sw_ver_map, 'StringTie', 'Not supplied')`) can be used for de novo transcript assembly[@pertea2020gff], with **`GffCompare`** (`{python} version_label(sw_ver_map, 'GffCompare', 'Not supplied')`) to compare with reference genome annotations[@pertea2015stringtie].
+*   **Alternative Splicing**: **`rMATS`** (`{python} version_label(sw_ver_map, 'rMATS', 'Not supplied')`) can be used to detect differential alternative splicing events[@wang2024rmats].
+*   **Variant Calling**: SNPs and Indels can be identified following the **`GATK Best Practices`** (`{python} version_label(sw_ver_map, 'GATK', 'Not supplied')`) workflow. Such a workflow may include duplicate marking with **`Picard`** (`{python} version_label(sw_ver_map, 'Picard', 'Not supplied')`), Base Quality Score Recalibration (BQSR), and variant filtering[@mckenna2010genome].
+*   **Gene Fusion**: Potential gene fusion events can be detected using **`Arriba`** (`{python} version_label(sw_ver_map, 'Arriba', 'Not supplied')`) based on STAR alignment results[@uhrig2021accurate].
 
 
 ## References

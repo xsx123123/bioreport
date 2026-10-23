@@ -12,13 +12,27 @@ from IPython.display import HTML, display
 from bioreport.i18n import language
 
 _ids = itertools.count(1)
-NUMBER_RENDER_JS = '''function(data, type) {
+TABLE_DOM = '<"d-flex justify-content-between align-items-center mb-3"Blf>rt<"d-flex justify-content-between align-items-center mt-3"ip>'
+NUMBER_RENDER_JS = '''function(data, type, row, meta) {
     const value = Array.isArray(data) && data.length === 2 ? data[1] : data;
     if (type !== 'display' || typeof value !== 'number' || !Number.isFinite(value)) return value;
+    const column = meta?.settings?.aoColumns?.[meta.col];
+    const name = (column?.sName || column?.name || '').toLowerCase();
+    if (name === 'basemean') return value.toFixed(1);
+    if (['pvalue','padj','p.adjust','qvalue','fdr'].includes(name))
+        return value === 0 ? '0' : value.toExponential(2);
+    if (['log2foldchange','lfcse','stat','richfactor','foldenrichment','zscore'].includes(name))
+        return value.toFixed(3);
     if (Number.isInteger(value)) return String(value);
     const absolute = Math.abs(value);
     return absolute < 0.001 || absolute >= 1000000 ? value.toExponential(3)
         : new Intl.NumberFormat('en-US', {maximumFractionDigits:4, useGrouping:false}).format(value);
+}'''
+DESCRIPTION_RENDER_JS = '''function(data, type) {
+    if (type !== 'display' || data == null) return data;
+    const escaped = String(data).replace(/[&<>"']/g, character =>
+        ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[character]));
+    return '<span class="report-description-text" title="' + escaped + '">' + escaped + '</span>';
 }'''
 GENE_LIST_RENDER_JS = '''function(data, type) {
     if (type !== 'display' || data == null) return data;
@@ -54,6 +68,37 @@ def compact_payload(frame):
 def show_local_table(frame):
     """Compatibility entry point for shared website tables."""
     show_compact_table(frame)
+
+
+def table_column_defs(frame, offset=0):
+    """One presentation policy; preserve source columns and full numeric values.
+
+    Only hide Symbol when the complete, nonempty column equals ENSEMBL.
+    Real gene annotations always remain visible. Buttons export visible columns.
+    """
+    names = list(map(str, frame.columns))
+    duplicate_symbol = ('ENSEMBL' in names and 'Symbol' in names and len(frame) > 0
+                        and frame['ENSEMBL'].notna().any()
+                        and frame['ENSEMBL'].equals(frame['Symbol']))
+    definitions = []
+    for index, (name, dtype) in enumerate(zip(names, frame.dtypes)):
+        numeric = dtype.kind in 'iuf'
+        options = {'targets': index + offset, 'name': name,
+                   'className': 'dt-right report-number-column' if numeric else 'dt-left'}
+        if numeric:
+            options['width'] = '140px'
+        if name == 'Description':
+            options.update(width='40%', className='dt-left report-description-column')
+        elif name == 'ID':
+            options.update(width='130px', className='dt-left report-term-id-column')
+        elif name in ('GeneRatio', 'BgRatio'):
+            options.update(width='120px', className='dt-right report-number-column')
+        elif name.lower() == 'geneid':
+            options.update(width='24rem', className='dt-left report-gene-list-column')
+        if duplicate_symbol and name == 'Symbol':
+            options['visible'] = False
+        definitions.append(options)
+    return definitions
 
 
 def export_button_text(kind):
@@ -96,6 +141,7 @@ def show_compact_table(frame):
         'emptyTable':'暂无数据', 'paginate':{'first':'首页','previous':'上一页','next':'下一页','last':'末页'}}
     enrichment = {'Description', 'GeneRatio', 'p.adjust'} <= set(frame.columns)
     table_class = ' report-enrichment-table' if enrichment else ''
+    column_definitions = json.dumps(table_column_defs(frame), ensure_ascii=True).replace('<', '\\u003c')
     markup = f'''{css}
 <div class="report-data-table report-table-pending{table_class}" data-row-count="{len(frame)}">
 <p class="report-table-status" role="status">{len(frame):,} {'rows' if english else '行'} · <span>{waiting}</span></p>
@@ -122,26 +168,21 @@ def show_compact_table(frame):
      const numeric = new Set(payload.numeric);
      const numberRender = {NUMBER_RENDER_JS};
      const geneListRender = {GENE_LIST_RENDER_JS};
+     const descriptionRender = {DESCRIPTION_RENDER_JS};
      const text = DataTable.render.text();
      const escapeTitle = value => {{const node=document.createElement('span');node.textContent=value;return node.innerHTML;}};
-     const columns = payload.columns.map((title,index) => ({{title:escapeTitle(title),
-       type:numeric.has(index)?'num':'string', className:numeric.has(index)?'dt-right':'dt-left',
+     const columns = payload.columns.map((title,index) => ({{title:escapeTitle(title),name:title,
+       type:numeric.has(index)?'num':'string',
        render:numeric.has(index)?numberRender:text}}));
      payload.columns.forEach((title,index) => {{
-       if (region.classList.contains('report-enrichment-table')) {{
-         if (title === 'Description') Object.assign(columns[index], {{width:'380px', className:'dt-left report-description-column'}});
-         else if (title === 'ID') Object.assign(columns[index], {{width:'120px', className:'dt-left report-term-id-column'}});
-         else if (numeric.has(index) || ['GeneRatio','BgRatio'].includes(title))
-           Object.assign(columns[index], {{width:'105px', className:'dt-right report-enrichment-number'}});
-       }}
-       if (title.toLowerCase() === 'geneid') Object.assign(columns[index], {{
-         width:'32rem', className:'dt-left report-gene-list-column', render:geneListRender
-       }});
+       if (title === 'Description') columns[index].render = descriptionRender;
+       if (title.toLowerCase() === 'geneid') columns[index].render = geneListRender;
      }});
-     const rawExport = {{orthogonal:'export'}};
+     const rawExport = {{orthogonal:'export', columns:':visible'}};
      table._reportTable = new DataTable(table, {{data:payload.data,columns,
-       deferRender:true, scrollX:true, autoWidth:true, pageLength:10, order:[],
-       dom:'<"d-flex justify-content-between align-items-center mb-3"Blf>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
+       columnDefs:{column_definitions},
+       deferRender:true, scrollX:true, autoWidth:false, pageLength:10, order:[],
+       dom:{json.dumps(TABLE_DOM)},
        buttons:[{{extend:'copy',text:{json.dumps(export_button_text('copy'))},footer:false,exportOptions:rawExport}},
                 {{extend:'csv',text:{json.dumps(export_button_text('csv'))},footer:false,exportOptions:rawExport}}],
        language:{json.dumps(locale, ensure_ascii=False)},

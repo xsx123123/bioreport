@@ -3,6 +3,8 @@
 
 Volcano plots show upstream DESeq2 log2 fold changes and -log10(raw P). The direction is Treat relative to Control: positive values indicate upregulation and negative values downregulation. Red and blue mark genes meeting both configured P and absolute log2FC cutoffs; gray marks the remainder. Dashed lines show cutoffs.
 
+Current display cutoffs: raw P < `{python} f"{deg_settings.get('pvalue_threshold', 0.05):g}"` and |log2FoldChange| > `{python} f"{deg_settings.get('log2fc_threshold', 1.0):g}"`.
+
 Raw-P classification is distinct from FDR control. Original pvalue and padj values are retained. A display cap, where used, clips only the plotted coordinates. Preview tables and labels identify significant genes; complete records remain in the input files.
 
 ```{python}

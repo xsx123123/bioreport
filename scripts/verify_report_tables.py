@@ -77,6 +77,29 @@ def verify(source, output, config=None):
                 }''')
                 print(language,index,metadata['rows'],flush=True)
                 metadata['visible_to_ready_s']=ready_s
+                metadata['presentation']=wrapper.evaluate('''wrapper=>{
+                    const head=wrapper.querySelector('.dt-scroll-head table, .dataTables_scrollHead table') || wrapper.querySelector('table');
+                    const body=wrapper.querySelector('.dt-scroll-body table, .dataTables_scrollBody table') || head;
+                    const headers=[...head.querySelectorAll('thead th')];
+                    const cells=[...body.querySelectorAll('tbody td')];
+                    const rows=[...body.querySelectorAll('tbody tr')];
+                    return {
+                        nowrap:headers.every(n=>getComputedStyle(n).whiteSpace==='nowrap'),
+                        numericRight:cells.filter(n=>n.classList.contains('dt-right')).every(n=>getComputedStyle(n).textAlign==='right'),
+                        padding:cells.every(n=>getComputedStyle(n).paddingTop==='6px' && getComputedStyle(n).paddingLeft==='12px'),
+                        font:cells.every(n=>getComputedStyle(n).fontSize==='13px'),
+                        noVerticalBorders:cells.every(n=>parseFloat(getComputedStyle(n).borderLeftWidth)===0 && parseFloat(getComputedStyle(n).borderRightWidth)===0),
+                        tableHeight:head.getBoundingClientRect().height + rows.reduce((sum,n)=>sum+n.getBoundingClientRect().height,0),
+                        rows:rows.length,
+                        visibleColumns:body._reportTable.columns(':visible').header().toArray().map(n=>n.textContent)
+                    };
+                }''')
+                presentation=metadata['presentation']
+                assert all(presentation[key] for key in ('nowrap','numericRight','padding','font','noVerticalBorders')), presentation
+                if presentation['rows'] <= 10:
+                    assert presentation['tableHeight'] <= 400, presentation
+                assert not ('ENSEMBL' in presentation['visibleColumns'] and 'Symbol' in presentation['visibleColumns']
+                            and table.evaluate("n=>{const api=n._reportTable;const names=api.columns().header().toArray().map(h=>h.textContent);const a=names.indexOf('ENSEMBL'), b=names.indexOf('Symbol');return a>=0&&b>=0&&api.rows().data().toArray().every(row=>row[a]===row[b]);}")), presentation
                 search=wrapper.locator('input[type=search]')
                 search.fill('__no_matching_bioreport_record__');page.wait_for_timeout(250)
                 assert table.evaluate("n=>n._reportTable.rows({search:'applied'}).count()") == 0
@@ -118,7 +141,12 @@ def verify(source, output, config=None):
                 if config:
                     import pandas as pd
                     actual=pd.read_csv(exported,float_precision='round_trip')
-                    candidates=[(path,original) for path,original in expected if list(actual.columns)==list(original.columns)]
+                    # Only the verified duplicate presentation column may be
+                    # omitted. Every retained source value must still match.
+                    export_sources=[(path,original.drop(columns=['Symbol'])
+                        if {'ENSEMBL','Symbol'} <= set(original.columns) and original['ENSEMBL'].equals(original['Symbol'])
+                        else original) for path,original in expected]
+                    candidates=[(path,original) for path,original in export_sources if list(actual.columns)==list(original.columns)]
                     if candidates:
                         for path,original in candidates:
                             key=original.columns[0]

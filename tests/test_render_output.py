@@ -33,8 +33,9 @@ def test_html_png_download_uses_1000_dpi_equivalent_and_chart_name(monkeypatch):
     figure = go.Figure(go.Scatter(x=[1, 2], y=[2, 3]))
     figure.update_layout(title="样本 PCA / PC1 vs PC2", width=900, height=600)
 
-    def fake_to_html(*, full_html, include_plotlyjs, config):
+    def fake_to_html(*, full_html, include_plotlyjs, config, post_script):
         captured["config"] = config
+        captured["post_script"] = post_script
         return '<div id="chart" class="plotly-graph-div" style="height:600px; width:900px;"></div>'
 
     monkeypatch.setattr(figure, "to_html", fake_to_html)
@@ -45,6 +46,9 @@ def test_html_png_download_uses_1000_dpi_equivalent_and_chart_name(monkeypatch):
     assert options["format"] == "png"
     assert options["filename"] == "样本_PCA_-_PC1_vs_PC2"
     assert options["scale"] == pytest.approx(1000 / 96)
+    assert 'BioReportPlotlyExport.attach' in captured['post_script'][0]
+    assert '"width": 900, "height": 600' in captured['post_script'][0]
+    assert figure.layout.width == 900 and figure.layout.height == 600
 
 
 def test_pdf_output_uses_image_and_bounded_table(monkeypatch, tmp_path):

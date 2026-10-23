@@ -2,6 +2,8 @@
 
 本节通过主成分分析（PCA）和基因表达分布图，对样本间的相互关系及整体数据质量进行评估。PCA 展示了样本在低维空间中的聚类情况，反映了组内重复性与组间差异；而表达量分布图则用于检验样本间的数据一致性，确保后续分析的可靠性。
 
+表达分布图使用当前配置中全样本平均 TPM > `{python} f"{distribution_settings.get('threshold', 1):g}"` 的基因，展示 log2(TPM + 1) 分布。
+
 ```{python}
 #| label: plot-pca
 #| fig-cap: "Global PCA Analysis (PC1-PC3)"

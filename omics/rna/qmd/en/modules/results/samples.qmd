@@ -3,7 +3,7 @@
 
 PCA uses genes with mean TPM > 1 across samples and log2(TPM + 1) expression. Each point is a sample, colors indicate groups, and axis percentages show explained variance. Check within-group consistency and possible outliers together with experimental metadata.
 
-Expression violin and box plots show the distribution of log2(TPM + 1). Comparable distributions support cross-sample comparability; they do not by themselves establish the absence of batch effects. The mean-TPM filter differs from the detected-gene union reported in the summary.
+Expression violin and box plots show log2(TPM + 1) for genes with mean TPM > `{python} f"{distribution_settings.get('threshold', 1):g}"`. Comparable distributions support cross-sample comparability; they do not by themselves establish the absence of batch effects. The mean-TPM filter differs from the detected-gene union reported in the summary.
 
 ```{python}
 #| label: plot-pca

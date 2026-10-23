@@ -22,6 +22,28 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
+def execute_qmd_in_order(source, namespace, execute_cell):
+    """Evaluate cells and inline expressions in document order, as Quarto does.
+
+    Consume other fenced blocks unchanged: their contents are not executable
+    inline Python, even when they contain the literal ``{python}`` marker.
+    """
+    tokens = re.compile(
+        r'^(?P<fence>`{3,}|~{3,})(?P<info>[^\n]*)\n(?P<body>.*?)^(?P=fence)[ \t]*$'
+        r'|`\{python\}\s+(?P<inline>[^`]+)`',
+        re.MULTILINE | re.DOTALL,
+    )
+
+    def evaluate(match):
+        if match['inline'] is not None:
+            return str(eval(match['inline'], namespace))
+        if match['info'].strip() == '{python}':
+            return execute_cell(match['body'])
+        return match[0]
+
+    return tokens.sub(evaluate, source)
+
+
 def render(config_path: Path, output: Path, output_format: str, language=None):
     config_path, output = config_path.resolve(), output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -85,10 +107,9 @@ def render(config_path: Path, output: Path, output_format: str, language=None):
     cell_count = 0
     execution_log = []
 
-    def execute(match):
+    def execute(code):
         nonlocal cell_count
         cell_count += 1
-        code = match.group(1)
         label = re.search(r'(?m)^#\| label:\s*(.*)', code)
         label = label.group(1) if label else str(cell_count)
         print(f'Executing cell {cell_count}: {label}', flush=True)
@@ -102,8 +123,7 @@ def render(config_path: Path, output: Path, output_format: str, language=None):
     previous_directory = Path.cwd()
     try:
         os.chdir(source.parent)
-        executed = re.sub(r'```\{python\}\n(.*?)\n```', execute, original, flags=re.DOTALL)
-        executed = re.sub(r'`\{python\}\s+([^`]+)`', lambda m:str(eval(m.group(1), namespace)), executed)
+        executed = execute_qmd_in_order(original, namespace, execute)
         source.write_text(executed)
     finally:
         os.chdir(previous_directory)

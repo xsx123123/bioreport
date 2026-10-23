@@ -50,8 +50,9 @@ with sync_playwright() as pw:
         assert graph.evaluate('n=>JSON.stringify(n.data)')==before['data']
         graph.locator('.modebar-btn[data-title="Autoscale"]').click()
         interactions.append({'type':kind,'hover':True,'drag_zoom':True,'data_unchanged':True})
+        graph.locator('.modebar-btn[data-report-export]').click()
         with page.expect_download(timeout=30000) as pending:
-            graph.locator('.modebar-btn[data-title*="Download"]').first.click()
+            page.locator('.report-export-dialog [type=submit]').click()
         pending.value.save_as(out/f'{kind}-{index}.png')
     assert not remote and not errors,(remote,errors)
     (out/'verification.json').write_text(json.dumps(dict(status='PASS',types=types,interactions=interactions,remote=remote,errors=errors),indent=2))

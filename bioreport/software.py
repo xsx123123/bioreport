@@ -1,4 +1,11 @@
 """Software versions embedded in configuration, with a legacy file fallback."""
+def version_label(versions, name, default='未提供'):
+    """Match presentation names such as fastp/Fastp and FastQ Screen reliably."""
+    normalize = lambda value: ''.join(character for character in str(value).casefold() if character.isalnum())
+    key = normalize(name)
+    return next((value for label, value in versions.items() if normalize(label) == key), default)
+
+
 def software_records(config):
     import pandas as pd
     if 'software_versions' in config:

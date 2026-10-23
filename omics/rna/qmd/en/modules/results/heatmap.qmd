@@ -14,6 +14,9 @@ Clustering reorders rows and columns by expression similarity. Interpret sample 
 if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
     fig, config_plot = draw_interactive_heatmap(input_file=tpm_file, metadata_file=meta_file, top_n=heatmap_settings.get('top_n', 1000), do_cluster=True)
     show_figure(fig, config=config_plot)
+    display(Markdown(f"Shown: {fig.layout.meta['heatmap_genes']} genes; configured maximum: {heatmap_settings.get('top_n', 1000)}. "
+                     + ("Row and column clustering completed." if all(fig.layout.meta['clustering'].get(key) for key in ('rows', 'columns'))
+                        else "Some clustering steps did not complete; interpret the displayed order accordingly.")))
     display_result_ai('rna.results.heatmap__figure')
 else:
     raise FileNotFoundError(f'Heatmap requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}')
