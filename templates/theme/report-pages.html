@@ -83,10 +83,27 @@
     function sizeNavbar() {
       if (navbar) document.documentElement.style.setProperty('--report-navbar-height', `${navbar.getBoundingClientRect().height + 16}px`);
     }
+    // Align the fixed navbar's inner edges with the page grid: left edge of the
+    // TOC column (or content when the TOC is hidden) to the right edge of the
+    // content column, so the brand and toolbar never float over empty space.
+    function alignNavbar() {
+      const content = document.querySelector('#quarto-document-content');
+      if (!navbar || !content) return;
+      const tocColumn = document.querySelector('#quarto-sidebar-toc-left') || document.querySelector('#TOC');
+      const contentRect = content.getBoundingClientRect();
+      const tocRect = tocColumn ? tocColumn.getBoundingClientRect() : null;
+      const left = tocRect && tocRect.width ? Math.min(tocRect.left, contentRect.left) : contentRect.left;
+      const root = document.documentElement.style;
+      root.setProperty('--report-page-inset-left', `${Math.max(0, Math.round(left))}px`);
+      root.setProperty('--report-page-inset-right', `${Math.max(0, Math.round(window.innerWidth - contentRect.right))}px`);
+    }
     sizeNavbar();
+    alignNavbar();
+    window.addEventListener('load', alignNavbar);
     if (navbar && window.ResizeObserver) new window.ResizeObserver(sizeNavbar).observe(navbar);
     window.addEventListener('resize', () => {
       sizeNavbar();
+      alignNavbar();
       if (window.innerWidth > 1279) setMenuOpen(false);
     });
     if (toggle) toggle.addEventListener('click', () => {

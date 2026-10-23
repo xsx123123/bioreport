@@ -260,7 +260,10 @@ table:not(.dataTable) tbody tr:hover { background: #f8fbff; }
   flex-wrap: nowrap;
   gap: 1.5rem;
   height: 64px;
-  padding: 0 max(1rem, calc((100% - 1280px) / 2));
+  /* 与正文网格对齐：JS（report-pages.html）按目录/正文列实测边缘写入
+     --report-page-inset-*，未生效前回退到 1280px 居中。 */
+  padding-left: max(1rem, var(--report-page-inset-left, calc((100% - 1280px) / 2)));
+  padding-right: max(1rem, var(--report-page-inset-right, calc((100% - 1280px) / 2)));
   margin: 0;
   font-size: .95rem;
   background: rgba($body-bg, .92) !important;
