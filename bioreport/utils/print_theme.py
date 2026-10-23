@@ -11,7 +11,15 @@ from pathlib import Path
 # re-export keeps the historical import path working.
 from .fonts import FONT_STACK, font_families  # noqa: F401
 
-PALETTE = ['#4477AA', '#EE6677', '#228833', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB']
+# Discrete group palettes. 'seaside' is the default; the rest are available
+# via group_palette(groups, palette='apple'|'ibm'|'candy').
+PALETTES = {
+    'seaside': ['#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500'],
+    'apple': ['#ff3b30', '#ff9500', '#ffcc00', '#4cd964', '#5ac8fa', '#007aff', '#5856d6'],
+    'ibm': ['#5B8DFE', '#725DEE', '#DD227D', '#FE5F00', '#FFB109'],
+    'candy': ['#9b5de5', '#f15bb5', '#fee440', '#00bbf9', '#00f5d4'],
+}
+PALETTE = PALETTES['seaside']
 
 # Thousands of SVG marker objects per volcano multiply Typst's memory use in
 # large reports. Render the complete dense point layer at print resolution;
@@ -23,8 +31,10 @@ class UnsupportedTrace(ValueError):
     """A third-party plot needs Plotly's own static exporter."""
 
 
-def group_palette(groups):
-    return {str(g): PALETTE[i % len(PALETTE)] for i, g in enumerate(sorted(set(map(str, groups))))}
+def group_palette(groups, palette=None):
+    """Map sorted unique groups to colors; palette is a PALETTES name or a color list."""
+    colors = PALETTES[palette] if isinstance(palette, str) else (palette or PALETTE)
+    return {str(g): colors[i % len(colors)] for i, g in enumerate(sorted(set(map(str, groups))))}
 
 
 def plain(value):

@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from bioreport.utils.print_theme import group_palette
+from bioreport.utils.plotly_style import INK, export_config, style_figure
 from sklearn.decomposition import PCA
 import plotly.colors as pc
 
@@ -135,7 +136,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
                 x=subset['PC1'], y=subset['PC2'],
                 mode='markers+text',
                 textposition=_pca_label_positions(len(subset), unique_groups.index(group)),
-                marker=dict(size=12, color=color, line=dict(width=1, color='DarkSlateGrey')),
+                marker=dict(size=12, color=color, line=dict(width=1, color=INK)),
                 name=str(group),
                 hovertemplate=f"%{{text}} ({group})<br>X: %{{x:.3f}}<br>Y: %{{y:.3f}}<extra></extra>",
                 text=subset['Sample'], # 鼠标悬停显示样本名
@@ -151,7 +152,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
                 x=subset['PC2'], y=subset['PC3'],
                 mode='markers+text',
                 textposition=_pca_label_positions(len(subset), unique_groups.index(group) + 1),
-                marker=dict(size=12, color=color, line=dict(width=1, color='DarkSlateGrey')),
+                marker=dict(size=12, color=color, line=dict(width=1, color=INK)),
                 name=str(group),
                 hovertemplate=f"%{{text}} ({group})<br>X: %{{x:.3f}}<br>Y: %{{y:.3f}}<extra></extra>",
                 text=subset['Sample'],
@@ -162,9 +163,9 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
         )
 
     # --- 5. 样式美化 ---
-    fig.update_layout(
+    style_figure(
+        fig,
         meta={"bioreport_responsive_pca": True},
-        template="simple_white", # 仿 R 的白色背景风格
         height=height_num,
         # 图例提取为左右两子图的顶部公共图例，避免压在左图点位上。
         legend=dict(title_text="Group", orientation="h",
@@ -180,17 +181,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
     fig.update_yaxes(title_text=f"PC3: {var_exp[2]:.1f}% variance", row=1, col=2)
 
     # --- 6. 高清下载配置 ---
-    my_config = {
-        'toImageButtonOptions': {
-            'format': 'png',
-            'filename': 'PCA_Global_Analysis',
-            'height': height_num,
-            'width': width_num,
-            'scale': scale_num 
-        },
-        'displaylogo': False,
-        'modeBarButtonsToRemove': ['lasso2d', 'select2d'],
-        'responsive': True
-    }
+    my_config = export_config('PCA_Global_Analysis', height=height_num,
+                              width=width_num, scale=scale_num)
 
     return fig, my_config

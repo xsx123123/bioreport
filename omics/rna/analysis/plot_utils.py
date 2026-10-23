@@ -23,6 +23,7 @@ from bioreport.utils.render_output import show_table as show
 import itables.options as opt
 import plotly.express as px
 import plotly.graph_objects as go
+from bioreport.utils.plotly_style import GUIDE, INK, export_config, style_figure
 from typing import Optional, List, Union
 import os
 
@@ -98,13 +99,13 @@ def plot_pca_interactive(
         title=title,
         width=700,
         height=500,
-        template="plotly_white",
-        hover_data=[col_group] 
+        hover_data=[col_group]
     )
-    
+    style_figure(fig)
+
     # 统一美化点的样式：增加边框让点更清晰
-    fig.update_traces(marker=dict(size=12, line=dict(width=1, color='DarkSlateGrey')))
-    
+    fig.update_traces(marker=dict(size=12, line=dict(width=1, color=INK)))
+
     return fig
 
 
@@ -195,7 +196,7 @@ def plot_volcano_pvalue(
     df.loc[(df[c_logfc] < -fc_cutoff) & (df[c_pval] < pval_cutoff), col_status] = 'Down'
 
     # --- 3. 绘图逻辑 ---
-    default_palette = {'Up': '#ef4444', 'Down': '#3b82f6', 'NS': 'lightgrey'}
+    default_palette = {'Up': '#ef4444', 'Down': '#3b82f6', 'NS': '#cbd5e1'}
     if palette:
         default_palette.update(palette)
     colors = default_palette
@@ -227,17 +228,21 @@ def plot_volcano_pvalue(
         ))
 
     # --- 4. 辅助线 ---
-    fig.add_vline(x=fc_cutoff, line_dash="dash", line_color="grey", line_width=1)
-    fig.add_vline(x=-fc_cutoff, line_dash="dash", line_color="grey", line_width=1)
+    fig.add_vline(x=fc_cutoff, line_dash="dash", line_color=GUIDE, line_width=1)
+    fig.add_vline(x=-fc_cutoff, line_dash="dash", line_color=GUIDE, line_width=1)
     # 这里的横线现在完美对应颜色的分界了
-    fig.add_hline(y=-np.log10(pval_cutoff), line_dash="dash", line_color="grey", line_width=1)
-    
-    fig.update_layout(
+    fig.add_hline(y=-np.log10(pval_cutoff), line_dash="dash", line_color=GUIDE, line_width=1)
+
+    style_figure(
+        fig,
         title=title,
         xaxis_title=c_logfc,
         yaxis_title=f"-log10({c_pval})",
-        template="simple_white",
-        height=600
+        height=500,
+        # 图例横向置于图表下方，给点阵让出纵向空间。
+        legend=dict(orientation='h', yanchor='top', y=-0.18,
+                    xanchor='center', x=0.5, title_text=''),
+        margin=dict(t=60, b=110, l=60, r=40),
     )
 
     if display_cap is not None:
@@ -354,26 +359,20 @@ def plot_sample_correlation(tpm_file, meta_file, width=800, height=700):
             zmin=0.8, zmax=1, # 设定颜色范围，突显差异
             labels=dict(color="Pearson Corr")
         )
-        
-        fig.update_layout(
+
+        style_figure(
+            fig,
             title="Sample Correlation Heatmap",
-            width=width, 
+            width=width,
             height=height,
-            template="simple_white"
+            xaxis={'showgrid': False, 'showline': False, 'ticks': ''},
+            yaxis={'showgrid': False, 'showline': False, 'ticks': ''},
         )
-        
+
         # 导出配置
-        my_config = {
-            'toImageButtonOptions': {
-                'format': 'png',
-                'filename': 'Sample_Correlation',
-                'height': height,
-                'width': width,
-                'scale': 2
-            },
-            'displaylogo': False
-        }
-        
+        my_config = export_config('Sample_Correlation', height=height,
+                                  width=width, scale=2)
+
         return fig, my_config
         
     except Exception as e:

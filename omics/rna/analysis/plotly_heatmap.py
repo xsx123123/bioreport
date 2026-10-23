@@ -6,6 +6,7 @@ import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import pdist
 import os
 from bioreport.utils.print_theme import group_palette
+from bioreport.utils.plotly_style import export_config, style_figure
 
 def draw_interactive_heatmap(
     input_file, 
@@ -109,29 +110,20 @@ def draw_interactive_heatmap(
         aspect="auto"
     )
 
-    fig.update_layout(
+    style_figure(
+        fig,
         title=f"Clustered Heatmap ({title_suffix})",
-        xaxis={'side': 'bottom'},
-        yaxis={'visible': True if len(df_z) < 100 else False},
+        xaxis={'side': 'bottom', 'showgrid': False, 'showline': False, 'ticks': ''},
+        yaxis={'visible': True if len(df_z) < 100 else False,
+               'showgrid': False, 'showline': False, 'ticks': ''},
         height=800,
         meta={'sample_groups': {str(k): str(v) for k,v in meta[('group' if 'group' in meta else meta.columns[0])].items()},
               'group_colors': group_palette(meta_raw[('group' if 'group' in meta else meta.columns[0])]),
               'heatmap_genes': len(df_z), 'clustering':clustering}
     )
-    
+
     # 高清下载配置
-    my_config = {
-        'toImageButtonOptions': {
-            'format': 'png',
-            'filename': f'Heatmap_{title_suffix}_Cluster',
-            'height': 1200,
-            'width': 1600,
-            'scale': 4  # 4倍超高清
-        },
-        'displaylogo': False,
-        'modeBarButtonsToRemove': ['lasso2d', 'select2d'],
-        'responsive': True
-    }
+    my_config = export_config(f'Heatmap_{title_suffix}_Cluster', height=1200, width=1600)
     
     # 将 config 绑定到 fig 对象上 (虽然 fig.show 才会用到，但为了方便 Quarto 调用)
     # 注意：在 Quarto 直接 return fig 时，需要手动在 chunk 里加 fig.show(config=...)

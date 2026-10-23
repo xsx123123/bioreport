@@ -7,6 +7,7 @@ from pathlib import Path
 import plotly.graph_objects as go
 from IPython.display import display, Markdown
 from bioreport.utils.render_output import show_figure, is_pdf
+from bioreport.utils.plotly_style import style_figure
 from typing import Optional, List, Dict, Any
 
 
@@ -51,7 +52,8 @@ def _to_percent(fig):
     for trace in fig.data:
         trace.x = (np.asarray(trace.x, dtype=float) / totals * 100).tolist()
     fig.update_layout(barmode='stack')
-    fig.update_xaxes(range=[0, 100], ticksuffix='%', title_text='各物种比对占比（%，按样本归一化）')
+    fig.update_xaxes(range=[0, 100], ticksuffix='%',
+                     title_text='Species mapping proportion (%, normalized per sample)')
     return fig
 
 
@@ -113,16 +115,17 @@ def _dataset_figure(identifier, plot, dataset):
     def axis_title(axis):
         value = (layout.get(axis) or {}).get('title') or {}
         return value.get('text') if isinstance(value,dict) else value
-    title = plain(config.get('title') or identifier)+(f'：{stage}' if stage else '')
+    title = plain(config.get('title') or identifier)+(f' ({stage})' if stage else '')
     is_screen = 'fastq screen' in (identifier + ' ' + title).lower() or 'fastq_screen' in identifier.lower()
     if is_screen and horizontal and len(fig.data) and _percent_axis_enabled():
         fig = _to_percent(fig)
     x_title = axis_title('xaxis') or config.get('xlab') or ''
-    fig.update_layout(title=title, template='simple_white', height=500,
+    style_figure(fig, title=title, height=500,
         xaxis_title=x_title,
         yaxis_title=axis_title('yaxis') or ('Sample' if plot.get('plot_type')=='bar plot' and horizontal else dconfig.get('ylab') or config.get('ylab') or ''))
     if is_screen and horizontal and len(fig.data) and _percent_axis_enabled():
-        fig.update_xaxes(title_text='各物种比对占比（%，按样本归一化）', range=[0, 100], ticksuffix='%')
+        fig.update_xaxes(title_text='Species mapping proportion (%, normalized per sample)',
+                         range=[0, 100], ticksuffix='%')
     if len(fig.data) and all(t.type == 'bar' for t in fig.data):
         # 图例移到图表上方外侧水平排列，避免叠压前两根柱子。
         fig.update_layout(legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0,
@@ -132,7 +135,7 @@ def _dataset_figure(identifier, plot, dataset):
 
 def _prepare_html_qc_figure(fig):
     """Keep the report heading as the sole title for HTML QC charts."""
-    fig.update_layout(title=None)
+    style_figure(fig, title=None)
     return fig
 
 
@@ -467,7 +470,7 @@ def visualize_fastq_screen_pair(r1_dir, r2_dir):
             pair.add_trace(go.Bar(x=values,y=list(fig.data[0].y),orientation='h',name=trace.name,
                 marker_color=PALETTE[i%len(PALETTE)],legendgroup=trace.name,showlegend=col==1),row=1,col=col)
         maximum = max(maximum,float(np.nanmax(total)))
-    pair.update_layout(barmode='stack',template='simple_white',height=540,width=1100,
+    style_figure(pair, barmode='stack', height=540, width=1100,
         meta={'paired_screen':True},legend=dict(orientation='h',y=1.24,yanchor='bottom',x=0),margin=dict(t=120,l=80,r=40,b=50))
     pair.update_xaxes(range=[0,100 if _percent_axis_enabled() else maximum*1.02],title_text=figures[0].layout.xaxis.title.text)
     pair.update_yaxes(autorange='reversed')

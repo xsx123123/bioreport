@@ -6,6 +6,8 @@ from pathlib import Path
 import unicodedata
 import numpy as np
 
+from bioreport.utils.plotly_style import AXIS_LINE, GRID, export_config, style_figure
+
 
 def parse_gene_ratios(values):
     def parse(value):
@@ -110,9 +112,9 @@ def draw_fancy_dotplot(enrich_file,
 
     # --- 2. 🎨 绘图 ---
 
-    from bioreport.i18n import language
-    colorbar_title = 'Adjusted P value' if language() == 'en' else '校正后 P 值'
-    color_scale = "RdYlBu"  
+    # Chart text stays English in both report languages.
+    colorbar_title = 'Adjusted P value'
+    color_scale = "RdYlBu"
     
     fig = px.scatter(
         df,
@@ -128,27 +130,21 @@ def draw_fancy_dotplot(enrich_file,
     )
 
     # --- 3. 精细化修饰 ---
-    fig.update_layout(
-        template="simple_white",
+    style_figure(
+        fig,
         height=max(height_num, computed_height),
-        font=dict(family="Arial", size=14, color="#333333"),
 
-        title=dict(x=0.5, xanchor='center', font=dict(size=18), pad=dict(t=8)),
+        title=dict(text=f"<b>Top {len(df)} Enriched Pathways</b>", pad=dict(t=8)),
 
         xaxis=dict(
             title="<b>Gene ratio</b>" if plot_x_col in ["parsed_ratio", "GeneRatio"] else f"<b>{plot_x_col}</b>",
-            showgrid=True,
-            gridcolor='#E5E7EB',
-            gridwidth=1,
+            gridcolor=GRID,
             griddash='dash',
-            zeroline=False,
-            showline=True, linecolor='black'
         ),
 
         yaxis=dict(
             title="",
-            showgrid=True, gridcolor='#E5E7EB', griddash='dash',
-            showline=True, linecolor='black',
+            gridcolor=GRID, griddash='dash',
             automargin=True, # 自动调整边距
             # ✨ 增加刻度文字间距，防止折行后太密
             tickfont=dict(size=12)
@@ -200,13 +196,7 @@ def draw_fancy_dotplot(enrich_file,
             marker=dict(size=max(5, 25*(count/df[size_col].max())**.5), color='#8795a5'),
             name=f'Count: {count}', showlegend=True))
     # --- 4. 导出 ---
-    config = {
-        'toImageButtonOptions': {
-            'format': 'png', 'filename': 'Fancy_Enrichment',
-            'height': fig.layout.height, 'width': width_num, 'scale': scale_num
-        },
-        'displaylogo': False,
-        'responsive': True
-    }
+    config = export_config('Fancy_Enrichment', height=fig.layout.height,
+                           width=width_num, scale=scale_num)
 
     return fig, config

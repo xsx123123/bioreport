@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from bioreport.utils.print_theme import group_palette
+from bioreport.utils.plotly_style import export_config, style_figure
 
 def draw_expression_distribution_plotly(tpm_file, meta_file, 
                                         threshold=1.0, 
@@ -102,21 +103,17 @@ def draw_expression_distribution_plotly(tpm_file, meta_file,
         # 优先使用自定义配色字典，否则使用 Bold 序列
         color_discrete_map=color_map or group_palette(original_metadata[group_col]),
         color_discrete_sequence=px.colors.qualitative.Bold if not color_map else None,
-        
-        # 这里的模板改用 plotly_white，比 simple_white 对颜色更友好
-        template="plotly_white",
-        
+
         title="Sample TPM Distribution"
     )
 
     # --- 4. 样式美化 ---
-    fig.update_layout(
+    style_figure(
+        fig,
         height=height_num,
-        font=dict(family="Arial", size=14, color="black"),
-        
+
         title=dict(
-            text=f"Sample TPM Distribution<br><sup>Filtered for mean expression > {threshold}</sup>",
-            x=0.5, xanchor='center'
+            text=f"Sample TPM Distribution<br><sup>Filtered for mean expression > {threshold}</sup>"
         ),
         
         xaxis_title="",
@@ -144,13 +141,7 @@ def draw_expression_distribution_plotly(tpm_file, meta_file,
     )
 
     # --- 5. 导出配置 ---
-    my_config = {
-        'toImageButtonOptions': {
-            'format': 'png', 'filename': 'TPM_Dist',
-            'height': height_num, 'width': width_num, 'scale': scale_num 
-        },
-        'displaylogo': False,
-        'responsive': True
-    }
+    my_config = export_config('TPM_Dist', height=height_num,
+                              width=width_num, scale=scale_num)
 
     return fig, my_config

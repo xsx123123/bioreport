@@ -196,7 +196,7 @@ def test_long_enrichment_labels_split_by_line_budget_and_cjk_fonts_are_embedded_
     assert len(pieces)>2 and sum(len(piece) for _,piece in pieces)==14
     fig,_=draw_fancy_dotplot(frame.iloc[:2],p_cutoff=None,wrap_width=28)
     assert fig.layout.xaxis.title.text=='<b>Gene ratio</b>'
-    assert '校正后 P 值' in fig.layout.coloraxis.colorbar.title.text
+    assert 'Adjusted P value' in fig.layout.coloraxis.colorbar.title.text
     assert any(t.name.startswith('Count:') for t in fig.data if t.name)
     cjk=go.Figure(go.Scatter(x=[1,2],y=[2,3],mode='lines',name='处理组'))
     cjk.update_layout(xaxis_title='样本位置',yaxis_title='表达量')
@@ -360,12 +360,12 @@ def test_static_volcano_has_ten_visible_labels_anchored_to_real_points(tmp_path,
     pd.testing.assert_frame_equal(frame,before)
 
 
-def test_enrichment_colorbar_follows_report_language(monkeypatch):
+def test_enrichment_colorbar_is_english_in_both_report_languages(monkeypatch):
     frame=pd.DataFrame({'Description':['term'], 'GeneRatio':['2/10'], 'Count':[2], 'p.adjust':[.01]})
-    for lang,title in [('zh','校正后 P 值'),('en','Adjusted P value')]:
+    for lang in ('zh','en'):
         monkeypatch.setenv('BIOREPORT_LANGUAGE',lang)
         fig,_=draw_fancy_dotplot(frame,p_cutoff=None)
-        assert title in fig.layout.coloraxis.colorbar.title.text
+        assert 'Adjusted P value' in fig.layout.coloraxis.colorbar.title.text
 
 
 def test_fastq_screen_pair_preserves_reads_and_shared_legend(tmp_path,monkeypatch):
