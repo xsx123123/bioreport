@@ -89,6 +89,7 @@ pythonpath = ["."]
 [tool.setuptools.package-data]
 bioreport = ["translations.en.json", "utils/prompt.txt", "report.schema.json", "assets/fonts/**/*", "assets/js/*"]
 "omics.rna" = ["qmd/**/*.qmd", "qmd/assets/*.svg", "schema.json"]
+"omics.gwas" = ["qmd/**/*.qmd", "schema.json"]
 
 [tool.setuptools.data-files]
 "share/bioreport/templates" = ["templates/_quarto.yml.j2", "templates/_quarto-single.yml.j2"]

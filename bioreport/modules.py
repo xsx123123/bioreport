@@ -92,6 +92,64 @@ def output_formats(config: dict) -> list[str]:
     return list(dict.fromkeys(formats))
 
 
+def select_report_omics(config: dict, requested: str | None = None) -> str | None:
+    """Resolve one template package and scope module aliases before validation."""
+    registry = get_registry()
+    registered = registry.modules
+    report = config.setdefault("report", {})
+    modules = report.get("modules", report.get("sections"))
+    custom = report.get("module_definitions", {})
+    if not isinstance(custom, dict):
+        raise ValueError("report.module_definitions must be an object")
+    if "modules" in report or "sections" in report:
+        if not isinstance(modules, list) or not modules:
+            raise ValueError("report.modules must be a nonempty list of module IDs")
+        if any(not isinstance(module, str) for module in modules):
+            raise ValueError("report.modules must contain string module IDs")
+    shared_modules = MODULES
+
+    hints = set()
+    if requested:
+        hints.add(requested)
+    report_type = {"rna-seq": "rna", "rna": "rna", "gwas": "gwas"}.get(report.get("type"))
+    if report_type:
+        hints.add(report_type)
+    for module_id in modules or ():
+        if module_id in shared_modules or module_id in custom:
+            continue
+        if module_id in registered:
+            hints.add(module_id.split(".", 1)[0])
+        else:
+            # A unique short name (e.g. results.manhattan) also identifies
+            # its package; common names like index need the report context.
+            owners = {name.split(".", 1)[0] for name in registered
+                      if name.split(".", 1)[1] == module_id}
+            if len(owners) == 1:
+                hints.update(owners)
+    if len(hints) > 1:
+        raise ValueError(
+            "Conflicting omics selection: " + ", ".join(sorted(hints))
+            + ". --omics, report.type, and report.modules/sections must select the same omics; "
+            "mixed-omics reports are not supported."
+        )
+    # A report containing only shared/custom pages needs no omics overlay.
+    if not hints and modules is not None and all(
+        module in shared_modules or module in custom for module in modules
+    ):
+        return None
+    omics_name = next(iter(hints), "rna")
+    if modules is None:
+        modules = [module for module in registry.default_modules
+                   if module.startswith(f"{omics_name}.")]
+        modules += ["provenance", "about"]
+    report["modules"] = [
+        module if module in registered or module in shared_modules or module in custom
+        else f"{omics_name}.{module}"
+        for module in modules
+    ]
+    return omics_name
+
+
 def selected_modules(config: dict) -> list[str]:
     report = config.get("report", {})
     custom = report.get("module_definitions", {})
@@ -101,19 +159,17 @@ def selected_modules(config: dict) -> list[str]:
     if collisions:
         raise ValueError(f"Custom module IDs conflict with built-in modules: {', '.join(sorted(collisions))}")
     registry = get_registry()
-    default_modules = (
-        ("index", "workflow", "qc", "results", "provenance", "about")
-        if config.get("_legacy_format")
-        else (*registry.default_modules, "provenance", "about")
-    )
-    modules = report.get("modules", report.get("sections", list(default_modules)))
-    if not isinstance(modules, list) or not modules:
-        raise ValueError("report.modules must be a nonempty list of module IDs")
-    if any(not isinstance(module, str) for module in modules):
-        raise ValueError("report.modules must contain string module IDs")
-    if not config.get("_legacy_format"):
-        modules = [_canonical(module) for module in modules]
-    validation_modules = [_canonical(module) for module in modules]
+    # Use the same scoped aliases/defaults in CLI and in Quarto workers that
+    # reload the original config. Keep legacy return IDs for compatibility.
+    effective = {"report": dict(report)}
+    select_report_omics(effective)
+    validation_modules = effective["report"].get("modules", report.get("sections", []))
+    if config.get("_legacy_format"):
+        modules = report.get("modules", report.get("sections", [
+            "index", "workflow", "qc", "results", "provenance", "about",
+        ]))
+    else:
+        modules = validation_modules
     if len(validation_modules) != len(set(validation_modules)):
         raise ValueError("report.modules contains duplicate module IDs")
     registered = registry.modules

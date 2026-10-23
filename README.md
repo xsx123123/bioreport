@@ -63,6 +63,22 @@ python -m bioreport run -c tests/report.rna.pdf.json -o output/rna-report-pdf
 python -m bioreport run -c tests/report.rna.pdf.ai.json -o output/rna-pdf-report-ai
 ```
 
+Use `--omics rna` or `--omics gwas` to select the template package explicitly:
+
+```bash
+python -m bioreport run --omics rna -c tests/report.rna.html.json -o output/rna-report
+python -m bioreport run --omics gwas -c report.gwas.json -o output/gwas-report
+python -m bioreport validate --omics gwas -c report.gwas.json
+```
+
+Without this option, `run` and `validate` infer the package from `report.type`
+(`rna-seq` or `gwas`) and namespaced module IDs such as `rna.index` or
+`gwas.index`; older configurations without either default to RNA. Short module
+names (`index`, `workflow`, `qc`, `results`) and omitted module lists use the
+selected omics. Only that package's templates are copied. Conflicting selections
+or mixed RNA/GWAS modules are rejected before rendering; the option does not
+convert input data or override explicitly configured module IDs.
+
 PDF DEG and enrichment figures are prepared in **8 worker processes by default**. Workers read and filter individual results, draw figures, and export independent SVGs. The main process preserves comparison/database/direction order while assigning figure numbers and emitting tables, AI cards, and evidence records. HTML and final Typst document composition retain their existing execution flow.
 
 The terminal keeps the module progress and adds live `plots` (prepared results) and `results` (ordered report output) bars, including the current comparison. Enrichment counts database/comparison/direction entries; output also counts missing, disabled, and empty result notices, so the two totals may differ. A separate progress file updates the terminal while Jupyter is still capturing cell output.

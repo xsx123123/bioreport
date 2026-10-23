@@ -32,7 +32,7 @@ from rich_argparse import RichHelpFormatter
 from .config import load_config, report_artifact_name, run_log_name
 from .pipeline import run_ai_pipeline
 from .renderer import render_templates
-from .modules import output_formats, selected_modules, skipped_modules
+from .modules import output_formats, select_report_omics, selected_modules, skipped_modules
 from .registry import get_registry
 from .utils.provenance import build_provenance, write_provenance
 from .utils.run_db import default_db_path, record_run
@@ -115,6 +115,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--config",
         default=None,
         help="Configuration file (defaults to REPORT_CONFIG or a legacy path)",
+    )
+    report_args.add_argument(
+        "--omics",
+        choices=("rna", "gwas"),
+        default=None,
+        help="Report omics for run/validate (inferred from report.type/modules; defaults to rna)",
     )
     report_args.add_argument(
         "-o",
@@ -249,6 +255,17 @@ def load_config_with_fallback(config_path: str | None, *, show_help_on_missing: 
     except Exception as e:
         logger.critical(f"Failed to parse configuration: {e}")
         sys.exit(1)
+
+
+def stage_omics_templates(template_dir: Path, omics_name: str | None) -> None:
+    """Copy only the selected package; shared paths must never cross omics."""
+    if omics_name is None:
+        return
+    module = get_registry().resolve(f"{omics_name}.index")
+    source = Path(module.package_root) / "qmd"
+    if not source.is_dir():
+        raise FileNotFoundError(f"Templates for {omics_name} are missing: {source}")
+    shutil.copytree(source, template_dir / "qmd", dirs_exist_ok=True)
 
 
 def check_input_files(config: dict, provenance: dict | None = None) -> None:
@@ -781,6 +798,11 @@ def main():
         config = load_config_with_fallback(args.config, show_help_on_missing=True)
     else:
         config = load_config_with_fallback(args.config)
+    try:
+        omics_name = select_report_omics(config, args.omics)
+    except ValueError as exc:
+        logger.error("Invalid omics selection: {}", exc)
+        raise SystemExit(1) from exc
     if args.workers is not None:
         config.setdefault('report', {}).setdefault('pdf', {})['workers'] = args.workers
     if args.command == "validate":
@@ -816,16 +838,7 @@ def main():
         # assets ship with the core templates, so the engine never depends
         # on any specific omics package; stage them first as the qmd/ root.
         shutil.copytree(template_dir / "shared", template_dir / "qmd")
-        # Omics packages (e.g. omics/rna) overlay their own pages on top.
-        _repo_root = Path(__file__).resolve().parents[1]
-        for omics_name in ("rna", "gwas"):
-            qmd_candidates = [
-                _repo_root / "omics" / omics_name / "qmd",
-                _repo_root / ".." / "omics" / omics_name / "qmd",
-            ]
-            omics_qmd = next((path for path in qmd_candidates if path.is_dir()), None)
-            if omics_qmd:
-                shutil.copytree(omics_qmd, template_dir / "qmd", dirs_exist_ok=True)
+        stage_omics_templates(template_dir, omics_name)
         # 组装阶段写入溯源信息（引擎版本/生成时间/模块清单/输入指纹），
         # 供共享页、组学页与页脚在 Quarto 执行阶段读取。
         provenance = build_provenance(config, selected)
