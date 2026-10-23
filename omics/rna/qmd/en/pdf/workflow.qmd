@@ -33,7 +33,7 @@ display(Markdown(f'The upstream pipeline is RNAFlow (version: {pipeline_version}
 #| label: pdf-methods
 #| output: asis
 from bioreport.config import load_config, display_path
-from bioreport.modules import selected_modules
+from bioreport.modules import selected_modules, skipped_modules
 from bioreport.registry import get_registry
 from bioreport.software import software_records, software_source
 from bioreport.utils.render_output import show_print_table, typst_note
@@ -41,6 +41,7 @@ from IPython.display import display, Markdown
 import os
 cfg = load_config()
 selected = [get_registry().canonical(m) for m in selected_modules(cfg)]
+skipped = skipped_modules(cfg)
 path = software_source(cfg)
 records = software_records(cfg)
 
@@ -55,7 +56,7 @@ if uses('rna.qc'):
     emit('## Quality Control and Alignment Methods\n\nSelected QC modules read upstream summaries. Figures use standardized **MultiQC** output [@MultiQC]:')
     modules = [('fastp', 'fastp', '1. **Read filtering and base quality**: Upstream **fastp** [@chen2018fastp] detects and trims adapters, removes low-quality and short reads, and records Q20/Q30, GC content and duplication before and after filtering.'), ('screen', 'FastQ Screen', '2. **Cross-species screening**: **FastQ Screen** [@wingett2018fastq] aligns sampled reads to a reference panel to summarize species-specific and shared alignments.'), ('qualimap', 'QualiMap', '3. **Alignment and transcript quantification**: Splice-aware **STAR** [@dobin2013star] aligns clean reads and reports unique/multiple alignments. **QualiMap** [@okonechnikov2016qualimap] summarizes coverage and alignment quality.')]
     for child, name, prose in modules:
-        if 'rna.qc' in selected or 'rna.qc.' + child in selected:
+        if ('rna.qc' in selected or 'rna.qc.' + child in selected) and 'rna.qc.' + child not in skipped:
             software.add(name)
             emit(prose)
 if uses('rna.results'):

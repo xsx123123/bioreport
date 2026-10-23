@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-23
+
+### 修复
+
+- fastp、FastQ Screen、QualiMap、STAR 质控输入路径缺失或未配置时，显示缺失提示并继续生成其余报告内容。
+- 统一输入校验、中英文 HTML/PDF 和网站报告的质控跳过逻辑；FastQ Screen 的 R1 或 R2 缺失时跳过整个污染检测子节。
+- 在日志、溯源信息和报告清单中记录跳过项，并跳过对应的 AI 解读和 PDF 方法描述。
+- 保留核心分析输入及已有路径类型、读取权限的严格校验，补充缺失输入场景的回归测试。
+
+### 变更
+
+- 报告引擎版本调整为 0.2.1。
+
 ## [2.0.1] - 2026-10-20
 
 ### 新增
@@ -48,6 +61,7 @@
 - `v0.0.2`（2026-01-14 至 2026-01-15）：RNA-seq 报告、配置更新和 Web/火山图改进。
 - 2026-01-27 的 `v0.0.3` 提交未形成 Git tag，因而不作为已发布版本列出。
 
-[Unreleased]: https://github.com/xsx123123/bioreport/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/xsx123123/bioreport/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/xsx123123/bioreport/releases/tag/v0.2.1
 [2.0.1]: https://github.com/xsx123123/bioreport/releases/tag/v2.0.1
 [2.0.0]: https://github.com/xsx123123/bioreport/releases/tag/v2.0.0

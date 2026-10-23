@@ -141,7 +141,7 @@ def _run_result_interpretations(config, config_path, template_dir, ai_config, mo
                                 *, output_dir: Path | None = None, visual_mode: bool = False):
     """Generate one bounded interpretation for each available DEG/enrichment result."""
     from .ai import AIInterpreter
-    from .modules import stage_module_interpretations
+    from .modules import skipped_modules, stage_module_interpretations
 
     inputs = config.get("input_files", {})
     data_dir = Path(inputs.get("data_dir") or Path(config_path).resolve().parent)
@@ -168,7 +168,10 @@ def _run_result_interpretations(config, config_path, template_dir, ai_config, mo
         ("rna.results.matrix__table", "基因表达矩阵预览", "tpm_file"),
         ("rna.results.heatmap__figure", "基因表达热图", "tpm_file"),
     ]
+    skipped = skipped_modules(config, [item[0].split("__", 1)[0] for item in fixed_inputs])
     for logical_id, label, input_key in fixed_inputs:
+        if logical_id.split("__", 1)[0] in skipped:
+            continue
         source = input_path(input_key)
         if not source:
             continue

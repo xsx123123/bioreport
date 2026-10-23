@@ -17,6 +17,12 @@ def test_registry_rejects_cross_namespace_module_ids():
         raise AssertionError("cross-namespace module was accepted")
 
 
+def test_registry_requires_core_inputs_but_tolerates_missing_qc_inputs():
+    registry = get_registry()
+    assert registry.validate_inputs(['rna.qc', 'rna.qc.screen'], set()) == []
+    assert registry.validate_inputs(['rna.results.matrix'], set()) == ['tpm_file']
+
+
 def test_registry_supports_omics_aliases_and_defaults_without_core_changes():
     registry = Registry()
     registry.register_omics(

@@ -17,6 +17,9 @@ class Module:
     setup_qmd: str | None = None
     optional_inputs: tuple[str, ...] = ()
     icon: str = ""
+    # Missing dependencies produce a report notice instead of a fatal error.
+    # Composite modules apply this policy to their registered child sections.
+    skip_if_missing_inputs: bool = False
 
 
 class Registry:
@@ -61,7 +64,9 @@ class Registry:
             raise KeyError(f"Unknown module: {module_id}") from exc
 
     def validate_inputs(self, module_ids: list[str], available_inputs: set[str]) -> list[str]:
-        return sorted({key for module_id in module_ids for key in self.resolve(module_id).required_inputs if key not in available_inputs})
+        modules = (self.resolve(module_id) for module_id in module_ids)
+        return sorted({key for module in modules if not module.skip_if_missing_inputs
+                       for key in module.required_inputs if key not in available_inputs})
 
     def qmd_path(self, module: Module) -> Path:
         if not module.package_root:

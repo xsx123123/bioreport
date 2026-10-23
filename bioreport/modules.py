@@ -150,7 +150,8 @@ def selected_modules(config: dict) -> list[str]:
             required_inputs.extend(())
         else:
             definition = registered[module]
-            required_inputs.extend(definition.required_inputs)
+            if not definition.skip_if_missing_inputs:
+                required_inputs.extend(definition.required_inputs)
             optional_inputs.extend(definition.optional_inputs)
     from .software import software_records
     alternatives = set()
@@ -164,6 +165,40 @@ def selected_modules(config: dict) -> list[str]:
     if missing:
         raise ValueError(f"Selected modules require input_files: {', '.join(missing)}")
     return modules
+
+
+def skipped_modules(config: dict, module_ids: list[str] | None = None) -> dict[str, list[str]]:
+    """Return missing inputs for selected, skippable leaf modules.
+
+    Composite modules keep their available children and replace only missing
+    children with a notice. Paths have already been resolved by load_config.
+    """
+    registry = get_registry()
+    selected = {registry.canonical(m) for m in (
+        selected_modules(config) if module_ids is None else module_ids
+    )}
+    registered = registry.modules
+    parents = {m.parent for m in registered.values() if m.parent}
+    inputs = config.get("input_files", {})
+    base = Path(config.get("_path_base") or inputs.get("data_dir") or ".")
+    skipped = {}
+    for module in registered.values():
+        if not module.skip_if_missing_inputs or module.id in parents:
+            continue
+        if module.id not in selected and module.parent not in selected:
+            continue
+        missing = [key for key in module.required_inputs
+                   if not inputs.get(key) or not (base / inputs[key]).exists()]
+        if missing:
+            skipped[module.id] = missing
+    return skipped
+
+
+def _missing_input_notice(missing: list[str], english: bool) -> str:
+    keys = ", ".join(f"`{key}`" for key in missing)
+    text = (f"Input data is missing; this section was skipped. Missing inputs: {keys}."
+            if english else f"输入数据缺失，已跳过本节。缺失输入：{keys}。")
+    return f"::: {{.callout-note}}\n{text}\n:::\n"
 
 
 def _read_module(path: Path) -> tuple[dict, str]:
@@ -183,7 +218,8 @@ INCLUDE = re.compile(r"\{\{<\s*include\s+([^\s>]+)\s*>\}\}")
 
 
 def _expand_includes(
-    body: str, qmd_dir: Path, root: Path | None = None, stack: tuple[Path, ...] = ()
+    body: str, qmd_dir: Path, root: Path | None = None, stack: tuple[Path, ...] = (),
+    replacements: Mapping[Path, str] | None = None,
 ) -> str:
     root = root or qmd_dir.resolve()
 
@@ -194,7 +230,10 @@ def _expand_includes(
         if source in stack:
             chain = " -> ".join(str(path) for path in (*stack, source))
             raise ValueError(f"Circular QMD include: {chain}")
-        return _expand_includes(source.read_text(encoding="utf-8"), source.parent, root, (*stack, source))
+        if replacements and source in replacements:
+            return replacements[source]
+        return _expand_includes(source.read_text(encoding="utf-8"), source.parent, root,
+                                (*stack, source), replacements)
 
     return INCLUDE.sub(replace, body)
 
@@ -523,6 +562,20 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         cover_block = f"```{{=typst}}\n{cover}\n```\n\n"
         (style_dir / "rna-cover.typ").write_text(cover, encoding="utf-8")
     content_root = template_dir / "qmd" / "en" if english and has_rna else template_dir / "qmd"
+    skipped = skipped_modules(config, module_ids)
+    replacements = {}
+    for module_id, missing in skipped.items():
+        filename = registered[module_id].qmd.removeprefix("qmd/")
+        if pdf:
+            filename = "pdf/" + filename
+        # Retain the existing section heading in each language/format while
+        # excluding all executable cells and result descriptions for this input.
+        _, original = _read_module(content_root / filename)
+        heading = re.search(r"(?m)^#{2,6} [^\n]+", original)
+        replacements[(content_root / filename).resolve()] = (
+            (heading.group(0) + "\n\n" if heading else "")
+            + _missing_input_notice(missing, english)
+        )
     if pdf and has_rna and any(_canonical(m) == 'rna.index' for m in module_ids):
         summary = (content_root / 'pdf/summary.qmd').read_text(encoding='utf-8')
         sections.append(composition.section(
@@ -563,6 +616,8 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                     f"import json as _bioreport_json\nreport_module = _bioreport_json.loads({context!r})\n"
                     "```\n\n" + body
                 )
+        if canonical in skipped:
+            body = _missing_input_notice(skipped[canonical], english)
         if canonical in registered and registered[canonical].parent:
             definition = registered[canonical]
             parent = registered[definition.parent]
@@ -570,7 +625,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             if pdf:
                 parent_filename = "pdf/" + parent_filename
             module_meta, _ = _read_module(content_root / parent_filename)
-            if definition.parent not in setup_added:
+            if canonical not in skipped and definition.parent not in setup_added:
                 setup_filename = definition.setup_qmd.removeprefix("qmd/")
                 if pdf:
                     setup_filename = "pdf/" + setup_filename
@@ -581,7 +636,8 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                 # title as a second-level heading immediately below the setup.
                 body = re.sub(r'(?m)^## [^\n]+\n\n', '', body, count=1)
         if (canonical in registered) or (module_id in MODULES and module_id != "ai"):
-            body = _expand_includes(body, content_root, stack=(content_root / filename,))
+            body = _expand_includes(body, content_root, stack=(content_root / filename,),
+                                    replacements=replacements)
         if not pdf and canonical in {'rna.workflow', 'about'}:
             from .utils.mermaid_static import inline_static_mermaid
             body, _ = inline_static_mermaid(body, template_dir/'qmd/assets',
@@ -616,7 +672,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         # legacy reports keep their original structure.
         if config.get("ai", {}).get("enabled", True) and config.get("ai", {}).get("scope", "results") == "global" and canonical == "ai":
             body += _module_ai_slot(canonical, english)
-        elif config.get("ai", {}).get("enabled", True) and config.get("ai", {}).get("scope", "results") == "module" and canonical in registered and canonical not in {"provenance", "about"}:
+        elif config.get("ai", {}).get("enabled", True) and config.get("ai", {}).get("scope", "results") == "module" and canonical in registered and canonical not in {"provenance", "about"} and canonical not in skipped:
             body += _module_ai_slot(canonical, english)
         chapters = [(canonical, heading, body)]
         if canonical == "rna.index":

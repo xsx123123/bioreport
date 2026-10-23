@@ -270,9 +270,12 @@ def test_selected_qc_fragments_keep_shared_setup_once(tmp_path):
     qmd.mkdir()
     shutil.copyfile(source / "qc.qmd", qmd / "qc.qmd")
     shutil.copytree(source / "modules" / "qc", qmd / "modules" / "qc")
+    (tmp_path / "stats.tsv").touch()
+    (tmp_path / "fastp").mkdir()
+    (tmp_path / "qualimap").mkdir()
     config = {
         "report": {"modules": ["qc.fastp", "qc.star"]},
-        "input_files": {"fastp_stats_file": "stats.tsv", "fastp_report_dir": "fastp", "qualimap_dir": "qualimap"},
+        "input_files": {"data_dir": str(tmp_path), "fastp_stats_file": "stats.tsv", "fastp_report_dir": "fastp", "qualimap_dir": "qualimap"},
     }
 
     content = compose_report(config, tmp_path).read_text(encoding="utf-8")

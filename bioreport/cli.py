@@ -31,7 +31,7 @@ from rich_argparse import RichHelpFormatter
 from .config import load_config, report_artifact_name, run_log_name
 from .pipeline import run_ai_pipeline
 from .renderer import render_templates
-from .modules import output_formats, selected_modules
+from .modules import output_formats, selected_modules, skipped_modules
 from .registry import get_registry
 from .utils.provenance import build_provenance, write_provenance
 from .utils.run_db import default_db_path, record_run
@@ -260,7 +260,8 @@ def check_input_files(config: dict, provenance: dict | None = None) -> None:
         key for module in selected
         for key in (
             definitions[registry.canonical(module)].required_inputs
-            if registry.canonical(module) in definitions else ()
+            if registry.canonical(module) in definitions
+            and not definitions[registry.canonical(module)].skip_if_missing_inputs else ()
         )
     }
     custom = config.get("report", {}).get("module_definitions", {})
@@ -275,6 +276,12 @@ def check_input_files(config: dict, provenance: dict | None = None) -> None:
         )
         if key in files_to_check
     )
+    skippable = {
+        key for module in selected
+        if registry.canonical(module) in definitions
+        and definitions[registry.canonical(module)].skip_if_missing_inputs
+        for key in definitions[registry.canonical(module)].required_inputs
+    }
     all_passed = True
 
     for key, path_str in files_to_check.items():
@@ -283,7 +290,7 @@ def check_input_files(config: dict, provenance: dict | None = None) -> None:
         path = Path(path_str)
         exists = path.exists()
         problem = None
-        if exists and key in required:
+        if exists and key in (required | skippable):
             if key.endswith("_dir") and not path.is_dir():
                 problem = "Expected directory"
             elif key.endswith("_file") and not path.is_file():
@@ -311,7 +318,8 @@ def check_input_files(config: dict, provenance: dict | None = None) -> None:
         elif exists:
             status = "[bold green]✔ Found[/]"
         else:
-            status = "[bold red]✘ Missing[/]"
+            status = ("[yellow]⚠ Skipped[/]" if key in skippable and key not in required
+                      else "[bold red]✘ Missing[/]")
             if key in required:
                 all_passed = False
             logger.warning(f"Missing input: {key} -> {path_str}")
@@ -319,6 +327,9 @@ def check_input_files(config: dict, provenance: dict | None = None) -> None:
         table.add_row(key, rel_path, sha_display, status)
 
     console.print(table)
+    for module_id, missing in skipped_modules(config, selected).items():
+        logger.warning("Skipping {}: missing inputs {}. The report will include a missing-data notice.",
+                       module_id, ", ".join(missing))
 
     if 'software_versions' in config:
         required.discard('software_versions_file')

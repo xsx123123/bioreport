@@ -69,6 +69,10 @@ def build_provenance(config: dict, sections: list) -> dict:
         "input_checksums": input_checksums(config),
         "input_manifest": input_manifest(config),
     }
+    from bioreport.modules import skipped_modules
+    skipped = skipped_modules(config, sections)
+    if skipped:
+        provenance["skipped_modules"] = skipped
     pipeline_version = project.get("pipeline_version")
     if pipeline_version:
         provenance["pipeline_version"] = pipeline_version
@@ -202,6 +206,8 @@ def write_delivery_manifests(config, provenance, output_dir):
             'command': 'bioreport run -c reproduction-config.json -o reproduced',
             'note':'Resolved config runs against the recorded input paths on this host. On another host restore the inputs and update their root paths; verify Input Manifest hashes before rendering.'},
     }
+    if provenance.get('skipped_modules'):
+        manifests['report-manifest']['skipped_modules'] = provenance['skipped_modules']
     for name, value in manifests.items():
         (directory/f'{name}.json').write_text(json.dumps(value,ensure_ascii=False,indent=2), encoding='utf-8')
 

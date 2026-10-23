@@ -141,13 +141,13 @@ bioreport workspace-restore --db /path/to/runs.db
 
 ### Build, test, and run with Make
 
-Run these commands from the repository root. The Makefile reads `[project].version` from `pyproject.toml` each time Make is invoked and uses `IMAGE=bioreport:<version>` by default. With the current version, `2.0.1`, the following command builds `bioreport:2.0.1`:
+Run these commands from the repository root. The Makefile reads `[project].version` from `pyproject.toml` each time Make is invoked and uses `IMAGE=bioreport:<version>` by default. With the current version, `0.2.1`, the following command builds `bioreport:0.2.1`:
 
 ```bash
 make docker-build
 ```
 
-This expands to `docker build --platform linux/amd64 -f deploy/Dockerfile -t bioreport:2.0.1 .`. The build pins Quarto 1.8.26 and automatically checks the installed package, Kaleido export, and RNA HTML/PDF report generation. Changing the version in `pyproject.toml` changes the default image tag on the next invocation; rebuild the image before testing or running that version.
+This expands to `docker build --platform linux/amd64 -f deploy/Dockerfile -t bioreport:0.2.1 .`. The build pins Quarto 1.8.26 and automatically checks the installed package, Kaleido export, and RNA HTML/PDF report generation. Changing the version in `pyproject.toml` changes the default image tag on the next invocation; rebuild the image before testing or running that version.
 
 `docker-test` and `docker-run` use the same default versioned image. They require an existing image and do not build it automatically:
 
@@ -215,7 +215,7 @@ docker run --rm -it \
 | `-it` | Keep standard input open and allocate a terminal for interactive use and progress display. Omit this option in CI or other non-interactive jobs. |
 | `-v "$PWD:/project:ro"` | Mount the current repository directory at `/project` inside the container. `$PWD` must be the repository root; `:ro` makes this mount read-only. This exposes both `tests/` and `examples/` while preserving their relative paths. |
 | `-v "$PWD/output/X101SC26098749-Z01-J001:/workspace"` | Mount the host output directory at `/workspace` with write access, so reports and logs persist after the container exits. |
-| `bioreport:latest` | Select the Docker image. Replace it with `bioreport:2.0.1` when using the current versioned image built by `make docker-build`; use the corresponding version after updating `pyproject.toml`. |
+| `bioreport:latest` | Select the Docker image. Replace it with `bioreport:0.2.1` when using the current versioned image built by `make docker-build`; use the corresponding version after updating `pyproject.toml`. |
 | `run` | Generate a report. The image entrypoint is `bioreport`, so this invokes `bioreport run` inside the container. |
 | `-c /project/tests/X101SC26098749-Z01-J001.json` | Load the report configuration from its container path. Its `input_files.data_dir`, `../examples/X101SC26098749-Z01-J001/data`, resolves relative to the configuration file directory. |
 | `-o /workspace` | Write the generated reports and logs to the container output mount, corresponding to `output/X101SC26098749-Z01-J001/` on the host. |
@@ -326,6 +326,8 @@ Workspace v2 will connect projects, runs, analysis modules, evidence, per-result
 
 `validate` checks JSON/YAML schema, selected modules, required input keys and paths (existence, readability, and file/directory types for `_file`/`_dir` keys). Optional inputs declared by selected modules are checked when configured; unrelated missing inputs produce warnings. Relative paths resolve against `input_files.data_dir`, or the configuration directory when omitted. It does not inspect file contents or execute Quarto/AI; use `run --dry-run` to also check template assembly.
 
+RNA QC sections (fastp, FastQ Screen, QualiMap, and STAR statistics) tolerate missing input paths. If a section's inputs are absent or unconfigured, HTML/PDF reports show a missing-data notice and continue with the remaining sections. FastQ Screen requires both R1 and R2; if either is missing, the entire screening section is skipped. Logs and provenance record skipped sections. Existing inputs with an invalid type or insufficient read permissions still fail validation, as do missing core analysis inputs such as the expression matrix.
+
 ```bash
 bioreport validate -c <config>
 bioreport run -c <config> -o <output> --dry-run
@@ -344,7 +346,7 @@ Complete rendering tests require a working Jupyter kernel and Kaleido/Chrome. Ea
 
 ## Version and acknowledgements
 
-Current version: **v2.0.1**. See [`CHANGELOG.md`](docs/CHANGELOG.md) for release history. See [`CONTRIBUTING.md`](docs/CONTRIBUTING.md) for contribution guidelines.
+Current version: **v0.2.1**. See [`CHANGELOG.md`](docs/CHANGELOG.md) for release history. See [`CONTRIBUTING.md`](docs/CONTRIBUTING.md) for contribution guidelines.
 
 Maintainer: **Zhang Jian**
 

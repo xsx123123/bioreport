@@ -428,6 +428,8 @@ npm run dev -- --host 127.0.0.1 --port 5174
 
 - `bioreport validate -c <配置文件>`：检查 JSON/YAML 配置结构、字段取值、模块选择及必需输入路径（存在性、可读性、`_file` / `_dir` 路径类型）；所选模块已配置的可选输入也会检查，其他无关输入缺失仅告警。相对路径基于 `input_files.data_dir`，未配置该目录时基于配置文件目录。不检查文件内容或执行 Quarto / AI；模板组装请使用 `run --dry-run`。
 - `bioreport run -c <配置文件> -o <输出目录> --dry-run`：进一步检查模块选择、模板组合与输入文件，不调用 AI 或执行 Quarto。
+
+RNA 质控子节（fastp、FastQ Screen、QualiMap、STAR 统计）的输入路径缺失或未配置时，报告会显示“输入数据缺失，已跳过本节”，继续生成其余内容；HTML、PDF 和中英文报告均适用。FastQ Screen 的 R1、R2 必须同时存在，否则跳过整个污染检测子节。日志和溯源信息记录跳过项。已有路径类型错误或不可读时仍报错，表达矩阵等核心分析输入仍为必需项。
 - `bioreport init`：显示初始配置位置，不会自动创建配置文件。
 
 在仓库根目录安装测试依赖并运行常规测试：
@@ -455,7 +457,7 @@ RUN_REPORT_INTEGRATION=1 python -m pytest -q tests/test_integration_render.py
  
 ## 版本信息
 
-**版本**: v2.0.1 
+**版本**: v0.2.1
 **作者**: Zhang Jian 
 **最后更新**: 2026-10-20 
 

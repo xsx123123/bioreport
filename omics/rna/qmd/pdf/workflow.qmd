@@ -35,7 +35,7 @@ display(Markdown(
 #| label: pdf-methods
 #| output: asis
 from bioreport.config import load_config, display_path
-from bioreport.modules import selected_modules
+from bioreport.modules import selected_modules, skipped_modules
 from bioreport.registry import get_registry
 from bioreport.software import software_records, software_source
 from bioreport.utils.render_output import show_print_table, typst_note
@@ -43,6 +43,7 @@ from IPython.display import display, Markdown
 import os
 cfg = load_config()
 selected = [get_registry().canonical(m) for m in selected_modules(cfg)]
+skipped = skipped_modules(cfg)
 path = software_source(cfg)
 records = software_records(cfg)
 def uses(name): return any(m == name or m.startswith(name+'.') for m in selected)
@@ -58,7 +59,7 @@ if uses('rna.qc'):
         ('screen','FastQ Screen', '2. **外源物种污染筛查**：使用 **FastQ Screen** [@wingett2018fastq] 从各样本随机抽样测序序列，与预构建的多物种参考基因组索引库（涵盖目标物种、常见模式生物、人类、微生物及克隆载体等）进行比对，统计单一物种特异比对与多物种共比对比例。'),
         ('qualimap','QualiMap', '3. **基因组比对与转录本定量**：采用可变剪接感知型比对工具 **STAR** [@dobin2013star] 将 Clean Reads 比对至参考基因组，输出唯一比对（Uniquely mapped）与多处比对（Multi-mapped）统计；随后通过 **QualiMap (BamQC)** [@okonechnikov2016qualimap] 评估比对结果在基因组窗口上的覆盖深度分布。')]
     for child, name, prose in modules:
-        if 'rna.qc' in selected or 'rna.qc.'+child in selected:
+        if ('rna.qc' in selected or 'rna.qc.'+child in selected) and 'rna.qc.'+child not in skipped:
             software.add(name); emit(prose)
 if uses('rna.results'):
     emit('## 表达定量与下游结果分析方法\n\n仅说明当前启用的结果分析模块，具体过滤阈值与绘图参数详见各图表题注：')
