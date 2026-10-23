@@ -6,7 +6,7 @@ from pathlib import Path
 import unicodedata
 import numpy as np
 
-from bioreport.utils.plotly_style import AXIS_LINE, GRID, export_config, style_figure
+from bioreport.utils.plotly_style import AXIS_LINE, GRID, GUIDE, export_config, style_figure
 
 
 def parse_gene_ratios(values):
@@ -165,12 +165,14 @@ def draw_fancy_dotplot(enrich_file,
             xanchor="left", x=1.02
         ),
 
-        # Count 图例固定到 colorbar 下方，避免与标题重叠
+        # Count 图例固定到 colorbar 下方，避免与标题重叠；itemsizing='trace'
+        # 让图例圆点按 trace 的气泡尺寸绘制（px 默认 constant 会把它们压成一样大）
         legend=dict(
             x=1.02, xanchor="left",
             y=0.38, yanchor="top",
             bgcolor="rgba(0,0,0,0)",
-            borderwidth=0
+            borderwidth=0,
+            itemsizing="trace",
         )
     )
     
@@ -191,11 +193,17 @@ def draw_fancy_dotplot(enrich_file,
     # 必须把原始 Description 放到 customdata 里
     fig.update_traces(customdata=df[[y_col]])
 
-    # Explicit Count legend in both interactive and print output.
-    for count in sorted(set(int(v) for v in df[size_col].quantile([0, .5, 1]))):
+    # Explicit Count legend in both interactive and print output. Plotly's
+    # legend draws symbols at marker.size pixels (diameter, capped ~16 px),
+    # ignoring sizemode/sizeref, so sizes are precomputed as proportional
+    # pixel diameters with the plot's area scaling (diameter ∝ sqrt(count)).
+    counts = sorted({max(1, round(float(v))) for v in df[size_col].quantile([0, .5, 1])})
+    for count in counts:
+        diameter = max(4, round(15 * (count / max(counts)) ** .5))
         fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers',
-            marker=dict(size=max(5, 25*(count/df[size_col].max())**.5), color='#8795a5'),
-            name=f'Count: {count}', showlegend=True))
+            marker=dict(size=diameter, sizemode='diameter', color=GUIDE,
+                        line=dict(width=1, color='#4B5563')),
+            name=f'Count: {count}', showlegend=True, hoverinfo='skip'))
     # --- 4. 导出 ---
     config = export_config('Fancy_Enrichment', height=fig.layout.height,
                            width=width_num, scale=scale_num)
