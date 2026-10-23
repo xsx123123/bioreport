@@ -1,0 +1,50 @@
+---
+title: "Methods & Software Versions"
+---
+
+This report is based on the standardised **GWASFlow** association pipeline; the core analysis nodes and their tool chain are summarised below.
+
+```{=typst}
+#block(breakable: false)[
+  #grid(columns: (1fr, 1fr, 1fr, 1fr), gutter: 3mm,
+    ..("Input gate", "Normalization", "Four-stage QC", "LD pruning + PCA", "Kinship K", "GEMMA LMM", "Harmonization", "Regional LD").enumerate().map(((i, name)) =>
+      block(width: 100%, inset: 3mm, fill: rgb("#eaf0f7"))[
+        #text(weight: "bold", fill: rgb("#24476a"))[#(i+1). #name]
+      ]))
+]
+```
+
+## Methods
+
+```{python}
+#| label: pdf-gwas-methods
+import pandas as pd
+from IPython.display import display, Markdown
+from bioreport.software import software_records
+from bioreport.config import load_project_metadata
+workflow_config = load_project_metadata()
+display(Markdown(
+    '- **Association model**: GEMMA linear mixed model (LMM, Wald test) with the cohort-wide centered kinship matrix K '
+    'correcting population structure and relatedness; covariates include the intercept and trait-declared PCs from the LD-pruned PCA.'))
+display(Markdown(
+    '- **Multiple testing**: Bonferroni, threshold = alpha/(family_size x M) with M the trait valid P count '
+    '(recorded in the association metadata; the report never re-derives it).'))
+display(Markdown(
+    '- **QC strategy**: HWE filtering disabled and related materials retained by default for selfing/inbreeding plants; '
+    'four stages (pre-geno -> mind -> geno/maf/mac) executed independently with full audit trails.'))
+```
+
+## Software Versions
+
+```{python}
+#| label: pdf-gwas-software
+#| output: asis
+records = software_records(workflow_config)
+frame = pd.DataFrame(records)
+if not frame.empty:
+    display(Markdown('| Software | Version | Source |\n|---|---|---|\n' + '\n'.join(
+        f"| {row.get('Software','')} | {row.get('Version','')} | {row.get('Source','')} |"
+        for _, row in frame.iterrows())))
+else:
+    display(Markdown('Software versions not registered (software_versions missing).'))
+```

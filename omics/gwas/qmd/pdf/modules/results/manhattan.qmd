@@ -1,0 +1,38 @@
+::: {.report-lead}
+
+### 曼哈顿图与 QQ 图 {#gwas-pdf-曼哈顿与-qq}
+
+曼哈顿图展示全基因组关联显著性（-log10 P），红色虚线为 Bonferroni 阈值（α/(family_size × M)，M 为该性状有效 P 值个数）。QQ 图尾部偏离对角线提示真实关联信号。
+
+:::
+
+```{python}
+#| label: pdf-fig-gwas-manhattan
+#| output: asis
+for trait in traits:
+    gwas_path = os.path.join(gwas_dir, trait, 'gwas.tsv')
+    if not os.path.exists(gwas_path):
+        continue
+    data = load_gwas(gwas_path)
+    meta = trait_meta.get(trait, {})
+    counts = meta.get('counts', {})
+    threshold_text = str(meta.get('multiple_testing', {}).get('threshold', '') or '')
+    try:
+        threshold = float(threshold_text)
+    except ValueError:
+        threshold = None
+    m_tests = counts.get('n_valid_p')
+    display(Markdown(f"#### 性状 {trait}（M={m_tests}，显著 {counts.get('n_significant', 0)}）"))
+    show_figure(plot_manhattan(
+        data, chrom_order, chrom_lengths,
+        threshold=threshold,
+        threshold_label=f"Bonferroni α=0.05, M={m_tests}" if m_tests else "",
+        title=f"Manhattan plot — {trait}",
+        point_budget=int(manhattan_settings.get('point_budget', 200000)),
+    ))
+    show_figure(plot_qq(
+        data,
+        title=f"QQ plot — {trait}",
+        max_points=int(qq_settings.get('max_points', 50000)),
+    ))
+```

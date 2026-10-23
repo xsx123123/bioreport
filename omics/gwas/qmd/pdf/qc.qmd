@@ -1,0 +1,82 @@
+---
+title: "基因型质控"
+execute:
+  echo: false
+  warning: false
+---
+
+```{python}
+#| label: gwas-qc-setup
+import json
+import os
+import pandas as pd
+from IPython.display import display, Markdown
+from bioreport.config import load_project_metadata
+from bioreport.utils.render_output import show_print_table
+
+project_info = load_project_metadata()
+input_files = project_info['input_files']
+config_base = project_info.get('path_base') or '.'
+
+def resolve(key):
+    path = input_files.get(key, '')
+    if path and not os.path.isabs(path):
+        path = os.path.join(config_base, path)
+    return path
+
+with open(resolve('qc_final_stats_file'), encoding='utf-8') as handle:
+    qc_final = json.load(handle)
+with open(resolve('qc_audit_file'), encoding='utf-8') as handle:
+    qc_audit = json.load(handle)
+
+qc_params = qc_audit.get('params', {})
+stages = qc_final.get('stages', []) or qc_final.get('final_stats', [])
+```
+
+## 质控策略（QC Strategy）
+
+```{python}
+#| label: tbl-gwas-qc-policy
+#| output: asis
+policy_rows = [
+    ('初筛缺失 pre-geno', qc_params.get('pre_geno')),
+    ('样本缺失 mind', qc_params.get('mind')),
+    ('位点缺失 geno', qc_params.get('geno')),
+    ('最小等位基因频率 maf', qc_params.get('maf')),
+    ('最小等位基因计数 mac', qc_params.get('mac')),
+    ('HWE 过滤', qc_audit.get('hwe', 'off')),
+    ('染色体集 chr-set', qc_audit.get('chr_set', '')),
+    ('QC 后最少样本数', qc_params.get('min_samples_after_qc')),
+]
+display(Markdown('| 项目 Item | 值 Value |\n|---|---|\n' + '\n'.join(
+    f'| {k} | {v} |' for k, v in policy_rows if v is not None)))
+display(Markdown(qc_audit.get('notes', '') and f"*{qc_audit['notes']}*" or ''))
+```
+
+## 四阶段流失漏斗（Four-Stage Funnel）
+
+```{python}
+#| label: tbl-gwas-qc-funnel
+#| output: asis
+if stages:
+    frame = pd.DataFrame([{
+        '阶段 Stage': item.get('stage', ''),
+        '样本数（后） Samples after': f"{int(item.get('n_samples_after', 0)):,}",
+        '剔除样本 Samples removed': item.get('n_samples_removed', 0),
+        '标记数（前） Variants before': f"{int(item.get('n_variants_before', 0)):,}",
+        '剔除标记 Variants removed': f"{int(item.get('n_variants_removed', 0) or 0):,}",
+        '标记数（后） Variants after': f"{int(item.get('n_variants_after', 0)):,}",
+    } for item in stages])
+    show_print_table(frame)
+else:
+    display(Markdown('未提供分阶段统计（final_stats.json stages 缺失）。'))
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**图注说明: QC Funnel（质控漏斗）**
+
+- **stage1 pre-geno**：宽松位点缺失初筛（默认 geno=0.2），先剔除高缺失位点，避免样本缺失统计被坏位点干扰。
+- **stage2 mind**：按样本缺失率剔除材料（默认 mind=0.10）；自交系群体缺失率通常极低，多数项目本阶段零剔除。
+- **stage3 geno/maf/mac**：最终位点缺失、最小等位基因频率与计数过滤；本阶段剔除的位点集合记录于 `removed_variants_stage3.tsv`，并在关联报告中以"未上报 Unreported"对账。
+- QC 后的 cohort FAM 顺序是全流程唯一的样本对齐权威。
+:::

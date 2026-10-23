@@ -1,0 +1,38 @@
+::: {.report-lead}
+
+### Manhattan & QQ Plots {#gwas-pdf-manhattan-qq}
+
+The Manhattan plot shows genome-wide significance (-log10 P); the red dashed line is the Bonferroni threshold (alpha/(family_size x M), M the trait's valid P count). QQ-plot tail departure from the diagonal indicates genuine association signal.
+
+:::
+
+```{python}
+#| label: pdf-fig-gwas-manhattan
+#| output: asis
+for trait in traits:
+    gwas_path = os.path.join(gwas_dir, trait, 'gwas.tsv')
+    if not os.path.exists(gwas_path):
+        continue
+    data = load_gwas(gwas_path)
+    meta = trait_meta.get(trait, {})
+    counts = meta.get('counts', {})
+    threshold_text = str(meta.get('multiple_testing', {}).get('threshold', '') or '')
+    try:
+        threshold = float(threshold_text)
+    except ValueError:
+        threshold = None
+    m_tests = counts.get('n_valid_p')
+    display(Markdown(f"#### Trait {trait} (M={m_tests}, significant {counts.get('n_significant', 0)})"))
+    show_figure(plot_manhattan(
+        data, chrom_order, chrom_lengths,
+        threshold=threshold,
+        threshold_label=f"Bonferroni α=0.05, M={m_tests}" if m_tests else "",
+        title=f"Manhattan plot — {trait}",
+        point_budget=int(manhattan_settings.get('point_budget', 200000)),
+    ))
+    show_figure(plot_qq(
+        data,
+        title=f"QQ plot — {trait}",
+        max_points=int(qq_settings.get('max_points', 50000)),
+    ))
+```

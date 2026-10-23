@@ -1,0 +1,48 @@
+---
+title: "分析方法与软件版本"
+---
+
+本报告基于 **GWASFlow** 标化关联分析流水线执行，核心分析节点及依赖的关键工具链如下所示。
+
+```{=typst}
+#block(breakable: false)[
+  #grid(columns: (1fr, 1fr, 1fr, 1fr), gutter: 3mm,
+    ..("输入门控", "基因型规范化", "四阶段 QC", "LD 剪枝 + PCA", "亲缘矩阵 K", "GEMMA LMM", "统计统一", "区域 LD").enumerate().map(((i, name)) =>
+      block(width: 100%, inset: 3mm, fill: rgb("#eaf0f7"))[
+        #text(weight: "bold", fill: rgb("#24476a"))[#(i+1). #name]
+      ]))
+]
+```
+
+## 方法学说明
+
+```{python}
+#| label: pdf-gwas-methods
+import pandas as pd
+from IPython.display import display, Markdown
+from bioreport.software import software_records
+from bioreport.config import load_project_metadata
+workflow_config = load_project_metadata()
+display(Markdown(
+    '- **关联模型**：GEMMA 线性混合模型（LMM，Wald 检验），以全队列 centered 亲缘矩阵 K 校正群体结构与样本亲缘；'
+    '协变量含截距与性状声明的 PCs（LD 剪枝标记集 PCA）。'))
+display(Markdown(
+    '- **多重校正**：Bonferroni，阈值 = α/(family_size × M)，M 为该性状有效 P 值个数（记录于关联 metadata，报告不另抄）。'))
+display(Markdown(
+    '- **QC 策略**：自交/近交植物默认关闭 HWE 过滤、不自动剔除高亲缘材料；四阶段（pre-geno → mind → geno/maf/mac）独立执行并留痕。'))
+```
+
+## 软件版本
+
+```{python}
+#| label: pdf-gwas-software
+#| output: asis
+records = software_records(workflow_config)
+frame = pd.DataFrame(records)
+if not frame.empty:
+    display(Markdown('| 软件 | 版本 | 来源 |\n|---|---|---|\n' + '\n'.join(
+        f"| {row.get('Software','')} | {row.get('Version','')} | {row.get('Source','')} |"
+        for _, row in frame.iterrows())))
+else:
+    display(Markdown('未登记软件版本（software_versions 缺失）。'))
+```

@@ -1,0 +1,98 @@
+---
+title: "Project Overview"
+analysis_type: GWAS
+subtitle: "GWAS Analysis Report"
+date: last-modified
+execute:
+  echo: false
+  warning: false
+---
+
+```{python}
+#| label: gwas-index-setup
+import json
+import pandas as pd
+from IPython.display import display, Markdown
+from bioreport.config import load_project_metadata
+from bioreport.utils.render_output import show_print_table
+
+project_info = load_project_metadata()
+input_files = project_info['input_files']
+config_base = project_info.get('path_base') or '.'
+import os
+summary_path = input_files['project_summary_file']
+if not os.path.isabs(summary_path):
+    summary_path = os.path.join(config_base, summary_path)
+qc_stats_path = input_files['qc_final_stats_file']
+if not os.path.isabs(qc_stats_path):
+    qc_stats_path = os.path.join(config_base, qc_stats_path)
+
+with open(summary_path, encoding='utf-8') as handle:
+    gwas_summary = json.load(handle)
+project = gwas_summary.get('project', {})
+counts = gwas_summary.get('counts', {})
+analysis_index = gwas_summary.get('analysis_index', []) or []
+overall_status = gwas_summary.get('overall_status', '')
+
+n_samples = counts.get('n_samples_final')
+n_variants = counts.get('n_variants_final')
+n_traits = len(analysis_index)
+n_significant_total = sum(int(item.get('n_significant') or 0) for item in analysis_index)
+```
+
+## Project Information
+
+```{python}
+#| label: tbl-gwas-project
+#| output: asis
+rows = [
+    ('Project ID', project.get('project_id', project.get('project_name', ''))),
+    ('Species', project.get('species', '')),
+    ('Reference genome', project.get('genome_version', '')),
+    ('Pipeline version', f"GWASFlow v{project.get('pipeline_version', '')}"),
+    ('Overall status', overall_status),
+]
+display(Markdown('| Item | Value |\n|---|---|\n' + '\n'.join(f'| {k} | {v} |' for k, v in rows)))
+```
+
+## Key Metrics
+
+```{python}
+#| label: tbl-gwas-metrics
+#| output: asis
+metrics = [
+    ('Samples after QC', f"{n_samples:,}" if n_samples is not None else 'not provided'),
+    ('Variants after QC', f"{n_variants:,}" if n_variants is not None else 'not provided'),
+    ('Traits analysed', str(n_traits)),
+    ('Significant variants (Bonferroni)', str(n_significant_total)),
+]
+display(Markdown('| Metric | Value |\n|---|---|\n' + '\n'.join(f'| {k} | {v} |' for k, v in metrics)))
+```
+
+## Trait Overview
+
+```{python}
+#| label: tbl-gwas-traits
+#| output: asis
+if analysis_index:
+    frame = pd.DataFrame([{
+        'Trait': item.get('trait', ''),
+        'Valid samples': item.get('n_valid_samples', ''),
+        'M (valid P)': f"{int(item.get('m_tests', 0)):,}" if item.get('m_tests') else '',
+        'Significant': item.get('n_significant', ''),
+        'Unreported': item.get('n_unreported', ''),
+        'Bonferroni threshold': str(item.get('threshold', '')),
+        'Status': item.get('status', ''),
+    } for item in analysis_index])
+    show_print_table(frame)
+else:
+    display(Markdown('Per-trait statistics unavailable (analysis_index missing).'))
+```
+
+::: {.callout-note appearance="minimal" icon=false}
+**Notes**
+
+- M is the number of valid P values reported by GEMMA for the trait (after software MAF/missingness filters); the Bonferroni threshold is alpha/(family_size x M).
+- "Unreported" counts variants registered in the variant map but excluded by QC before association testing.
+- Zero significant variants is a legitimate scientific outcome (it depends on trait genetic architecture, sample size and the threshold); the report presents it as-is.
+:::

@@ -1,0 +1,60 @@
+### Significant Variants & Candidate Loci {#gwas-significant-loci}
+
+The tables below list variants passing Bonferroni correction (top N rows) and the candidate regions anchored by lead SNPs (LD clump boundaries). Zero significant variants is a legitimate scientific outcome depending on genetic architecture, sample size and the threshold; the report presents it as-is.
+
+```{python}
+#| label: tbl-gwas-significant
+#| output: asis
+top_n = int(significant_settings.get('top_n', 20))
+display(Markdown("::: {.panel-tabset .results-comparisons}"))
+for trait in traits:
+    display(Markdown(f"### {trait}"))
+    sig_path = os.path.join(gwas_dir, trait, 'significant.tsv')
+    if os.path.exists(sig_path):
+        sig = pd.read_csv(sig_path, sep='\t')
+        if len(sig):
+            sig_cols = [c for c in ('chrom', 'pos', 'variant_id', 'effect_allele',
+                                    'other_allele', 'beta', 'se', 'p_value',
+                                    'maf', 'n_obs') if c in sig.columns]
+            frame = sig[sig_cols].head(top_n).copy()
+            if 'pos' in frame:
+                frame['pos'] = frame['pos'].astype(int)
+            show_print_table(frame)
+            display(Markdown(f"{len(sig)} significant variants in total, showing the first {min(top_n, len(sig))}; the full list ships as `08.results/{trait}/significant.tsv`."))
+        else:
+            display(Markdown('No Bonferroni-significant variants (legitimate scientific outcome).'))
+    else:
+        display(Markdown(f'Significant-variant table missing: {sig_path}'))
+display(Markdown(":::"))
+```
+
+```{python}
+#| label: tbl-gwas-loci
+#| output: asis
+display(Markdown("::: {.panel-tabset .results-comparisons}"))
+for trait in traits:
+    display(Markdown(f"### {trait}"))
+    loci_path = os.path.join(loci_dir, trait, 'loci.tsv')
+    if os.path.exists(loci_path):
+        loci = pd.read_csv(loci_path, sep='\t')
+        if len(loci):
+            loci_cols = [c for c in ('locus_id', 'chrom', 'start', 'end',
+                                     'lead_variant', 'lead_p', 'boundary_method')
+                         if c in loci.columns]
+            show_print_table(loci[loci_cols].head(top_n))
+            display(Markdown(
+                f"{len(loci)} candidate regions defined (lead SNP ± LD clump boundary); "
+                f"regional pairwise LD ships as `10.local_ld/{trait}/regional_ld.tsv`."))
+        else:
+            display(Markdown('No significant loci (consistent with the significant-variant result).'))
+    else:
+        display(Markdown(f'Locus table missing: {loci_path}'))
+display(Markdown(":::"))
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Notes: Significant & Loci**
+
+- **beta** is the per-copy effect estimate of the effect allele on the trait (unit per the trait's effect_scale); **se** is its standard error; **maf** is computed on the trait's effective samples.
+- **Candidate loci** are anchored at lead SNPs with boundaries from LD clumping (r²/kb parameters in the locus manifest); clumping de-redundancies signals and does not constitute fine mapping.
+:::

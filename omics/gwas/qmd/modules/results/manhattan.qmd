@@ -1,0 +1,66 @@
+### 曼哈顿图与 QQ 图（Manhattan & QQ） {#gwas-曼哈顿与-qq}
+
+曼哈顿图展示全基因组范围内每个 SNP 的关联显著性（-log10 P），红色虚线为 Bonferroni 校正阈值（α/(family_size × M)，M 为该性状有效 P 值个数，阈值唯一来源为关联 metadata）。QQ 图对比观测与期望 P 值分位数：尾部偏离对角线提示存在真实关联信号，整体膨胀则提示群体结构或亲缘未被完全校正。
+
+```{python}
+#| label: fig-gwas-manhattan
+#| output: asis
+if not traits:
+    display(Markdown('未配置分析性状（analysis.gwas.traits 缺失）。'))
+else:
+    display(Markdown("::: {.panel-tabset .results-comparisons}"))
+    for trait in traits:
+        display(Markdown(f"### {trait}"))
+        gwas_path = os.path.join(gwas_dir, trait, 'gwas.tsv')
+        if not os.path.exists(gwas_path):
+            display(Markdown(f'关联统计缺失：{gwas_path}'))
+            continue
+        data = load_gwas(gwas_path)
+        meta = trait_meta.get(trait, {})
+        counts = meta.get('counts', {})
+        threshold_text = str(meta.get('multiple_testing', {}).get('threshold', '') or '')
+        try:
+            threshold = float(threshold_text)
+        except ValueError:
+            threshold = None
+        m_tests = counts.get('n_valid_p')
+        fig = plot_manhattan(
+            data, chrom_order, chrom_lengths,
+            threshold=threshold,
+            threshold_label=f"Bonferroni α=0.05, M={m_tests}" if m_tests else "",
+            title=f"Manhattan plot — {trait}",
+            point_budget=int(manhattan_settings.get('point_budget', 200000)),
+        )
+        show_figure(fig)
+        display(Markdown(
+            f"绘制 {len(data):,} 个位点（M={m_tests}，显著 {counts.get('n_significant', 0)}；"
+            f"未上报 {counts.get('n_unreported', 0)} 未进入检验）。"
+            if m_tests else f"绘制 {len(data):,} 个位点。"))
+    display(Markdown(":::"))
+```
+
+```{python}
+#| label: fig-gwas-qq
+#| output: asis
+display(Markdown("::: {.panel-tabset .results-comparisons}"))
+for trait in traits:
+    display(Markdown(f"### {trait}"))
+    gwas_path = os.path.join(gwas_dir, trait, 'gwas.tsv')
+    if not os.path.exists(gwas_path):
+        continue
+    data = load_gwas(gwas_path)
+    show_figure(plot_qq(
+        data,
+        title=f"QQ plot — {trait}",
+        max_points=int(qq_settings.get('max_points', 50000)),
+    ))
+display(Markdown(":::"))
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**图注说明: Manhattan & QQ（曼哈顿图与分位数图）**
+
+1. **Manhattan 横轴**为基因组累计坐标（按染色体表长度拼接，染色体交替着色），**纵轴**为 -log10(P)；越过红虚线的位点通过 Bonferroni 校正。红色点为显著位点。
+2. **QQ 图**横纵轴分别为期望/观测 -log10(P)；靠近对角线的点表明无显著关联的位点服从均匀分布（零假设成立），左上尾部抬升是真实信号的典型形态。
+3. 图中悬停可查看位点身份（variant_id）、P 值与效应量（beta，效应等位基因方向以 GEMMA allele1/reported 为准）。
+:::

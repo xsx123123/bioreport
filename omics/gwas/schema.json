@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bioreport.dev/schema/omics/gwas.json",
+  "title": "GWAS analysis parameters",
+  "type": "object",
+  "properties": {
+    "gwas": {
+      "type": "object",
+      "properties": {
+        "traits": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Trait IDs analysed by GWASFlow (08.results subdirectories)."
+        },
+        "manhattan": {
+          "type": "object",
+          "properties": {
+            "point_budget": {
+              "type": "integer",
+              "minimum": 1000,
+              "description": "Rendered points per trait before sampling non-significant variants."
+            },
+            "p_zero_display_cap": {
+              "type": "string",
+              "description": "Display cap for underflow P values, e.g. '1e-300'."
+            }
+          }
+        },
+        "significant": {
+          "type": "object",
+          "properties": {
+            "top_n": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Rows shown in the significant-variant and lead-SNP tables."
+            }
+          }
+        },
+        "qq": {
+          "type": "object",
+          "properties": {
+            "max_points": {
+              "type": "integer",
+              "minimum": 1000
+            }
+          }
+        },
+        "kinship": {
+          "type": "object",
+          "properties": {
+            "heatmap_max_samples": {
+              "type": "integer",
+              "minimum": 10
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

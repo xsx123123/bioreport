@@ -461,6 +461,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
     setup_added = set()
     registered = get_registry().modules
     has_rna = any(_canonical(module).startswith("rna.") for module in module_ids)
+    has_gwas = any(_canonical(module).startswith("gwas.") for module in module_ids)
     if pdf:
         metadata["filters"] = ["../pdf/layout.lua"]
         from .utils.fonts import MONO_STACK, font_families
@@ -569,7 +570,82 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
         metadata.pop("date", None)
         cover_block = f"```{{=typst}}\n{cover}\n```\n\n"
         (style_dir / "rna-cover.typ").write_text(cover, encoding="utf-8")
-    content_root = template_dir / "qmd" / "en" if english and has_rna else template_dir / "qmd"
+    elif pdf and has_gwas:
+        metadata["format"]["typst"].update({
+            "papersize": "a4", "toc": False, "toc-depth": 2,
+            "number-sections": True,
+            "section-numbering": "1.1.1",
+            "margin": {"x": "20mm", "y": "22mm"},
+            "include-in-header": ['../pdf/print-context.typ', '../pdf/print-style.typ', '../pdf/gwas-style.typ'],
+            "include-before-body": '../pdf/print-body.typ',
+        })
+        style_dir = template_dir / "pdf"
+        style_dir.mkdir(exist_ok=True)
+        project = config.get("project", {})
+        lines = [report.get("title", "GWAS 全基因组关联分析报告"),
+                 project.get("client", ""), project.get("species", ""),
+                 project.get("genome_version", project.get("genome", "")),
+                 project.get("pipeline_version", project.get("software", ""))]
+        title = str(lines[0]).replace('PDF', '').strip()
+        provenance = _cover_provenance(template_dir)
+        def clean(value):
+            if value is None:
+                return ""
+            text = str(value).strip()
+            return "" if text.lower() in {"none", "null", "undefined"} else text
+
+        pipeline = clean(lines[4])
+        report_date = clean(project.get('report_date') or project.get('date'))
+        if not report_date and provenance.get('generated_at'):
+            report_date = str(provenance['generated_at']).split('T')[0]
+        traits = [str(t) for t in (config.get('analysis', {}).get('gwas', {}).get('traits') or [])]
+        trait_text = ("; " if english else "；").join(traits[:4])
+        if len(traits) > 4:
+            trait_text = (
+                f"{len(traits)} traits; examples: {trait_text}. Full list in the report."
+                if english else f"共 {len(traits)} 个性状；示例：{trait_text}。完整列表见正文。"
+            )
+        elif not trait_text:
+            trait_text = tr("未提供")
+        checksums = provenance.get('input_checksums') or {}
+        integrity = (f"已记录 SHA-256 指纹（{len(checksums)} 个输入文件）"
+                     if checksums else "未提供校验结果")
+        study = [
+            ("委托单位", clean(lines[1]), False),
+            ("研究物种", clean(lines[2]), True),
+            ("参考基因组", clean(lines[3]), False),
+            ("分析性状", trait_text, False),
+        ]
+        analysis = [
+            ("项目编号", clean(project.get('project_id') or project.get('id')), False),
+            ("GWASFlow 流程版本", pipeline, False),
+            ("BioReport 报告引擎版本", f"BioReport v{bioreport.__version__}", False),
+            ("数据完整性校验状态", integrity, False),
+        ]
+        def quoted_fields(pairs):
+            return [(json.dumps(tr(label), ensure_ascii=False),
+                     json.dumps((tr(value) if label == "数据完整性校验状态" else value) or tr("未提供"), ensure_ascii=False), italic)
+                    for label, value, italic in pairs]
+        cover = Template((style_dir / ("gwas-cover.en.typ.j2" if english else "gwas-cover.typ.j2")).read_text(encoding="utf-8")).render(
+            title=json.dumps(title, ensure_ascii=False),
+            study_fields=quoted_fields(study), analysis_fields=quoted_fields(analysis),
+            report_date=json.dumps(tr(report_date or "未提供"), ensure_ascii=False),
+            pills=[json.dumps(text, ensure_ascii=False) for text in _cover_pills(config)],
+            project_id=json.dumps(
+                f"ProjectID: {project.get('project_id', project.get('id')) or short_name}",
+                ensure_ascii=False),
+            bioreport_version_label=json.dumps(f"BioReport: v{bioreport.__version__}", ensure_ascii=False),
+            pipeline_version_label=json.dumps(f"FlowVersion: {pipeline or 'GWASFlow'}", ensure_ascii=False),
+            english_subtitle=json.dumps(
+                report.get('english_subtitle')
+                or 'Genome-Wide Association Study & Data Lineage Report',
+                ensure_ascii=False),
+        )
+        metadata.pop("title", None)
+        metadata.pop("date", None)
+        cover_block = f"```{{=typst}}\n{cover}\n```\n\n"
+        (style_dir / "gwas-cover.typ").write_text(cover, encoding="utf-8")
+    content_root = template_dir / "qmd" / "en" if english and (has_rna or has_gwas) else template_dir / "qmd"
     skipped = skipped_modules(config, module_ids)
     replacements = {}
     for module_id, missing in skipped.items():

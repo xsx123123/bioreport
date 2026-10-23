@@ -1,0 +1,11 @@
+---
+title: "关联分析结果"
+execute:
+  echo: false
+  warning: false
+---
+
+{{< include modules/results/setup.qmd >}}
+{{< include modules/results/manhattan.qmd >}}
+{{< include modules/results/significant.qmd >}}
+{{< include modules/results/structure.qmd >}}

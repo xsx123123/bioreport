@@ -1,0 +1,33 @@
+### 群体结构（Population Structure） {#gwas-群体结构}
+
+PCA 基于 LD 剪枝标记集计算（与关联分析使用的完整 cohort 标记集相互隔离）；亲缘矩阵为 GEMMA centered K（`-gk 1`）全队列估计。自交/近交植物群体出现块状高 K 属正常现象，不作为异常处理。
+
+```{python}
+#| label: fig-gwas-pca
+#| output: asis
+pca_path = resolve('pca_eigenvec_file')
+if pca_path and os.path.exists(pca_path):
+    show_figure(plot_pca(pca_path))
+else:
+    display(Markdown('PCA 结果缺失（population_structure 模块未启用或产物不存在），本节跳过。'))
+```
+
+```{python}
+#| label: fig-gwas-kinship
+#| output: asis
+kinship_path = resolve('kinship_matrix_file')
+if kinship_path and os.path.exists(kinship_path):
+    show_figure(plot_kinship_heatmap(
+        kinship_path,
+        max_samples=int(kinship_settings.get('heatmap_max_samples', 194)),
+    ))
+else:
+    display(Markdown('亲缘矩阵缺失（kinship_analysis 模块未启用或产物不存在），本节跳过。'))
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**图注说明: PCA & Kinship（主成分与亲缘热图）**
+
+1. **PCA 散点**为前两个主成分（标题中括号标注各主成分解释方差比）；若呈现连续梯度或离散群系，提示群体分层，关联模型已按性状声明的 PCs 数将其纳入协变量。
+2. **亲缘热图**颜色越深表示成对亲缘关系越强；对角线为自亲缘。同群系块状高 K 反映真实家族结构，由 LMM 的随机效应（K 矩阵）吸收，不在 QC 中删除。
+:::

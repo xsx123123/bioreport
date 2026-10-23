@@ -1,0 +1,43 @@
+::: {.report-lead}
+
+### Significant Variants & Candidate Loci {#gwas-pdf-significant-loci}
+
+Variants passing Bonferroni correction (top N rows) and candidate regions anchored at lead SNPs. Zero significant variants is a legitimate scientific outcome and is presented as-is.
+
+:::
+
+```{python}
+#| label: pdf-tbl-gwas-significant
+#| output: asis
+top_n = int(significant_settings.get('top_n', 20))
+for trait in traits:
+    sig_path = os.path.join(gwas_dir, trait, 'significant.tsv')
+    if not os.path.exists(sig_path):
+        continue
+    sig = pd.read_csv(sig_path, sep='\t')
+    display(Markdown(f"#### Trait {trait}"))
+    if len(sig):
+        sig_cols = [c for c in ('chrom', 'pos', 'variant_id', 'effect_allele',
+                                'other_allele', 'beta', 'se', 'p_value', 'maf') if c in sig.columns]
+        show_print_table(sig[sig_cols].head(top_n))
+        display(Markdown(f"{len(sig)} significant variants in total, showing the first {min(top_n, len(sig))}; the full list ships with the delivery."))
+    else:
+        display(Markdown('No Bonferroni-significant variants (legitimate scientific outcome).'))
+```
+
+```{python}
+#| label: pdf-tbl-gwas-loci
+#| output: asis
+for trait in traits:
+    loci_path = os.path.join(loci_dir, trait, 'loci.tsv')
+    if not os.path.exists(loci_path):
+        continue
+    loci = pd.read_csv(loci_path, sep='\t')
+    display(Markdown(f"#### Candidate loci ({trait})"))
+    if len(loci):
+        loci_cols = [c for c in ('locus_id', 'chrom', 'start', 'end',
+                                 'lead_variant', 'lead_p') if c in loci.columns]
+        show_print_table(loci[loci_cols].head(top_n))
+    else:
+        display(Markdown('No significant loci (consistent with the significant-variant result).'))
+```

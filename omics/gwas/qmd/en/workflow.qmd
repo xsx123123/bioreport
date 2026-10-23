@@ -1,0 +1,62 @@
+---
+title: "Workflow"
+execute:
+  echo: false
+  warning: false
+---
+
+```{python}
+#| label: gwas-workflow-setup
+import pandas as pd
+from IPython.display import display, Markdown
+from bioreport.software import software_records
+from bioreport.config import load_project_metadata
+
+workflow_config = load_project_metadata()
+```
+
+The data in this report comes from the **GWASFlow** genome-wide association pipeline (GEMMA LMM mixed-model route). The diagram below shows the complete chain from input gating to delivery; actual executed steps and software versions follow the upstream audit logs.
+
+## Pipeline
+
+```{mermaid}
+%%| label: fig-gwas-pipeline
+%%| fig-cap: "GWASFlow analysis pipeline"
+%%| fig-width: 12
+
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#E3F2FD', 'primaryTextColor': '#2c3e50', 'lineColor': '#7f8c8d', 'fontFamily': 'Helvetica'}}}%%
+
+graph LR
+    A[Input Gate] --> B[Genotype<br>Normalization]
+    B --> C[Four-stage<br>Genotype QC]
+    C --> D1[LD Pruning + PCA<br>Population Structure]
+    C --> D2[Trait Input<br>Preparation]
+    D1 --> E[Cohort Kinship K<br>-gk 1]
+    D2 --> F[GEMMA LMM<br>Association -lmm 1]
+    E --> F
+    F --> G[Harmonization +<br>Bonferroni]
+    G --> H[Locus Definition]
+    H --> I[Regional LD]
+    G --> J[Plots + Delivery]
+```
+
+::: {.callout-note appearance="minimal" icon=false}
+**Model**
+
+Association testing uses the GEMMA linear mixed model (LMM): the cohort-wide centered kinship matrix K (GEMMA `-gk 1`) corrects for population structure and relatedness; covariates comprise the intercept and the trait-declared PCs (from PCA on the LD-pruned marker set, `n_pcs` declared per trait). For selfing/inbreeding plants, HWE filtering is disabled by default and highly related materials are not automatically removed.
+:::
+
+## Software Versions
+
+```{python}
+#| label: tbl-gwas-software
+#| output: asis
+records = software_records(workflow_config)
+frame = pd.DataFrame(records)
+if not frame.empty:
+    display(Markdown('| Software | Version | Source |\n|---|---|---|\n' + '\n'.join(
+        f"| {row.get('Software','')} | {row.get('Version','')} | {row.get('Source','')} |"
+        for _, row in frame.iterrows())))
+else:
+    display(Markdown('Software versions not registered (software_versions missing).'))
+```

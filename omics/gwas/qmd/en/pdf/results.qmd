@@ -1,0 +1,8 @@
+---
+title: "Association Results"
+---
+
+{{< include pdf/modules/results/setup.qmd >}}
+{{< include pdf/modules/results/manhattan.qmd >}}
+{{< include pdf/modules/results/significant.qmd >}}
+{{< include pdf/modules/results/structure.qmd >}}

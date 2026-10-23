@@ -1,0 +1,98 @@
+---
+title: "项目概况"
+analysis_type: GWAS
+subtitle: "GWAS 全基因组关联分析报告"
+date: last-modified
+execute:
+  echo: false
+  warning: false
+---
+
+```{python}
+#| label: gwas-index-setup
+import json
+import pandas as pd
+from IPython.display import display, Markdown
+from bioreport.config import load_project_metadata
+from bioreport.utils.render_output import show_print_table
+
+project_info = load_project_metadata()
+input_files = project_info['input_files']
+config_base = project_info.get('path_base') or '.'
+import os
+summary_path = input_files['project_summary_file']
+if not os.path.isabs(summary_path):
+    summary_path = os.path.join(config_base, summary_path)
+qc_stats_path = input_files['qc_final_stats_file']
+if not os.path.isabs(qc_stats_path):
+    qc_stats_path = os.path.join(config_base, qc_stats_path)
+
+with open(summary_path, encoding='utf-8') as handle:
+    gwas_summary = json.load(handle)
+project = gwas_summary.get('project', {})
+counts = gwas_summary.get('counts', {})
+analysis_index = gwas_summary.get('analysis_index', []) or []
+overall_status = gwas_summary.get('overall_status', '')
+
+n_samples = counts.get('n_samples_final')
+n_variants = counts.get('n_variants_final')
+n_traits = len(analysis_index)
+n_significant_total = sum(int(item.get('n_significant') or 0) for item in analysis_index)
+```
+
+## 项目信息（Project Information）
+
+```{python}
+#| label: tbl-gwas-project
+#| output: asis
+rows = [
+    ('项目编号 Project ID', project.get('project_id', project.get('project_name', ''))),
+    ('研究物种 Species', project.get('species', '')),
+    ('参考基因组 Reference genome', project.get('genome_version', '')),
+    ('流程版本 Pipeline version', f"GWASFlow v{project.get('pipeline_version', '')}"),
+    ('整体状态 Overall status', overall_status),
+]
+display(Markdown('| 项目 Item | 值 Value |\n|---|---|\n' + '\n'.join(f'| {k} | {v} |' for k, v in rows)))
+```
+
+## 关键指标（Key Metrics）
+
+```{python}
+#| label: tbl-gwas-metrics
+#| output: asis
+metrics = [
+    ('分析样本数 Samples after QC', f"{n_samples:,}" if n_samples is not None else '未提供'),
+    ('QC 后标记数 Variants after QC', f"{n_variants:,}" if n_variants is not None else '未提供'),
+    ('分析性状数 Traits', str(n_traits)),
+    ('显著位点总数 Significant variants (Bonferroni)', str(n_significant_total)),
+]
+display(Markdown('| 指标 Metric | 值 Value |\n|---|---|\n' + '\n'.join(f'| {k} | {v} |' for k, v in metrics)))
+```
+
+## 性状概览（Trait Overview）
+
+```{python}
+#| label: tbl-gwas-traits
+#| output: asis
+if analysis_index:
+    frame = pd.DataFrame([{
+        '性状 Trait': item.get('trait', ''),
+        '有效样本 Valid samples': item.get('n_valid_samples', ''),
+        '检验标记 M (valid P)': f"{int(item.get('m_tests', 0)):,}" if item.get('m_tests') else '',
+        '显著位点 Significant': item.get('n_significant', ''),
+        '未上报 Unreported': item.get('n_unreported', ''),
+        'Bonferroni 阈值 Threshold': str(item.get('threshold', '')),
+        '状态 Status': item.get('status', ''),
+    } for item in analysis_index])
+    show_print_table(frame)
+else:
+    display(Markdown('未提供逐性状统计（analysis_index 缺失）。'))
+```
+
+::: {.callout-note appearance="minimal" icon=false}
+**说明 Notes**
+
+- 检验标记数 M 为该性状 GEMMA 输出的有效 P 值个数（软件 MAF/缺失过滤后），Bonferroni 阈值 = α/(family_size × M)。
+- "未上报 Unreported" 为 variant_map 登记、但被 QC 剔除而未进入关联检验的位点数。
+- 无显著位点是合法科学结果（与表型遗传架构、样本量与阈值相关），报告如实呈现。
+:::

@@ -1,0 +1,30 @@
+::: {.report-lead}
+
+### 群体结构 {#gwas-pdf-群体结构}
+
+PCA 基于 LD 剪枝标记集计算；亲缘矩阵为 GEMMA centered K（`-gk 1`）全队列估计。自交/近交群体出现块状高 K 属正常现象。
+
+:::
+
+```{python}
+#| label: pdf-fig-gwas-pca
+#| output: asis
+pca_path = resolve('pca_eigenvec_file')
+if pca_path and os.path.exists(pca_path):
+    show_figure(plot_pca(pca_path))
+else:
+    display(Markdown('PCA 结果缺失（population_structure 模块未启用或产物不存在），本节跳过。'))
+```
+
+```{python}
+#| label: pdf-fig-gwas-kinship
+#| output: asis
+kinship_path = resolve('kinship_matrix_file')
+if kinship_path and os.path.exists(kinship_path):
+    show_figure(plot_kinship_heatmap(
+        kinship_path,
+        max_samples=int(kinship_settings.get('heatmap_max_samples', 194)),
+    ))
+else:
+    display(Markdown('亲缘矩阵缺失（kinship_analysis 模块未启用或产物不存在），本节跳过。'))
+```

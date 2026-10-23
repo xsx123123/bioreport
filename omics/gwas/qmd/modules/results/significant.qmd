@@ -1,0 +1,61 @@
+### 显著位点与候选区域（Significant Variants & Loci） {#gwas-显著位点与候选区域}
+
+下表列出通过 Bonferroni 校正的显著位点（取前 N 行）与 lead SNP 所在的候选区域（LD clump 边界）。显著位点数为 0 属于合法科学结果，与表型遗传架构、样本规模及校正阈值相关，报告如实呈现。
+
+```{python}
+#| label: tbl-gwas-significant
+#| output: asis
+top_n = int(significant_settings.get('top_n', 20))
+display(Markdown("::: {.panel-tabset .results-comparisons}"))
+for trait in traits:
+    display(Markdown(f"### {trait}"))
+    sig_path = os.path.join(gwas_dir, trait, 'significant.tsv')
+    if os.path.exists(sig_path):
+        sig = pd.read_csv(sig_path, sep='\t')
+        if len(sig):
+            sig_cols = [c for c in ('chrom', 'pos', 'variant_id', 'effect_allele',
+                                    'other_allele', 'beta', 'se', 'p_value',
+                                    'maf', 'n_obs') if c in sig.columns]
+            frame = sig[sig_cols].head(top_n).copy()
+            if 'pos' in frame:
+                frame['pos'] = frame['pos'].astype(int)
+            show_print_table(frame)
+            display(Markdown(f"共 {len(sig)} 个显著位点，显示前 {min(top_n, len(sig))} 行；完整清单见交付目录 `08.results/{trait}/significant.tsv`。"))
+        else:
+            display(Markdown('无 Bonferroni 显著位点（合法科学结果）。'))
+    else:
+        display(Markdown(f'显著位点表缺失：{sig_path}'))
+display(Markdown(":::"))
+```
+
+```{python}
+#| label: tbl-gwas-loci
+#| output: asis
+display(Markdown("::: {.panel-tabset .results-comparisons}"))
+for trait in traits:
+    display(Markdown(f"### {trait}"))
+    loci_path = os.path.join(loci_dir, trait, 'loci.tsv')
+    lead_path = os.path.join(loci_dir, trait, 'lead.tsv')
+    if os.path.exists(loci_path):
+        loci = pd.read_csv(loci_path, sep='\t')
+        if len(loci):
+            loci_cols = [c for c in ('locus_id', 'chrom', 'start', 'end',
+                                     'lead_variant', 'lead_p', 'boundary_method')
+                         if c in loci.columns]
+            show_print_table(loci[loci_cols].head(top_n))
+            display(Markdown(
+                f"共定义 {len(loci)} 个候选区域（lead SNP ± LD clump 边界）；"
+                "区域成对 LD 见交付目录 `10.local_ld/{trait}/regional_ld.tsv`。".replace('{trait}', trait)))
+        else:
+            display(Markdown('无显著区域（与显著位点结果一致）。'))
+    else:
+        display(Markdown(f'候选区域表缺失：{loci_path}'))
+display(Markdown(":::"))
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**表注说明: Significant & Loci（显著位点与候选区域）**
+
+- **beta** 为效应等位基因（effect_allele）每拷贝的表型效应估计（单位见性状声明 effect_scale）；**se** 为标准误；**maf** 为该性状有效材料上的次等位基因频率。
+- **候选区域（locus）** 以 lead SNP 为锚、按 LD clump（r²/kb 参数见 locus manifest）划定边界，用于后续候选基因注释与区域 LD 分析；clump 仅作去冗余，不构成精细定位结论。
+:::

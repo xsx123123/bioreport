@@ -1,0 +1,44 @@
+```{python}
+#| label: gwas-results-setup
+#| echo: false
+import json
+import os
+import pandas as pd
+from IPython.display import display, Markdown
+from bioreport.config import load_project_metadata
+from bioreport.utils.render_output import show_figure
+
+from omics.gwas.analysis.gwas_plots import (
+    load_gwas, load_chrom_lengths, plot_manhattan, plot_qq,
+    plot_pca, plot_kinship_heatmap,
+)
+
+project_info = load_project_metadata()
+input_files = project_info['input_files']
+config_base = project_info.get('path_base') or '.'
+
+def resolve(key):
+    path = input_files.get(key, '')
+    if path and not os.path.isabs(path):
+        path = os.path.join(config_base, path)
+    return path
+
+gwas_settings = project_info.get('analysis', {}).get('gwas', {})
+traits = [str(t) for t in (gwas_settings.get('traits') or [])]
+manhattan_settings = gwas_settings.get('manhattan', {})
+significant_settings = gwas_settings.get('significant', {})
+qq_settings = gwas_settings.get('qq', {})
+kinship_settings = gwas_settings.get('kinship', {})
+
+gwas_dir = resolve('gwas_dir')
+loci_dir = resolve('loci_dir')
+
+chrom_order, chrom_lengths = load_chrom_lengths(resolve('chromosome_table_file'))
+
+trait_meta = {}
+for trait in traits:
+    meta_path = os.path.join(gwas_dir, trait, 'metadata.json')
+    if os.path.exists(meta_path):
+        with open(meta_path, encoding='utf-8') as handle:
+            trait_meta[trait] = json.load(handle)
+```

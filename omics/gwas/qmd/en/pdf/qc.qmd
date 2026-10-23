@@ -1,0 +1,81 @@
+---
+title: "Genotype QC"
+execute:
+  echo: false
+  warning: false
+---
+
+```{python}
+#| label: gwas-qc-setup
+import json
+import os
+import pandas as pd
+from IPython.display import display, Markdown
+from bioreport.config import load_project_metadata
+from bioreport.utils.render_output import show_print_table
+
+project_info = load_project_metadata()
+input_files = project_info['input_files']
+config_base = project_info.get('path_base') or '.'
+
+def resolve(key):
+    path = input_files.get(key, '')
+    if path and not os.path.isabs(path):
+        path = os.path.join(config_base, path)
+    return path
+
+with open(resolve('qc_final_stats_file'), encoding='utf-8') as handle:
+    qc_final = json.load(handle)
+with open(resolve('qc_audit_file'), encoding='utf-8') as handle:
+    qc_audit = json.load(handle)
+
+qc_params = qc_audit.get('params', {})
+stages = qc_final.get('stages', []) or qc_final.get('final_stats', [])
+```
+
+## QC Strategy
+
+```{python}
+#| label: tbl-gwas-qc-policy
+#| output: asis
+policy_rows = [
+    ('Pre-geno missingness', qc_params.get('pre_geno')),
+    ('Sample missingness (mind)', qc_params.get('mind')),
+    ('Variant missingness (geno)', qc_params.get('geno')),
+    ('Minor allele frequency (maf)', qc_params.get('maf')),
+    ('Minor allele count (mac)', qc_params.get('mac')),
+    ('HWE filter', qc_audit.get('hwe', 'off')),
+    ('Chromosome set', qc_audit.get('chr_set', '')),
+    ('Minimum samples after QC', qc_params.get('min_samples_after_qc')),
+]
+display(Markdown('| Item | Value |\n|---|---|\n' + '\n'.join(
+    f'| {k} | {v} |' for k, v in policy_rows if v is not None)))
+```
+
+## Four-Stage Funnel
+
+```{python}
+#| label: tbl-gwas-qc-funnel
+#| output: asis
+if stages:
+    frame = pd.DataFrame([{
+        'Stage': item.get('stage', ''),
+        'Samples after': f"{int(item.get('n_samples_after', 0)):,}",
+        'Samples removed': item.get('n_samples_removed', 0),
+        'Variants before': f"{int(item.get('n_variants_before', 0)):,}",
+        'Variants removed': f"{int(item.get('n_variants_removed', 0) or 0):,}",
+        'Variants after': f"{int(item.get('n_variants_after', 0)):,}",
+    } for item in stages])
+    show_print_table(frame)
+else:
+    display(Markdown('Per-stage statistics unavailable (final_stats.json stages missing).'))
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Notes: QC Funnel**
+
+- **stage1 pre-geno**: relaxed variant-missingness screen (default geno=0.2) that removes high-missing variants first so sample statistics are not distorted.
+- **stage2 mind**: removes samples by missingness (default mind=0.10); selfing panels usually have near-zero missingness and no removals here.
+- **stage3 geno/maf/mac**: final variant missingness and allele frequency/count filters; the removed set is recorded in `removed_variants_stage3.tsv` and reconciled as "Unreported" in the association chapter.
+- The post-QC cohort FAM order is the single sample-alignment authority for the whole pipeline.
+:::

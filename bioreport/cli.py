@@ -561,9 +561,9 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [package_root, env.get("PYTHONPATH")]))
     abs_output_dir = str(Path(output_dir).resolve())
     env["BIOREPORT_DELIVERY_DIR"] = abs_output_dir
-    from .i18n import is_rna, languages, localized_config
+    from .i18n import is_bilingual, is_rna, languages, localized_config
     original_config = config
-    bilingual = is_rna(config)
+    bilingual = is_bilingual(config)
     paired_html = bilingual and layout == "single"
     asset_audit = Path(abs_output_dir) / "html-assets.jsonl"
     html_requested = 'html' in output_formats(config)
@@ -572,7 +572,7 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
         env['BIOREPORT_ASSET_AUDIT_FILE'] = str(asset_audit)
     else:
         env.pop('BIOREPORT_ASSET_AUDIT_FILE', None)
-    if bilingual and html_requested:
+    if bilingual and html_requested and is_rna(config):
         from .utils.asset_audit import static_plotly_calls
         logger.info('RNA Plotly static calls: {}', ', '.join(static_plotly_calls(Path(package_root)/'omics/rna/analysis')))
     jobs = [(fmt, lang) for fmt in output_formats(config) for lang in (languages(config)[:1] if layout == "website" else languages(config))]
@@ -817,13 +817,15 @@ def main():
         # on any specific omics package; stage them first as the qmd/ root.
         shutil.copytree(template_dir / "shared", template_dir / "qmd")
         # Omics packages (e.g. omics/rna) overlay their own pages on top.
-        rna_qmd_candidates = [
-            Path(__file__).resolve().parents[1] / "omics" / "rna" / "qmd",
-            Path(__file__).resolve().parents[1] / ".." / "omics" / "rna" / "qmd",
-        ]
-        rna_qmd = next((path for path in rna_qmd_candidates if path.is_dir()), None)
-        if rna_qmd:
-            shutil.copytree(rna_qmd, template_dir / "qmd", dirs_exist_ok=True)
+        _repo_root = Path(__file__).resolve().parents[1]
+        for omics_name in ("rna", "gwas"):
+            qmd_candidates = [
+                _repo_root / "omics" / omics_name / "qmd",
+                _repo_root / ".." / "omics" / omics_name / "qmd",
+            ]
+            omics_qmd = next((path for path in qmd_candidates if path.is_dir()), None)
+            if omics_qmd:
+                shutil.copytree(omics_qmd, template_dir / "qmd", dirs_exist_ok=True)
         # 组装阶段写入溯源信息（引擎版本/生成时间/模块清单/输入指纹），
         # 供共享页、组学页与页脚在 Quarto 执行阶段读取。
         provenance = build_provenance(config, selected)

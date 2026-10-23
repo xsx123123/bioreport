@@ -1,0 +1,63 @@
+---
+title: "分析流程"
+execute:
+  echo: false
+  warning: false
+---
+
+```{python}
+#| label: gwas-workflow-setup
+import pandas as pd
+from IPython.display import display, Markdown
+from bioreport.software import software_records
+from bioreport.config import load_project_metadata
+
+workflow_config = load_project_metadata()
+```
+
+本报告数据来自 **GWASFlow** 全基因组关联分析流程（GEMMA LMM 混合线性模型路线）。下图展示从输入门控到交付的完整处理链路；实际执行步骤与软件版本以上游结果及审计日志为准。
+
+## 流程图（Pipeline） {#gwas-流程图}
+
+```{mermaid}
+%%| label: fig-gwas-pipeline
+%%| fig-cap: "GWASFlow 分析流程"
+%%| fig-width: 12
+
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#E3F2FD', 'primaryTextColor': '#2c3e50', 'lineColor': '#7f8c8d', 'fontFamily': 'Helvetica'}}}%%
+
+graph LR
+    A[输入门控<br>Input Gate] --> B[基因型规范化<br>Normalization]
+    B --> C[四阶段基因型 QC<br>Genotype QC]
+    C --> D1[LD 剪枝 + PCA<br>Population Structure]
+    C --> D2[性状输入准备<br>Trait Preparation]
+    D1 --> E[全队列亲缘矩阵 K<br>Kinship -gk 1]
+    D2 --> F[GEMMA LMM 关联检验<br>Association -lmm 1]
+    E --> F
+    F --> G[统计统一与多重校正<br>Harmonization + Bonferroni]
+    G --> H[显著区域定义<br>Locus Definition]
+    H --> I[区域 LD<br>Regional LD]
+    G --> J[可视化与交付<br>Plots + Delivery]
+```
+
+::: {.callout-note appearance="minimal" icon=false}
+**模型说明 Model**
+
+关联检验采用 GEMMA 线性混合模型（LMM）：以全队列 centered 亲缘矩阵 K（GEMMA `-gk 1`）校正群体结构与样本亲缘，协变量包含截距与按性状声明的 PCs（由 LD 剪枝标记集 PCA 提供，`n_pcs` 由 traits 配置声明）。QC 策略对自交/近交植物默认关闭 HWE 过滤且不自动剔除高亲缘材料。
+:::
+
+## 软件版本（Software Versions）
+
+```{python}
+#| label: tbl-gwas-software
+#| output: asis
+records = software_records(workflow_config)
+frame = pd.DataFrame(records)
+if not frame.empty:
+    cols = [c for c in ('Software', 'Version', 'Source') if c in frame.columns]
+    display(Markdown('| 软件 Software | 版本 Version | 来源 Source |\n|---|---|---|\n' + '\n'.join(
+        f"| {row.get('Software','')} | {row.get('Version','')} | {row.get('Source','')} |"
+        for _, row in frame.iterrows())))
+else:
+    display(Markdown('未登记软件版本（software_versions 缺失）。'))
+```

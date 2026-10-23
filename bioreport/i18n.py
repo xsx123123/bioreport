@@ -24,17 +24,32 @@ def is_rna(config):
     return report.get('type') == 'rna-seq' or any(get_registry().canonical(m).startswith('rna.') for m in modules)
 
 
+def is_gwas(config):
+    from .registry import get_registry
+    report = config.get('report', {})
+    modules = report.get('modules', report.get('sections', ()))
+    if not modules and not report.get('type'):
+        return bool(config.get('input_files', {}).get('gwas_dir'))
+    return report.get('type') == 'gwas' or any(get_registry().canonical(m).startswith('gwas.') for m in modules)
+
+
+def is_bilingual(config):
+    """Omics templates ship zh + en editions; other reports follow report.language."""
+    return is_rna(config) or is_gwas(config)
+
+
 def languages(config):
-    return ['zh', 'en'] if is_rna(config) else [language(config)]
+    return ['zh', 'en'] if is_bilingual(config) else [language(config)]
 
 
 def localized_config(config, lang):
     result = deepcopy(config)
     report = result.setdefault('report', {})
     report['language'] = lang
-    title = report.get('title', 'RNA-seq Analysis Report')
+    fallback = 'GWAS Analysis Report' if is_gwas(config) else 'RNA-seq Analysis Report'
+    title = report.get('title', fallback)
     if lang == 'en':
-        report['title'] = report.get('title_en') or (translate(title, 'en') if not any('\u4e00' <= c <= '\u9fff' for c in title) else 'RNA-seq Analysis Report')
+        report['title'] = report.get('title_en') or (translate(title, 'en') if not any('\u4e00' <= c <= '\u9fff' for c in title) else fallback)
     return result
 
 

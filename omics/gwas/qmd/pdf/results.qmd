@@ -1,0 +1,8 @@
+---
+title: "关联分析结果"
+---
+
+{{< include pdf/modules/results/setup.qmd >}}
+{{< include pdf/modules/results/manhattan.qmd >}}
+{{< include pdf/modules/results/significant.qmd >}}
+{{< include pdf/modules/results/structure.qmd >}}

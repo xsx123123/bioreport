@@ -1,0 +1,43 @@
+::: {.report-lead}
+
+### 显著位点与候选区域 {#gwas-pdf-显著位点与候选区域}
+
+通过 Bonferroni 校正的显著位点（前 N 行）与 lead SNP 锚定的候选区域。显著位点数为 0 属于合法科学结果，报告如实呈现。
+
+:::
+
+```{python}
+#| label: pdf-tbl-gwas-significant
+#| output: asis
+top_n = int(significant_settings.get('top_n', 20))
+for trait in traits:
+    sig_path = os.path.join(gwas_dir, trait, 'significant.tsv')
+    if not os.path.exists(sig_path):
+        continue
+    sig = pd.read_csv(sig_path, sep='\t')
+    display(Markdown(f"#### 性状 {trait}"))
+    if len(sig):
+        sig_cols = [c for c in ('chrom', 'pos', 'variant_id', 'effect_allele',
+                                'other_allele', 'beta', 'se', 'p_value', 'maf') if c in sig.columns]
+        show_print_table(sig[sig_cols].head(top_n))
+        display(Markdown(f"共 {len(sig)} 个显著位点，显示前 {min(top_n, len(sig))} 行；完整清单见交付目录。"))
+    else:
+        display(Markdown('无 Bonferroni 显著位点（合法科学结果）。'))
+```
+
+```{python}
+#| label: pdf-tbl-gwas-loci
+#| output: asis
+for trait in traits:
+    loci_path = os.path.join(loci_dir, trait, 'loci.tsv')
+    if not os.path.exists(loci_path):
+        continue
+    loci = pd.read_csv(loci_path, sep='\t')
+    display(Markdown(f"#### 候选区域（{trait}）"))
+    if len(loci):
+        loci_cols = [c for c in ('locus_id', 'chrom', 'start', 'end',
+                                 'lead_variant', 'lead_p') if c in loci.columns]
+        show_print_table(loci[loci_cols].head(top_n))
+    else:
+        display(Markdown('无显著区域（与显著位点结果一致）。'))
+```

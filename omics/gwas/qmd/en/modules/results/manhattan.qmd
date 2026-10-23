@@ -1,0 +1,66 @@
+### Manhattan & QQ Plots {#gwas-manhattan-qq}
+
+The Manhattan plot shows genome-wide significance (-log10 P) per SNP; the red dashed line is the Bonferroni threshold (alpha/(family_size x M), with M the trait's valid P count; the threshold is read exclusively from the association metadata). The QQ plot compares observed and expected P quantiles: a tail departure from the diagonal indicates genuine association signal, while overall inflation suggests uncorrected structure or relatedness.
+
+```{python}
+#| label: fig-gwas-manhattan
+#| output: asis
+if not traits:
+    display(Markdown('No traits configured (analysis.gwas.traits missing).'))
+else:
+    display(Markdown("::: {.panel-tabset .results-comparisons}"))
+    for trait in traits:
+        display(Markdown(f"### {trait}"))
+        gwas_path = os.path.join(gwas_dir, trait, 'gwas.tsv')
+        if not os.path.exists(gwas_path):
+            display(Markdown(f'Association statistics missing: {gwas_path}'))
+            continue
+        data = load_gwas(gwas_path)
+        meta = trait_meta.get(trait, {})
+        counts = meta.get('counts', {})
+        threshold_text = str(meta.get('multiple_testing', {}).get('threshold', '') or '')
+        try:
+            threshold = float(threshold_text)
+        except ValueError:
+            threshold = None
+        m_tests = counts.get('n_valid_p')
+        fig = plot_manhattan(
+            data, chrom_order, chrom_lengths,
+            threshold=threshold,
+            threshold_label=f"Bonferroni α=0.05, M={m_tests}" if m_tests else "",
+            title=f"Manhattan plot — {trait}",
+            point_budget=int(manhattan_settings.get('point_budget', 200000)),
+        )
+        show_figure(fig)
+        display(Markdown(
+            f"{len(data):,} variants plotted (M={m_tests}, significant {counts.get('n_significant', 0)}; "
+            f"{counts.get('n_unreported', 0)} unreported and not tested)."
+            if m_tests else f"{len(data):,} variants plotted."))
+    display(Markdown(":::"))
+```
+
+```{python}
+#| label: fig-gwas-qq
+#| output: asis
+display(Markdown("::: {.panel-tabset .results-comparisons}"))
+for trait in traits:
+    display(Markdown(f"### {trait}"))
+    gwas_path = os.path.join(gwas_dir, trait, 'gwas.tsv')
+    if not os.path.exists(gwas_path):
+        continue
+    data = load_gwas(gwas_path)
+    show_figure(plot_qq(
+        data,
+        title=f"QQ plot — {trait}",
+        max_points=int(qq_settings.get('max_points', 50000)),
+    ))
+display(Markdown(":::"))
+```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Notes: Manhattan & QQ**
+
+1. The Manhattan **x axis** is the cumulative genomic coordinate (chromosomes concatenated by their table lengths, alternating colors); the **y axis** is -log10(P). Points above the red dashed line pass Bonferroni correction; red points are significant.
+2. In the **QQ plot**, points near the diagonal indicate that non-associated variants follow the uniform null distribution; an early tail departure is the typical shape of genuine signal.
+3. Hover any point to inspect the variant identity (variant_id), P value and effect size (beta; effect direction follows the GEMMA allele1/reported convention).
+:::

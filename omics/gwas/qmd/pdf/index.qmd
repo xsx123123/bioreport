@@ -1,0 +1,74 @@
+---
+title: "项目概况与结果摘要"
+---
+
+```{python}
+#| label: pdf-gwas-summary
+import json
+import os
+import pandas as pd
+from IPython.display import display, Markdown
+from bioreport.config import load_project_metadata
+from bioreport.utils.render_output import show_print_table
+
+project_info = load_project_metadata()
+input_files = project_info['input_files']
+config_base = project_info.get('path_base') or '.'
+summary_path = input_files['project_summary_file']
+if not os.path.isabs(summary_path):
+    summary_path = os.path.join(config_base, summary_path)
+with open(summary_path, encoding='utf-8') as handle:
+    gwas_summary = json.load(handle)
+project = gwas_summary.get('project', {})
+counts = gwas_summary.get('counts', {})
+analysis_index = gwas_summary.get('analysis_index', []) or []
+
+display(Markdown(
+    '本报告由 CygnusX BioOps 生态 **BioReport** 自动化报告引擎生成，'
+    '系统性汇总并解析了 GWASFlow 全基因组关联分析流程的产出结果。'
+    f"研究物种为 *{project.get('species', '未登记')}*（参考基因组 `{project.get('genome_version', '未登记')}`），"
+    f"关联检验采用 GEMMA 线性混合模型（流程版本 v{project.get('pipeline_version', '')}）。"))
+
+n_samples = counts.get('n_samples_final')
+n_variants = counts.get('n_variants_final')
+n_sig = sum(int(item.get('n_significant') or 0) for item in analysis_index)
+display(Markdown(
+    f"共分析 **{len(analysis_index)}** 个性状：QC 后材料 **{n_samples or '—'}** 个、"
+    f"标记 **{(f'{n_variants:,}') if n_variants else '—'}** 个；"
+    f"Bonferroni 校正下合计 **{n_sig}** 个显著位点。"
+    "各性状的检验标记数、阈值与逐位点统计见下表与后续章节。"))
+```
+
+## 性状概览
+
+```{python}
+#| label: pdf-gwas-traits
+#| output: asis
+if analysis_index:
+    frame = pd.DataFrame([{
+        '性状': item.get('trait', ''),
+        '有效样本': item.get('n_valid_samples', ''),
+        'M（有效 P）': f"{int(item.get('m_tests', 0)):,}" if item.get('m_tests') else '',
+        '显著': item.get('n_significant', ''),
+        '未上报': item.get('n_unreported', ''),
+        '状态': item.get('status', ''),
+    } for item in analysis_index])
+    show_print_table(frame)
+else:
+    display(Markdown('未提供逐性状统计（analysis_index 缺失）。'))
+```
+
+## 项目信息
+
+```{python}
+#| label: pdf-gwas-project
+#| output: asis
+rows = [
+    ('项目编号', project.get('project_id', project.get('project_name', ''))),
+    ('研究物种', project.get('species', '')),
+    ('参考基因组', project.get('genome_version', '')),
+    ('流程版本', f"GWASFlow v{project.get('pipeline_version', '')}"),
+    ('整体状态', gwas_summary.get('overall_status', '')),
+]
+display(Markdown('| 项目 | 值 |\n|---|---|\n' + '\n'.join(f'| {k} | {v} |' for k, v in rows)))
+```
