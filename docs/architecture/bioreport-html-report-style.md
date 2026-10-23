@@ -131,6 +131,8 @@
   - px 图常把色带放在 `layout.coloraxis` 上，此时按钮用 `method='relayout'` 改 `coloraxis.colorscale`；trace 级 `colorscale` / `marker.colorscale` 则用 `restyle`；两者并存时合并为 `method='update'`。
   - 图例占位哑 trace（坐标全 None）会被跳过；重复调用 `style_figure` 时同类菜单先移除再追加，不会叠加。
   - 火山图不加切换：Up/Down/NS 是语义色，轮换会破坏含义。
+  - 下拉按钮的外观与交互在 `bioreport/assets/js/plotly-export.js` 注入的 CSS 中统一：圆角 chip、悬停高亮（跟随 `--br-surface-hover` / `--br-primary`，深浅色自适应）、展开淡入动画、悬停显示中文/英文 tooltip；`@media print` 下隐藏。
+  - 导出不含按钮：`Plotly.toImage` 会把 updatemenus 画进 SVG，导出对话框在截图前临时 `relayout(updatemenus=[])`、完成后恢复，因此 PNG/SVG/PDF 下载件中不会出现 Palette/Scale 按钮。
 - **语义色不参与轮换**：火山图固定 Up `#ef4444` / Down `#3b82f6` / NS `#cbd5e1`，阈值虚线 `#8795a5`。
 - **图表文字固定英文**（两个语言版本都不出现中文）：富集图 colorbar 恒为 `Adjusted P value`，FastQ Screen 百分比轴为英文标题。正文标题/图注仍跟随报告语言。
 - 火山图版式：图例底部横向居中，图高 500。

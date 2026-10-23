@@ -135,12 +135,15 @@ with sync_playwright() as pw:
         page.screenshot(path=str(OUT / f'{path.stem}-mobile.png'))
         page.keyboard.press('Escape')
         # A failed conversion must leave the controls usable for a retry.
-        page.evaluate('window.originalToImage=Plotly.toImage;Plotly.toImage=()=>Promise.reject(new Error("test export failure"))')
+        # IIFE: Playwright otherwise executes the assigned function while
+        # serializing the expression's completion value.
+        page.evaluate('(()=>{window.originalToImage=Plotly.toImage;'
+                      'Plotly.toImage=()=>Promise.reject(new Error("test export failure"));})()')
         buttons.first.click()
         dialog.locator('[type=submit]').click()
         page.wait_for_function("document.querySelector('.report-export-status').textContent.includes('失败')")
         assert dialog.locator('[type=submit]').is_enabled()
-        page.evaluate('Plotly.toImage=window.originalToImage')
+        page.evaluate('(()=>{Plotly.toImage=window.originalToImage;})()')
         with page.expect_download(timeout=30000) as pending:
             dialog.locator('[type=submit]').click()
         pending.value.save_as(OUT / f'{path.stem}-retry.pdf')

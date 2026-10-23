@@ -7,24 +7,62 @@
   const messages = {
     zh: {
       open: '下载图表', title: '下载图表', format: '文件格式', width: '宽度（px）',
-      height: '高度（px）', lock: '锁定宽高比', reset: '恢复默认', cancel: '取消',
+      height: '高度（px）', dpi: '分辨率（DPI）', lock: '锁定宽高比', reset: '恢复默认', cancel: '取消',
       download: '下载', busy: '正在导出…',
-      hint: '宽高为导出图像的实际像素尺寸。SVG 保留矢量图形；PDF 内嵌无损图像。',
+      hint: '宽高为导出图像的实际像素尺寸；DPI 写入 PNG 元数据，决定出版软件中的物理尺寸。SVG 保留矢量图形；PDF 内嵌无损图像。',
       invalid: '宽度和高度须为 100–16000 之间的整数。',
+      invalidDpi: 'DPI 须为 72–2400 之间的整数。',
       large: 'PNG 和 PDF 最多支持 1600 万像素，请减小宽度或高度。',
       failed: '导出失败，请重试或减小尺寸。',
+      tipPalette: '切换分组配色方案', tipScale: '切换连续色带',
     },
     en: {
       open: 'Download chart', title: 'Download chart', format: 'File format',
-      width: 'Width (px)', height: 'Height (px)', lock: 'Lock aspect ratio',
+      width: 'Width (px)', height: 'Height (px)', dpi: 'Resolution (DPI)', lock: 'Lock aspect ratio',
       reset: 'Reset', cancel: 'Cancel', download: 'Download', busy: 'Exporting…',
-      hint: 'Width and height are the exported image dimensions. SVG retains vectors; PDF embeds a lossless image.',
+      hint: 'Width and height are the exported image dimensions; the DPI is stored in PNG metadata and sets the physical size for publishing. SVG retains vectors; PDF embeds a lossless image.',
       invalid: 'Width and height must be integers between 100 and 16000.',
+      invalidDpi: 'DPI must be an integer between 72 and 2400.',
       large: 'PNG and PDF support up to 16 million pixels. Reduce the width or height.',
       failed: 'Export failed. Please retry or reduce the dimensions.',
+      tipPalette: 'Switch group color palette', tipScale: 'Switch color scale',
     },
   };
   let dialog, active, returnFocus;
+
+  // Theme the Plotly color-switch dropdowns like the rest of the report and
+  // give them a gentle hover/open animation plus a native tooltip. Plotly
+  // draws the chips as inline-styled SVG, so overrides need !important.
+  // Guarded: tests also load this file in a bare VM without a DOM.
+  if (typeof document !== 'undefined') {
+    const menuStyle = document.createElement('style');
+    menuStyle.textContent = `
+      .js-plotly-plot .updatemenu-header .updatemenu-item-rect {rx:6px;ry:6px;
+        transition:fill .15s ease,stroke .15s ease;}
+      .js-plotly-plot .updatemenu-header:hover .updatemenu-item-rect {
+        fill:var(--br-surface-hover,#eef2f7) !important;
+        stroke:var(--br-primary,#2563eb) !important;}
+      .js-plotly-plot .updatemenu-dropdown-button {cursor:pointer;}
+      .js-plotly-plot .updatemenu-dropdown-button .updatemenu-item-rect {transition:fill .12s ease;}
+      .js-plotly-plot .updatemenu-dropdown-button:hover .updatemenu-item-rect {
+        fill:var(--br-surface-hover,#eef2f7) !important;}
+      .js-plotly-plot .updatemenu-dropdown-button {animation:bioreport-menu-in .16s ease-out;}
+      @keyframes bioreport-menu-in {from {opacity:0;transform:translateY(-3px);} to {opacity:1;transform:none;}}
+      @media print {.js-plotly-plot .updatemenu-container {display:none;}}
+    `;
+    document.head.append(menuStyle);
+    document.addEventListener('mouseover', event => {
+      const header = event.target.closest?.('.updatemenu-header');
+      if (!header || header.dataset.reportTip) return;
+      header.dataset.reportTip = 'true';
+      const zh = (document.documentElement.lang || '').toLowerCase().startsWith('zh');
+      const text = messages[zh ? 'zh' : 'en'];
+      const label = header.textContent || '';
+      const tip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      tip.textContent = label.startsWith('Scale:') ? text.tipScale : text.tipPalette;
+      header.prepend(tip);
+    });
+  }
 
   function createDialog() {
     const style = document.createElement('style');
@@ -41,7 +79,8 @@
         display:block;box-sizing:border-box;width:100%;min-height:40px;margin-top:5px;
         padding:7px 10px;border:1px solid var(--br-border,#cbd5e1);border-radius:6px;
         background:var(--br-surface,#fff);color:inherit;font:inherit;}
-      .report-export-size {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;}
+      .report-export-size {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+      .report-export-dpi[hidden] {display:none;}
       .report-export-dialog .report-export-lock {display:flex;align-items:center;gap:8px;}
       .report-export-lock input {margin:0;}
       .report-export-dialog p {margin:0 0 16px;font-size:13px;color:var(--br-muted,#52657d);}
@@ -67,6 +106,7 @@
       <div class="report-export-size">
         <label><span data-label="width"></span><input name="width" type="number" min="100" max="16000" step="1" required></label>
         <label><span data-label="height"></span><input name="height" type="number" min="100" max="16000" step="1" required></label>
+        <label class="report-export-dpi"><span data-label="dpi"></span><input name="dpi" type="number" min="72" max="2400" step="1" required></label>
       </div>
       <label class="report-export-lock"><input name="lock" type="checkbox"><span data-label="lock"></span></label>
       <p data-label="hint"></p><p class="report-export-status" role="status" aria-live="polite"></p>
@@ -96,15 +136,23 @@
       if (Number(fields.width.value) > 0 && Number(fields.height.value) > 0)
         active.ratio = Number(fields.width.value) / Number(fields.height.value);
     });
+    dialog.querySelector('[name=format]').addEventListener('change', syncDpiVisibility);
     dialog.querySelector('form').addEventListener('submit', exportChart);
   }
 
   function fill(value) {
     const fields = dialog.querySelector('form').elements;
-    for (const name of ['format', 'width', 'height']) fields[name].value = value[name];
+    for (const name of ['format', 'width', 'height', 'dpi']) fields[name].value = value[name];
     fields.lock.checked = value.lock;
     active.ratio = value.width / value.height;
+    syncDpiVisibility();
     dialog.querySelector('.report-export-status').textContent = '';
+  }
+
+  // DPI only applies to raster PNG output; SVG/PDF stay vector/lossless.
+  function syncDpiVisibility() {
+    const fields = dialog.querySelector('form').elements;
+    dialog.querySelector('.report-export-dpi').hidden = fields.format.value !== 'png';
   }
 
   function open(chart, button) {
@@ -124,7 +172,7 @@
   // Rebind after relayout: responsive charts can recreate their modebar.
   function attach(chart, options) {
     if (settings.has(chart)) return;
-    const defaults = {format: 'png', width: Math.round(options.width), height: Math.round(options.height), lock: true};
+    const defaults = {format: 'png', width: Math.round(options.width), height: Math.round(options.height), dpi: 600, lock: true};
     settings.set(chart, {...options, defaults, value: {...defaults}, busy: false});
     const decorate = () => {
       const modebar = chart._fullLayout?._modeBar;
@@ -155,15 +203,20 @@
     const status = dialog.querySelector('.report-export-status');
     const width = Number(fields.width.value), height = Number(fields.height.value);
     const format = fields.format.value;
+    const dpi = Number(fields.dpi.value);
     if (![width, height].every(value => Number.isInteger(value) && value >= 100 && value <= 16000)) {
       status.textContent = text.invalid;
+      return;
+    }
+    if (format === 'png' && !(Number.isInteger(dpi) && dpi >= 72 && dpi <= 2400)) {
+      status.textContent = text.invalidDpi;
       return;
     }
     if (format !== 'svg' && width * height > 16000000) {
       status.textContent = text.large;
       return;
     }
-    state.value = {format, width, height, lock: fields.lock.checked};
+    state.value = {format, width, height, dpi, lock: fields.lock.checked};
     state.busy = true;
     const controls = [...dialog.querySelectorAll('button,input,select')];
     controls.forEach(node => { node.disabled = true; });
@@ -172,6 +225,10 @@
     submit.textContent = text.busy;
     status.textContent = '';
     let canvas;
+    // Interactive color-switch dropdowns are part of the on-screen chart, not
+    // of the exported image: hide them for the snapshot, then put them back.
+    const menus = state.chart.layout?.updatemenus;
+    if (menus?.length) await Plotly.relayout(state.chart, {updatemenus: []});
     try {
       await document.fonts.ready;
       const url = await Plotly.toImage(state.chart, {format: 'svg', width, height, scale: 1});
@@ -181,8 +238,8 @@
       else {
         canvas = await rasterize(svg, width, height, format === 'pdf');
         if (format === 'pdf') blob = await imagePdf(canvas);
-        else blob = await new Promise((resolve, reject) => canvas.toBlob(
-          value => value ? resolve(value) : reject(new Error('PNG encoding failed')), 'image/png'));
+        else blob = await withDpi(await new Promise((resolve, reject) => canvas.toBlob(
+          value => value ? resolve(value) : reject(new Error('PNG encoding failed')), 'image/png')), dpi);
       }
       download(blob, state.filename + '.' + format);
       dialog.close();
@@ -190,6 +247,7 @@
       console.error('BioReport chart export failed', error);
       status.textContent = text.failed;
     } finally {
+      if (menus?.length) await Plotly.relayout(state.chart, {updatemenus: menus});
       if (canvas) { canvas.width = 0; canvas.height = 0; }
       state.busy = false;
       controls.forEach(node => { node.disabled = false; });
@@ -302,6 +360,45 @@
     offsets.slice(1).forEach(offset => append(`${String(offset).padStart(10, '0')} 00000 n \n`));
     append(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
     return new Blob(parts, {type: 'application/pdf'});
+  }
+
+  // PNG pHYs chunk: pixels-per-metre metadata so publishing tools render the
+  // image at the chosen physical resolution (DPI). Inserted right after IHDR.
+  let crcTable;
+  function crc32(bytes) {
+    if (!crcTable) {
+      crcTable = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+        crcTable[n] = c;
+      }
+    }
+    let crc = 0xffffffff;
+    for (const byte of bytes) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  async function withDpi(blob, dpi) {
+    const buffer = new Uint8Array(await blob.arrayBuffer());
+    const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+    if (buffer.length < 40 || signature.some((byte, i) => buffer[i] !== byte)) return blob;
+    const ihdrLength = new DataView(buffer.buffer).getUint32(8);
+    const insertAt = 8 + 12 + ihdrLength;
+    const ppm = Math.round(dpi / 0.0254);
+    const chunk = new Uint8Array(21);
+    const view = new DataView(chunk.buffer);
+    view.setUint32(0, 9);                       // chunk data length
+    chunk.set([0x70, 0x48, 0x59, 0x73], 4);     // 'pHYs'
+    view.setUint32(8, ppm);
+    view.setUint32(12, ppm);
+    chunk[16] = 1;                              // unit: metre
+    view.setUint32(17, crc32(chunk.subarray(4, 17)));
+    const out = new Uint8Array(buffer.length + chunk.length);
+    out.set(buffer.subarray(0, insertAt));
+    out.set(chunk, insertAt);
+    out.set(buffer.subarray(insertAt), insertAt + chunk.length);
+    return new Blob([out], {type: 'image/png'});
   }
 
   function download(blob, filename) {
