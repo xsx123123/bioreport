@@ -7,7 +7,7 @@
 ### 新增
 
 - 交互图表支持配色切换：分组图（PCA、表达分布、MultiQC 质控等）右上角 Palette 下拉可在 seaside/apple/IBM/candy 四套色板间切换；连续色带图（聚类热图、相关性热图、富集气泡图）Scale 下拉可切换 Viridis/Blues/Cividis/RdBu_r/RdYlBu/Portland；按钮为静态 JSON payload，离线 HTML 可用，导出图片中自动隐藏。
-- 图表下载对话框新增 PNG 分辨率（DPI）设置，默认 600（72–2400）；DPI 与像素经物理打印尺寸联动，提高 DPI 自动增加宽高像素并写入 PNG pHYs 元数据；切换按钮带主题化悬停动画与中英文 tooltip。
+- 图表下载的 PNG 固定按 1000 DPI 写入 pHYs 元数据，清晰度直接由宽高像素控制（单边 100–16000 px、总像素上限 1600 万）；导出图片中自动隐藏 Palette/Scale 切换按钮；切换按钮带主题化悬停动画与中英文 tooltip。
 - 终端在 PDF DEG/富集模块下显示实时子进度：并行绘图完成数、按原顺序写入报告的结果数、当前比较组及 GO/KEGG 上下调标识；独立进度文件避免等待 Jupyter 输出刷新，富集无结果/缺失/未启用项也计入写入进度。
 - PDF DEG、GO/KEGG 富集结果使用独立工作进程读取、筛选、绘图并导出 SVG，默认 8 个工作进程；主进程按原顺序输出图表、预览表、AI 解读和证据清单。
 - 新增 `report.pdf.workers` 配置及 `--workers`、`-t`、`--threads` 命令行参数；设为 1 可串行处理，命令行设置覆盖配置文件。

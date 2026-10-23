@@ -7,27 +7,27 @@
   const messages = {
     zh: {
       open: '下载图表', title: '下载图表', format: '文件格式', width: '宽度（px）',
-      height: '高度（px）', dpi: '分辨率（DPI）', lock: '锁定宽高比', reset: '恢复默认', cancel: '取消',
+      height: '高度（px）', lock: '锁定宽高比', reset: '恢复默认', cancel: '取消',
       download: '下载', busy: '正在导出…',
-      hint: '宽高为导出图像的实际像素尺寸；DPI 决定物理打印尺寸并写入 PNG 元数据——提高 DPI 会保持物理尺寸、自动增加像素（图像更清晰）。SVG 保留矢量图形；PDF 内嵌无损图像。',
+      hint: '宽高为导出图像的实际像素尺寸；PNG 固定按 1000 DPI 写入元数据（物理尺寸 = 像素 ÷ 1000 英寸）。SVG 保留矢量图形；PDF 内嵌无损图像。',
       invalid: '宽度和高度须为 100–16000 之间的整数。',
-      invalidDpi: 'DPI 须为 72–2400 之间的整数。',
       large: 'PNG 和 PDF 最多支持 1600 万像素，请减小宽度或高度。',
       failed: '导出失败，请重试或减小尺寸。',
       tipPalette: '切换分组配色方案', tipScale: '切换连续色带',
     },
     en: {
       open: 'Download chart', title: 'Download chart', format: 'File format',
-      width: 'Width (px)', height: 'Height (px)', dpi: 'Resolution (DPI)', lock: 'Lock aspect ratio',
+      width: 'Width (px)', height: 'Height (px)', lock: 'Lock aspect ratio',
       reset: 'Reset', cancel: 'Cancel', download: 'Download', busy: 'Exporting…',
-      hint: 'Width and height are the exported image dimensions. DPI sets the physical print size stored in PNG metadata — raising it keeps the physical size and adds pixels (a sharper image). SVG retains vectors; PDF embeds a lossless image.',
+      hint: 'Width and height are the exported image dimensions; PNG metadata is fixed at 1000 DPI (physical size = pixels ÷ 1000 inches). SVG retains vectors; PDF embeds a lossless image.',
       invalid: 'Width and height must be integers between 100 and 16000.',
-      invalidDpi: 'DPI must be an integer between 72 and 2400.',
       large: 'PNG and PDF support up to 16 million pixels. Reduce the width or height.',
       failed: 'Export failed. Please retry or reduce the dimensions.',
       tipPalette: 'Switch group color palette', tipScale: 'Switch color scale',
     },
   };
+  // PNG resolution is not a user choice: every download carries 1000 DPI metadata.
+  const PNG_DPI = 1000;
   let dialog, active, returnFocus;
 
   // Theme the Plotly color-switch dropdowns like the rest of the report and
@@ -79,8 +79,7 @@
         display:block;box-sizing:border-box;width:100%;min-height:40px;margin-top:5px;
         padding:7px 10px;border:1px solid var(--br-border,#cbd5e1);border-radius:6px;
         background:var(--br-surface,#fff);color:inherit;font:inherit;}
-      .report-export-size {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
-      .report-export-dpi[hidden] {display:none;}
+      .report-export-size {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;}
       .report-export-dialog .report-export-lock {display:flex;align-items:center;gap:8px;}
       .report-export-lock input {margin:0;}
       .report-export-dialog p {margin:0 0 16px;font-size:13px;color:var(--br-muted,#52657d);}
@@ -106,7 +105,6 @@
       <div class="report-export-size">
         <label><span data-label="width"></span><input name="width" type="number" min="100" max="16000" step="1" required></label>
         <label><span data-label="height"></span><input name="height" type="number" min="100" max="16000" step="1" required></label>
-        <label class="report-export-dpi"><span data-label="dpi"></span><input name="dpi" type="number" min="72" max="2400" step="1" required></label>
       </div>
       <label class="report-export-lock"><input name="lock" type="checkbox"><span data-label="lock"></span></label>
       <p data-label="hint"></p><p class="report-export-status" role="status" aria-live="polite"></p>
@@ -136,44 +134,15 @@
       if (Number(fields.width.value) > 0 && Number(fields.height.value) > 0)
         active.ratio = Number(fields.width.value) / Number(fields.height.value);
     });
-    // DPI and pixels are coupled through the physical print size: raising the
-    // DPI keeps the physical size and therefore grows the pixel dimensions.
-    // 'change' (not 'input') avoids rounding drift from per-keystroke scaling.
-    dialog.querySelector('[name=dpi]').addEventListener('change', () => {
-      const fields = dialog.querySelector('form').elements;
-      const dpi = Number(fields.dpi.value);
-      const previous = active.dpi;
-      if (!Number.isInteger(dpi) || dpi < 72 || dpi > 2400 || !previous) return;
-      active.dpi = dpi;
-      const factor = dpi / previous;
-      let width = Math.round(Number(fields.width.value) * factor);
-      let height = Math.round(Number(fields.height.value) * factor);
-      const shrink = Math.min(1, 16000 / width, 16000 / height,
-                              Math.sqrt(16000000 / (width * height)));
-      width = Math.max(100, Math.round(width * shrink));
-      height = Math.max(100, Math.round(height * shrink));
-      fields.width.value = width;
-      fields.height.value = height;
-      if (fields.lock.checked) active.ratio = width / height;
-    });
-    dialog.querySelector('[name=format]').addEventListener('change', syncDpiVisibility);
     dialog.querySelector('form').addEventListener('submit', exportChart);
   }
 
   function fill(value) {
     const fields = dialog.querySelector('form').elements;
-    for (const name of ['format', 'width', 'height', 'dpi']) fields[name].value = value[name];
+    for (const name of ['format', 'width', 'height']) fields[name].value = value[name];
     fields.lock.checked = value.lock;
     active.ratio = value.width / value.height;
-    active.dpi = value.dpi;
-    syncDpiVisibility();
     dialog.querySelector('.report-export-status').textContent = '';
-  }
-
-  // DPI only applies to raster PNG output; SVG/PDF stay vector/lossless.
-  function syncDpiVisibility() {
-    const fields = dialog.querySelector('form').elements;
-    dialog.querySelector('.report-export-dpi').hidden = fields.format.value !== 'png';
   }
 
   function open(chart, button) {
@@ -193,7 +162,7 @@
   // Rebind after relayout: responsive charts can recreate their modebar.
   function attach(chart, options) {
     if (settings.has(chart)) return;
-    const defaults = {format: 'png', width: Math.round(options.width), height: Math.round(options.height), dpi: 600, lock: true};
+    const defaults = {format: 'png', width: Math.round(options.width), height: Math.round(options.height), lock: true};
     settings.set(chart, {...options, defaults, value: {...defaults}, busy: false});
     const decorate = () => {
       const modebar = chart._fullLayout?._modeBar;
@@ -224,20 +193,15 @@
     const status = dialog.querySelector('.report-export-status');
     const width = Number(fields.width.value), height = Number(fields.height.value);
     const format = fields.format.value;
-    const dpi = Number(fields.dpi.value);
     if (![width, height].every(value => Number.isInteger(value) && value >= 100 && value <= 16000)) {
       status.textContent = text.invalid;
-      return;
-    }
-    if (format === 'png' && !(Number.isInteger(dpi) && dpi >= 72 && dpi <= 2400)) {
-      status.textContent = text.invalidDpi;
       return;
     }
     if (format !== 'svg' && width * height > 16000000) {
       status.textContent = text.large;
       return;
     }
-    state.value = {format, width, height, dpi, lock: fields.lock.checked};
+    state.value = {format, width, height, lock: fields.lock.checked};
     state.busy = true;
     const controls = [...dialog.querySelectorAll('button,input,select')];
     controls.forEach(node => { node.disabled = true; });
@@ -260,7 +224,7 @@
         canvas = await rasterize(svg, width, height, format === 'pdf');
         if (format === 'pdf') blob = await imagePdf(canvas);
         else blob = await withDpi(await new Promise((resolve, reject) => canvas.toBlob(
-          value => value ? resolve(value) : reject(new Error('PNG encoding failed')), 'image/png')), dpi);
+          value => value ? resolve(value) : reject(new Error('PNG encoding failed')), 'image/png')), PNG_DPI);
       }
       download(blob, state.filename + '.' + format);
       dialog.close();
@@ -384,7 +348,7 @@
   }
 
   // PNG pHYs chunk: pixels-per-metre metadata so publishing tools render the
-  // image at the chosen physical resolution (DPI). Inserted right after IHDR.
+  // image at the fixed 1000 DPI physical resolution. Inserted right after IHDR.
   let crcTable;
   function crc32(bytes) {
     if (!crcTable) {
