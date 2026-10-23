@@ -97,6 +97,94 @@ a { text-underline-offset: .18em; }
 :root[data-report-theme="dark"] .report-nav-toggle { color: #d5dce6; border-color: #536173; }
 :root[data-report-theme="dark"] .report-control:hover,
 :root[data-report-theme="dark"] .report-nav-toggle:hover { background: #293442; }
+
+/* ---- 深色模式下的卡片与组件表面（浅色主题编译值为白色系，这里统一覆盖） ---- */
+:root[data-report-theme="dark"] {
+  --br-card: #222a35;
+  --br-card-border: #3b4654;
+  --br-card-text: #e8eef7;
+  --br-card-muted: #aab6c5;
+  --br-card-accent: #86b7fe;
+  --br-card-badge-bg: rgba(134, 183, 254, .12);
+  --br-card-badge-border: #3f5a86;
+}
+:root[data-report-theme="dark"] .info-card,
+:root[data-report-theme="dark"] .kpi-card {
+  background: var(--br-card);
+  border-color: var(--br-card-border);
+}
+:root[data-report-theme="dark"] .kpi-card.kpi-danger { background: rgba(201, 74, 91, .14); }
+:root[data-report-theme="dark"] .info-card i.bi { color: var(--br-card-accent); }
+:root[data-report-theme="dark"] .info-card > p:nth-of-type(2),
+:root[data-report-theme="dark"] .kpi-title,
+:root[data-report-theme="dark"] .kpi-note,
+:root[data-report-theme="dark"] .report-metric-unit { color: var(--br-card-muted); }
+:root[data-report-theme="dark"] .info-card > p:nth-of-type(3),
+:root[data-report-theme="dark"] .kpi-card .report-metric { color: var(--br-card-text); }
+:root[data-report-theme="dark"] code { color: #9cc3ff; }
+:root[data-report-theme="dark"] #TOC a { color: #9aa8bc; }
+/* Quarto 默认风格的 callout 头部带浅色底，深色模式下压暗，语义色由左边框承担。 */
+:root[data-report-theme="dark"] .callout.callout-style-default .callout-header {
+  background: var(--br-card);
+  color: var(--br-card-text);
+}
+
+/* About 页卡片与徽标 */
+:root[data-report-theme="dark"] .about-project .about-manifesto {
+  --manifesto-accent: #7aa2ff;
+  --manifesto-accent-soft: rgba(122, 162, 255, .1);
+  --manifesto-accent-border: rgba(122, 162, 255, .25);
+  --manifesto-accent-glow: rgba(122, 162, 255, .3);
+  background: #1d2531;
+  box-shadow: none;
+}
+:root[data-report-theme="dark"] .about-project .manifesto-quote { color: var(--br-card-text); }
+:root[data-report-theme="dark"] .about-project .manifesto-body > p,
+:root[data-report-theme="dark"] .about-project .manifesto-attribution { color: var(--br-card-muted); }
+:root[data-report-theme="dark"] .about-project .mission-card,
+:root[data-report-theme="dark"] .about-project .feature-card,
+:root[data-report-theme="dark"] .about-project .tech-role,
+:root[data-report-theme="dark"] .about-project .roadmap-card,
+:root[data-report-theme="dark"] .about-project .footer-note,
+:root[data-report-theme="dark"] .about-project .about-footer-card {
+  background: var(--br-card);
+  border-color: var(--br-card-border);
+  box-shadow: none;
+}
+:root[data-report-theme="dark"] .about-project .mission-badge,
+:root[data-report-theme="dark"] .about-project .feature-tag,
+:root[data-report-theme="dark"] .about-project .footer-label {
+  background: var(--br-card-badge-bg);
+  border-color: var(--br-card-badge-border);
+  color: #a9c9f2;
+}
+:root[data-report-theme="dark"] .about-project .mission-en,
+:root[data-report-theme="dark"] .about-project .feature-title,
+:root[data-report-theme="dark"] .about-project .tech-role-name,
+:root[data-report-theme="dark"] .about-project .roadmap-title { color: var(--br-card-text); }
+:root[data-report-theme="dark"] .about-project .mission-cn,
+:root[data-report-theme="dark"] .about-project .feature-desc,
+:root[data-report-theme="dark"] .about-project .tech-role-desc,
+:root[data-report-theme="dark"] .about-project .roadmap-desc { color: var(--br-card-muted); }
+:root[data-report-theme="dark"] .about-project .callout-strip {
+  background: rgba(134, 183, 254, .08);
+  border-color: var(--br-card-border);
+  border-left-color: #5b8dfe;
+  color: #cfe0f7;
+}
+:root[data-report-theme="dark"] .about-project .pill-badge {
+  background: var(--br-card);
+  border-color: var(--br-card-badge-border);
+}
+:root[data-report-theme="dark"] .about-project .pill-en { color: #a9c9f2; }
+:root[data-report-theme="dark"] .about-project .pill-cn,
+:root[data-report-theme="dark"] .about-project .tech-role-tools,
+:root[data-report-theme="dark"] .about-project .footer-vision-kicker { color: var(--br-card-accent); }
+:root[data-report-theme="dark"] .about-project .pill-dot { background: var(--br-card-accent); }
+:root[data-report-theme="dark"] .about-project .pill-sep { background: var(--br-card-badge-border); }
+:root[data-report-theme="dark"] .about-project table a,
+:root[data-report-theme="dark"] .about-project .footer-note a { color: var(--br-card-accent); }
+:root[data-report-theme="dark"] .about-project .footer-value { color: var(--br-card-text); }
 .report-control {
   display: inline-flex;
   align-items: center;
