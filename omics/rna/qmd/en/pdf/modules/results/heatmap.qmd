@@ -1,6 +1,8 @@
 
 ## Highly Variable Gene Expression Patterns
 
+Every sample matched between the sample sheet and expression matrix is included. Large PDF heatmaps split columns into consecutive panels in the full clustering order; all included samples remain across the panels, with no random subsampling. Matrix samples absent from the sample sheet do not enter this heatmap.
+
 Genes with mean TPM > 1 and nonzero variance are ranked by the variance of log2(TPM + 1). Rows are standardized as Z-scores. Red indicates expression above a gene's mean and blue below it. The sample annotation bar identifies the original groups.
 
 Clustering reorders rows and columns by expression similarity. Interpret sample separation with PCA and QC; clustering alone does not prove a treatment effect. PDF shows a compact main heatmap and supplies the full configured heatmap as an SVG supplement.

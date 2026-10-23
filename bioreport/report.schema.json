@@ -130,6 +130,12 @@
         "pdf": {
           "type": "object",
           "properties": {
+            "workers": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 8,
+              "description": "Number of PDF DEG/enrichment worker processes; 1 renders serially."
+            },
             "sample_rows": {
               "type": "integer",
               "minimum": 1

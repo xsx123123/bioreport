@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import re
 import shutil
+import pytest
 
 import bioreport
 from bioreport.config import load_config
@@ -116,6 +117,25 @@ def test_cover_missing_metadata_does_not_invent_evidence(tmp_path):
     compose_report(config, staged, pdf=True)
     cover = (staged / "pdf/rna-cover.typ").read_text()
     assert "委托研究中心" * 20 in cover and "RNAFlow v3.2.1" in cover
+
+
+@pytest.mark.parametrize('language', ['zh', 'en'])
+def test_cover_summarizes_many_comparisons_without_changing_body_inputs(tmp_path, monkeypatch, language):
+    from bioreport.i18n import localized_config
+    from bioreport import modules
+    config = localized_config(load_config(ROOT / 'tests/report.rna.local.json'), language)
+    config['report']['modules'] = ['rna.index']
+    comparisons = [f'Treat_{i}_vs_Control' for i in range(231)]
+    monkeypatch.setattr(modules, '_cover_comparisons', lambda _: comparisons)
+    staged = stage(tmp_path)
+    original = json.dumps(config, sort_keys=True)
+    compose_report(config, staged, pdf=True)
+    cover = (staged / 'pdf/rna-cover.typ').read_text()
+    assert '231' in cover and 'Treat_0 vs Control' in cover
+    assert 'Treat_230' not in cover
+    assert ('Full list in the report' if language == 'en' else '完整列表见正文') in cover
+    assert json.dumps(config, sort_keys=True) == original
+    assert len(comparisons) == 231
 
 
 def test_print_table_preserves_title_and_escapes_typst(monkeypatch):

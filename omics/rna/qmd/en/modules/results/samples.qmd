@@ -9,6 +9,9 @@ Expression violin and box plots show the distribution of log2(TPM + 1). Comparab
 #| label: plot-pca
 #| fig-cap: "Global PCA Analysis (PC1-PC3)"
 #| out-width: 100%
+from bioreport.config import load_config
+from bioreport.utils.sample_scope import expression_sample_scope_note
+display(Markdown(expression_sample_scope_note(load_config(), lang='en')))
 if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
     fig, config_plot = draw_pca_plotly(tpm_file=tpm_file, meta_file=meta_file, height_num=pca_settings.get('height', 500), width_num=pca_settings.get('width', 1000), scale_num=7)
     show_figure(fig, config=config_plot)

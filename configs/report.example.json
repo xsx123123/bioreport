@@ -4,6 +4,9 @@
     "title": "RNA-seq 分析报告",
     "language": "zh",
     "layout": "single",
+    "pdf": {
+      "workers": 8
+    },
     "pet": {
       "enabled": false,
       "size": 144

@@ -7,7 +7,8 @@ from bioreport.db.migrations import migrate_workspace
 from bioreport.utils.run_db import record_run
 
 
-def test_ai_failure_is_recorded_before_cli_exits(tmp_path, monkeypatch):
+@pytest.mark.parametrize('failure_stage', ['ai', 'render'])
+def test_failure_is_recorded_and_project_survives_temporary_cleanup(tmp_path, monkeypatch, failure_stage):
     source_template = tmp_path / "templates"
     (source_template / "shared").mkdir(parents=True)
     config = {
@@ -28,8 +29,13 @@ def test_ai_failure_is_recorded_before_cli_exits(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "print_task_overview", lambda *_: None)
     monkeypatch.setattr(cli, "check_quarto_env", lambda: None)
     monkeypatch.setattr(cli, "render_templates", lambda *_: None)
-    monkeypatch.setattr(cli, "run_ai_pipeline", lambda *_: (_ for _ in ()).throw(RuntimeError("AI failed")))
-    monkeypatch.setattr(cli, "render_report", lambda *_: None)
+    def fail_render(config, config_path, output_dir, template_dir, log_file):
+        (template_dir / 'qmd/report_pdf.typ').write_text('Executed document')
+        raise RuntimeError('render failed')
+
+    monkeypatch.setattr(cli, "run_ai_pipeline", lambda *args, **kwargs:
+                        (_ for _ in ()).throw(RuntimeError("AI failed")) if failure_stage == 'ai' else None)
+    monkeypatch.setattr(cli, "render_report", fail_render)
     monkeypatch.setattr(cli, "record_run", lambda *args, **kwargs: statuses.append(kwargs["status"]) or 1)
     monkeypatch.setattr(cli, "default_db_path", lambda: tmp_path / "runs.db")
     monkeypatch.setattr(sys, "argv", ["bioreport", "run", "-c", str(tmp_path / "report.json"), "-o", str(tmp_path / "output")])
@@ -38,6 +44,10 @@ def test_ai_failure_is_recorded_before_cli_exits(tmp_path, monkeypatch):
         cli.main()
     assert error.value.code == 1
     assert statuses == ["failed"]
+    saved = list((tmp_path / 'output/failed-render').iterdir())
+    assert len(saved) == 1
+    assert (saved[0] / 'templates/qmd').is_dir()
+    assert (saved[0] / 'templates/compile-pdf.sh').is_file() is (failure_stage == 'render')
 
 
 def test_workspace_execution_is_bound_after_legacy_run_row(tmp_path, monkeypatch):

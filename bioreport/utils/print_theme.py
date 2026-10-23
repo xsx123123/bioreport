@@ -13,6 +13,11 @@ from .fonts import FONT_STACK, font_families  # noqa: F401
 
 PALETTE = ['#4477AA', '#EE6677', '#228833', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB']
 
+# Thousands of SVG marker objects per volcano multiply Typst's memory use in
+# large reports. Render the complete dense point layer at print resolution;
+# labels, axes, threshold lines and small scatter plots stay vector graphics.
+SCATTER_RASTER_THRESHOLD = 1000
+
 
 class UnsupportedTrace(ValueError):
     """A third-party plot needs Plotly's own static exporter."""
@@ -52,6 +57,8 @@ def print_panels(figure):
     """Use plot-specific page capacities without recomputing results."""
     import numpy as np
     import plotly.graph_objects as go
+    from bioreport.i18n import language
+    english = language() == 'en'
     traces = list(figure.data)
     meta = figure.layout.meta or {}
     if not isinstance(meta, dict):
@@ -77,7 +84,13 @@ def print_panels(figure):
             panel.data[0].zmin = float(np.nanmin(z)) if vmin is None else vmin
             panel.data[0].zmax = float(np.nanmax(z)) if vmax is None else vmax
             panel.update_layout(meta={**meta, 'show_gene_names': True})
-            panels.append((panel, f'聚类后样本列 {indices[0]+1}–{indices[-1]+1} / {len(names)}；沿用整图聚类顺序与完整色标'))
+            detail = (f'Clustered sample columns {indices[0]+1}–{indices[-1]+1} / {len(names)}; '
+                      f'this panel: {len(indices)} / {len(names)} samples. All panels together cover every sample; '
+                      'no random subsampling. Full clustering order and color scale are preserved.' if english else
+                      f'聚类后样本列 {indices[0]+1}–{indices[-1]+1} / {len(names)}；'
+                      f'本图 {len(indices)} / {len(names)} 个样本；全部面板合计覆盖全部样本，'
+                      '未随机抽样；沿用整图聚类顺序与完整色标')
+            panels.append((panel, detail))
         return panels
     kind = None
     if traces and all(t.type in ('violin', 'box') for t in traces):
@@ -136,7 +149,11 @@ def print_panels(figure):
         if kind == 'line' and figure.layout.xaxis.range is None:
             xs = np.concatenate([np.asarray(t.x,dtype=float) for t in traces])
             panel.update_xaxes(range=[float(np.nanmin(xs)),float(np.nanmax(xs))])
-        panels.append((panel, f'分组面板 {index+1} / {len(batches)}；{len(subset)} 个样本'))
+        detail = (f'Sample panel {index+1} / {len(batches)}; this panel: {len(subset)} / {len(names)} samples. '
+                  'All panels together cover every sample in group/input order; no random subsampling.' if english else
+                  f'分组面板 {index+1} / {len(batches)}；本图 {len(subset)} / {len(names)} 个样本；'
+                  '全部面板合计覆盖全部样本，按分组与输入顺序分页，未随机抽样')
+        panels.append((panel, detail))
     return panels
 
 
@@ -173,8 +190,8 @@ def _annotate_points(axes, x, y, texts):
 def export_vector(figure, path):
     """Export supported RNA/MultiQC traces to SVG, with text as embedded paths.
 
-    Unsupported traces fail explicitly. Vector lines/points/text are retained;
-    large heatmap cells use a 400 dpi raster layer inside the SVG.
+    Unsupported traces fail explicitly. Lines/text and small point layers are
+    vector graphics; dense scatter/heatmap layers use 400 dpi inside the SVG.
     """
     if not figure.data:
         raise ValueError('Cannot export a figure without data traces')
@@ -203,6 +220,9 @@ def export_vector(figure, path):
     meta = layout.meta or {}
     if not isinstance(meta, dict): meta = {}
     enrichment = bool(meta.get('enrichment'))
+    scatter_points = sum(len(t.x) if t.x is not None else 0 for t in figure.data
+                         if t.type == 'scatter' and 'lines' not in (t.mode or 'lines'))
+    rasterize_scatter = scatter_points > SCATTER_RASTER_THRESHOLD and not enrichment
     width = 6.45
     height = max(2.7, min(7.0, float(meta.get('print_height', 3.25))))
     if figure.data and all(t.type=='bar' and t.orientation=='h' for t in figure.data):
@@ -282,7 +302,8 @@ def export_vector(figure, path):
                     else:
                         ax.scatter(x, y, s=float(sizes or 6)**2/2,
                                    color=color(c, PALETTE[i % len(PALETTE)]),
-                                   alpha=trace.marker.opacity or .8, label=label, edgecolors='none')
+                                   alpha=trace.marker.opacity or .8, label=label, edgecolors='none',
+                                   rasterized=rasterize_scatter)
                         if 'text' in mode and trace.text is not None:
                             # Labels are placed after every trace has set its limits,
                             # so cross-group replicates also de-collide.

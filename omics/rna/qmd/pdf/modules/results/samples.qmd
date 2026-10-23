@@ -8,7 +8,9 @@
 
 ```{python}
 #| label: plot-pca
-from bioreport.config import display_path
+from bioreport.config import display_path, load_config
+from bioreport.utils.sample_scope import expression_sample_scope_note
+typst_note(expression_sample_scope_note(load_config(), lang='zh'))
 # 使用前面定义的变量，不再重复定义
 if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
     # 调用函数

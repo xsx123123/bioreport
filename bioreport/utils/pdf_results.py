@@ -4,10 +4,9 @@ import pandas as pd
 from .render_output import show_print_table, typst_note
 
 
-def preview(frame, path, sort_by=None, limit=10, columns=None, *, evidence=None, caption=None, order_note=None):
+def ordered_preview(frame, sort_by=None, columns=None):
+    """Keep literal probabilities and stable tie breaking in every renderer."""
     from decimal import Decimal
-    from ..config import display_path
-    total = len(frame)
     if sort_by in ['pvalue','padj','p.adjust','qvalue']:
         ordered = frame.copy()
         ordered['_sort_probability'] = ordered[sort_by].map(
@@ -23,6 +22,14 @@ def preview(frame, path, sort_by=None, limit=10, columns=None, *, evidence=None,
     else:
         ordered = frame.sort_values(sort_by, kind='stable', na_position='last') if sort_by else frame
     if columns: ordered = ordered[[c for c in columns if c in ordered]]
+    return ordered
+
+
+def preview(frame, path, sort_by=None, limit=10, columns=None, *, evidence=None, caption=None,
+            order_note=None, total_rows=None):
+    from ..config import display_path
+    total = len(frame) if total_rows is None else total_rows
+    ordered = ordered_preview(frame, sort_by, columns)
     show_print_table(ordered, limit=limit, caption=caption, evidence={"source":str(path), "indices":list(ordered.head(limit).index), **(evidence or {})})
     order_note = order_note or (f'{sort_by} 升序、同值按 |log2FC| 降序' if sort_by in ['pvalue','padj','p.adjust','qvalue']
                   else sort_by or '输入顺序')

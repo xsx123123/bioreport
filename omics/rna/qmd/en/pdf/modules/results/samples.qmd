@@ -7,7 +7,9 @@ Expression violin and box plots show the distribution of log2(TPM + 1). Comparab
 
 ```{python}
 #| label: plot-pca
-from bioreport.config import display_path
+from bioreport.config import display_path, load_config
+from bioreport.utils.sample_scope import expression_sample_scope_note
+typst_note(expression_sample_scope_note(load_config(), lang='en'))
 if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
     fig, config_plot = draw_pca_plotly(tpm_file=tpm_file, meta_file=meta_file, height_num=pca_settings.get('height', 500), width_num=pca_settings.get('width', 1000), scale_num=7)
     show_figure(fig, config=config_plot, evidence={'kind': 'pca', 'samples': [str(name) for trace in fig.data if trace.showlegend for name in trace.text]}, caption='Sample PCA: genes with mean TPM > 1; TPM is transformed as Log2(TPM + 1). Colors indicate groups and axes show explained variance. Label placement does not change PCA coordinates.')

@@ -60,6 +60,24 @@ python -m bioreport run -c tests/report.rna.pdf.json -o output/rna-report-pdf
 python -m bioreport run -c tests/report.rna.pdf.ai.json -o output/rna-pdf-report-ai 
 ```
 
+PDF 的 DEG、富集图表默认使用 **8 个工作进程**准备数据和生成 SVG。主进程按照原比较组、数据库和上下调顺序写入图表、表格、AI 解读及证据记录，统一分配图号。HTML 和最终 Typst 排版保持原有执行流程。
+
+可以在配置中设置 `report.pdf.workers`，或用命令行 `--workers` 覆盖；`-t`、`--threads` 是同一参数的别名，表示工作**进程数**。设置为 `1` 时串行运行。实际启动进程数不超过可用任务数；池内限制预取任务数量，每个工作进程的 BLAS/OpenMP 线程数固定为 1。
+
+```bash
+python -m bioreport run -c report.json -o output/report --workers 8
+python -m bioreport run -c report.json -o output/report-4 --workers 4
+python -m bioreport run -c report.json -o output/report-serial --workers 1
+```
+
+```json
+{"report": {"pdf": {"workers": 8}}}
+```
+
+PDF 中超过 1000 个点的密集散点图使用 400 dpi 点位图层嵌入 SVG，保留全部点位；坐标轴、阈值线和基因标注仍为矢量。续表判断只查询当前表格的首行，降低大量比较组的最终排版内存开销。
+
+渲染失败时，日志会记录退出码，并将临时项目保存在输出目录的 `failed-render/<运行目录>/`。若已生成 `report_pdf.typ`，可执行日志中的 `sh .../templates/compile-pdf.sh`，直接重新排版已有图表。恢复输出为 `templates/recovered.pdf`；该命令只重新排版，不执行正式交付的验证、元数据处理和权限保护。
+
 ### Workspace 与运行记录
 
 报告运行记录默认保存在 `~/.bioreport/runs.db`。当前 Workspace v1 提供运行历史、项目筛选、报告产物、证据、溯源信息和模块级 AI 解读的查询能力；命令行可按项目、状态和日期筛选，并以 Rich 终端表格查看：

@@ -53,7 +53,14 @@
 #show raw: set text(font: report-mono-fonts, size: 8.5pt)
 #let report-intro(body) = block(sticky: true, below: 3mm)[#text(body)]
 #let report-cell(body) = text(body.replace("_", "_\u{200b}").replace("/", "/\u{200b}"))
-#let report-observation(id, kind, part) = context [#metadata((id: id, kind: kind, part: part, page: here().position().page, y: here().position().y.pt()))<bioreport-layout>]
+#let report-observation(id, kind, part) = context {
+  [#metadata((id: id, kind: kind, part: part, page: here().position().page, y: here().position().y.pt()))<bioreport-layout>]
+  // A dedicated selector keeps continuation headers independent of the total
+  // number of observations. The global marker above remains for validation.
+  if kind == "table" and part == "row-0" {
+    [#metadata(here().position().page)#label("bioreport-first-row-" + id)]
+  }
+}
 #let report-figure(path, caption, ratio, preferred-height: none, id: "figure") = {
   let height = if preferred-height == none { calc.min(166mm * ratio, 190mm) } else { preferred-height }
   block(sticky: false)[#figure(
@@ -62,8 +69,8 @@
   )]
 }
 #let report-continuation(id) = context {
-  let rows = query(<bioreport-layout>).filter(it => it.value.kind == "table" and it.value.id == id and it.value.part.starts-with("row-"))
-  if rows.len() > 0 and here().position().page > calc.min(..rows.map(it => it.value.page)) {
+  let first-row = query(label("bioreport-first-row-" + id))
+  if first-row.len() > 0 and here().position().page > first-row.first().value {
     report-observation(id, "table", "continuation")
     text(if report-language == "en" {"(continued)"} else {"（续表）"})
   }
@@ -127,9 +134,9 @@
 
 // Pair / triplet / grid: preserve captions and move the reading unit together
 // when it fits a page. Oversized groups flow without reducing typography.
-#let report-figure-group(items, columns: 1) = layout(size => {
+#let report-figure-group(items, columns: 1, minimum-height: 0mm) = layout(size => {
   let body = grid(columns: columns, gutter: 4mm, ..items)
-  let fits = measure(body, width: size.width).height <= 110mm
+  let fits = minimum-height <= 110mm and measure(body, width: size.width).height <= 110mm
   block(breakable: not fits, body)
 })
 

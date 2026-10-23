@@ -6,6 +6,9 @@
 #| label: plot-pca
 #| fig-cap: "Global PCA Analysis (PC1-PC3)"
 #| out-width: 100%
+from bioreport.config import load_config
+from bioreport.utils.sample_scope import expression_sample_scope_note
+display(Markdown(expression_sample_scope_note(load_config(), lang='zh')))
 
 # 使用前面定义的变量，不再重复定义
 if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):

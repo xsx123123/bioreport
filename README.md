@@ -63,6 +63,23 @@ python -m bioreport run -c tests/report.rna.pdf.json -o output/rna-report-pdf
 python -m bioreport run -c tests/report.rna.pdf.ai.json -o output/rna-pdf-report-ai
 ```
 
+PDF DEG and enrichment figures are prepared in **8 worker processes by default**. Workers read and filter individual results, draw figures, and export independent SVGs. The main process preserves comparison/database/direction order while assigning figure numbers and emitting tables, AI cards, and evidence records. HTML and final Typst document composition retain their existing execution flow.
+
+Set `report.pdf.workers` in JSON/YAML, or override it with `--workers` (`-t` and `--threads` are aliases for the same **process count**). Use `1` for serial preparation. The pool starts at most one process per available task, limits in-flight tasks, and uses one BLAS/OpenMP thread per worker.
+
+```bash
+python -m bioreport run -c report.json -o output/report --workers 8
+python -m bioreport run -c report.json -o output/report-serial --workers 1
+```
+
+```json
+{"report": {"pdf": {"workers": 8}}}
+```
+
+Dense scatter plots with more than 1000 points embed the complete point layer at 400 dpi inside SVGs; axes, threshold lines, and gene annotations remain vector graphics. Table continuation checks query only the current table's first row to reduce memory use in large reports.
+
+Failed renders log the exit code and preserve the staged project under `failed-render/<run directory>/` in the output directory. If Typst source exists, run the logged `sh .../templates/compile-pdf.sh` command to compile existing figures without repeating Python or AI. The resulting `templates/recovered.pdf` is a typesetting recovery artifact; delivery validation, metadata processing, and PDF protection are not applied by this command.
+
 Use `--dry-run` to validate modules, templates, and input files without calling AI or running Quarto:
 
 ```bash

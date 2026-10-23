@@ -3,6 +3,7 @@
 import os
 import re
 import json
+import shutil
 from pathlib import Path
 from contextlib import contextmanager
 from html import escape as escape_html
@@ -45,7 +46,6 @@ def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
         from .print_theme import export_vector, plain, print_panels, UnsupportedTrace
         directory = Path(os.environ.get("BIOREPORT_ASSET_DIR", "pdf-figures"))
         directory.mkdir(parents=True, exist_ok=True)
-        import xml.etree.ElementTree as ET
         text = caption or plain(figure.layout.title.text) or "分析图表"
         for panel, detail in print_panels(figure):
             _figure_count += 1
@@ -55,24 +55,7 @@ def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
             except UnsupportedTrace:
                 # Preserve custom/third-party trace support on normal Kaleido hosts.
                 path.write_bytes(panel.to_image(format='svg',scale=4))
-            root = ET.parse(path).getroot()
-            if root.tag.rsplit('}',1)[-1] != 'svg':
-                raise ValueError(f'Static exporter did not produce an SVG: {path}')
-            viewbox = root.attrib["viewBox"].split()
-            ratio = float(viewbox[3]) / float(viewbox[2])
-            label = text + (' '+detail+'。' if detail else '')
-            from bioreport.report import FigureBlock, LayoutPlanner
-            block = LayoutPlanner().plan(FigureBlock(id=f"figure-{_figure_count:03}",
-                path=str(path), caption=label, ratio=ratio, content=evidence))
-            record_block(block)
-            # Typst owns the complete image/caption block and figure numbering.
-            expression = ("#report-figure(" + json.dumps(str(path), ensure_ascii=False)
-                          + ", " + json.dumps(translate(label), ensure_ascii=False)
-                          + f", {ratio:.5f}, preferred-height: {block.preferred_height:.2f}mm, id: " + typst_literal(block.id) + ")")
-            if _figure_group is not None:
-                _figure_group.append((block, expression))
-            else:
-                display(Markdown("```{=typst}\n" + expression + "\n```"))
+            _emit_pdf_figure(path, text, evidence, detail)
 
     else:
         if not _plotly_loaded:
@@ -103,6 +86,41 @@ def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
                       'traces':sorted(encountered),'bundle':_plotly_bundle})
 
 
+def _emit_pdf_figure(path, caption, evidence, detail=''):
+    import xml.etree.ElementTree as ET
+    from bioreport.report import FigureBlock, LayoutPlanner
+    root = ET.parse(path).getroot()
+    if root.tag.rsplit('}', 1)[-1] != 'svg':
+        raise ValueError(f'Static exporter did not produce an SVG: {path}')
+    viewbox = root.attrib['viewBox'].split()
+    ratio = float(viewbox[3]) / float(viewbox[2])
+    label = caption + (' ' + detail + '。' if detail else '')
+    block = LayoutPlanner().plan(FigureBlock(id=f'figure-{_figure_count:03}',
+        path=str(path), caption=label, ratio=ratio, content=evidence))
+    record_block(block)
+    expression = ('#report-figure(' + json.dumps(str(path), ensure_ascii=False)
+                  + ', ' + json.dumps(translate(label), ensure_ascii=False)
+                  + f', {ratio:.5f}, preferred-height: {block.preferred_height:.2f}mm, id: '
+                  + typst_literal(block.id) + ')')
+    if _figure_group is not None:
+        _figure_group.append((block, expression))
+    else:
+        display(Markdown('```{=typst}\n' + expression + '\n```'))
+
+
+def show_prepared_figure(source, caption, *, evidence=None, detail=''):
+    """Number and emit a worker-produced SVG only in the owning process."""
+    global _figure_count
+    if not is_pdf():
+        raise ValueError('Prepared SVG figures require PDF output')
+    directory = Path(os.environ.get('BIOREPORT_ASSET_DIR', 'pdf-figures'))
+    directory.mkdir(parents=True, exist_ok=True)
+    _figure_count += 1
+    path = directory / f'figure-{_figure_count:03}.svg'
+    shutil.copyfile(source, path)
+    _emit_pdf_figure(path, caption, evidence, detail)
+
+
 @contextmanager
 def figure_group(block_id, columns=1):
     """Keep related PDF figures together; HTML keeps its interactive flow."""
@@ -128,10 +146,25 @@ def figure_group(block_id, columns=1):
             group = LayoutPlanner().plan(FigureGroup(id=block_id,
                 figures=[block for block, _ in collected if block.type == "figure"],
                 tables=[block for block, _ in collected if block.type == "table"], columns=columns))
+            # Fixed figure heights and table cell padding give a strict lower
+            # bound. Oversized groups need no additional nested Typst measure
+            # pass (which otherwise also measures every contained table).
+            heights = []
+            for block, _ in collected:
+                if block.type == 'figure':
+                    heights.append(max(0., block.preferred_height - .01))
+                elif block.type == 'table':
+                    heights.append((len(block.rows) + 1) * 10 * 25.4 / 72)
+                else:
+                    heights.append(0.)
+            row_heights = [max(heights[i:i + group.columns])
+                           for i in range(0, len(heights), group.columns)]
+            group.minimum_height = sum(row_heights) + 4 * (len(row_heights) - 1)
             record_block(group)
             expressions = ','.join('['+expression+']' for _, expression in collected)
             display(Markdown('```{=typst}\n#report-figure-group(('
-                             + expressions + ',), columns: ' + str(group.columns) + ')\n```'))
+                             + expressions + ',), columns: ' + str(group.columns)
+                             + f', minimum-height: {group.minimum_height:.2f}mm)\n```'))
     finally:
         _figure_group = None
 

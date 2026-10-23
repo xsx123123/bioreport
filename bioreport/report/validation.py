@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import subprocess
 from pypdf import PdfReader
+from loguru import logger
 from bioreport.utils.pdf_metadata import metadata_fields
 
 
@@ -12,7 +13,9 @@ def query_layout(source, env=None):
     source = Path(source).resolve()
     result = subprocess.run(['quarto', 'typst', 'query', '--root', str(source.parent.parent),
                              str(source), '<bioreport-layout>', '--field', 'value'],
-                            cwd=source.parent, env=env, text=True, capture_output=True, timeout=60)
+                            # Querying lays out the document again. Reports
+                            # with thousands of figures/tables exceed a minute.
+                            cwd=source.parent, env=env, text=True, capture_output=True, timeout=600)
     if result.returncode:
         raise RuntimeError('Typst layout query failed: ' + (result.stderr or result.stdout)[-2000:])
     # Quarto versions may forward the bundled CLI stdout through stderr.
@@ -93,7 +96,7 @@ def validate_pdf(path, config, observations=None):
         result['warnings'] = [{'check':'low_content_ratio',**m} for m in result['pages'] if m['page'] not in exempt and m['content_ratio']<.55]
     except ImportError:
         result['warnings'] = [{'check':'page_metrics_unavailable','install':'bioreport[validation]'}]
-    navigation = validate_navigation(path)
+    navigation = validate_navigation(path, reader=reader, texts=texts)
     result['navigation'] = navigation
     result['errors'].extend(navigation['errors'])
     result['status'] = 'FAIL' if result['errors'] else 'PASS'
@@ -102,12 +105,15 @@ def validate_pdf(path, config, observations=None):
 
 
 def write_validation(pdf, source, config, env=None):
+    logger.info('PDF validation: querying physical layout...')
     observations = query_layout(source, env)
     output = Path(pdf).parent
     (output/'layout-observations.json').write_text(json.dumps(observations,ensure_ascii=False,indent=2))
+    logger.info('PDF validation: checking {} layout observations and rendered pages...', len(observations))
     validation = validate_pdf(pdf, config, observations)
     blocks = output / 'report-blocks-pdf.jsonl'
     if blocks.exists():
+        logger.info('PDF validation: checking source result consistency...')
         from .content_validation import validate_content
         content = validate_content(config, blocks)
         (output/'content-validation.json').write_text(json.dumps(content,ensure_ascii=False,indent=2))
@@ -194,12 +200,18 @@ def _destination_page_numbers(reader):
     return pages
 
 
-def validate_navigation(path):
+def validate_navigation(path, *, reader=None, texts=None):
     """Check outline targets and printed TOC numbers against PDF destinations."""
-    reader=PdfReader(path)
+    owns_reader = reader is None
+    if owns_reader:
+        reader=PdfReader(path)
     errors=[];bookmarks=0;toc_links=0
     compact=lambda value:re.sub(r'\s+','',value)
-    texts=[compact(p.extract_text() or '') for p in reader.pages]
+    # The full validation already extracted every page. Reuse that work and
+    # the parsed PDF objects rather than reading a thousand-page PDF twice.
+    if texts is None:
+        texts=[p.extract_text() or '' for p in reader.pages]
+    texts=[compact(text) for text in texts]
     def walk(items):
         nonlocal bookmarks
         for item in items:
@@ -241,5 +253,6 @@ def validate_navigation(path):
         document.close()
         toc_status='PASS' if toc_links and not errors else 'FAIL'
     except ImportError:toc_status='UNVERIFIED'
-    reader.close()
+    if owns_reader:
+        reader.close()
     return {'bookmarks':bookmarks,'toc_links':toc_links,'toc_status':toc_status,'errors':errors}

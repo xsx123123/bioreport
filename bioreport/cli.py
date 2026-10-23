@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import shutil
 import signal
 import sqlite3
@@ -39,6 +40,16 @@ from .utils.run_browser import browse_runs, render_runs
 
 
 console = Console()
+
+
+def _positive_workers(value: str) -> int:
+    try:
+        count = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError('workers must be a positive integer') from exc
+    if count < 1:
+        raise argparse.ArgumentTypeError('workers must be a positive integer')
+    return count
 
 
 def _workspace_execution(project_id: str) -> tuple[object, str] | None:
@@ -110,6 +121,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         default="/workspace",
         help="Report output directory (default: /workspace)",
+    )
+    report_args.add_argument(
+        "--workers", "-t", "--threads",
+        type=_positive_workers,
+        default=None,
+        help="PDF DEG/enrichment worker processes (overrides report.pdf.workers; default: 8; use 1 for serial rendering)",
     )
     report_args.add_argument(
         "--data-prefix",
@@ -206,6 +223,9 @@ def print_task_overview(config: dict, provenance: dict, output_dir: str) -> None
         "Pipeline", provenance.get("pipeline_version", "-"),
     )
     grid.add_row("Format", formats, "Layout", provenance["layout"])
+    if 'pdf' in provenance['output_format']:
+        from .pdf_parallel import worker_count
+        grid.add_row('PDF workers', str(worker_count(config, use_environment=False)), '', '')
     grid.add_row("Output", output_dir, "", "")
     modules_line = Text.assemble(
         ("Modules", "bold"),
@@ -425,8 +445,14 @@ def _stream_quarto_output(process: subprocess.Popen, output_format: str) -> tupl
                     completed=index,
                     description=f"Running cell [{index}/{total}]: {cell_name or '-'}",
                 )
-                if index == total:
+                if index == total and re.search(r'\bDone\b', line):
                     cells_completed = True
+                    progress.remove_task(task)
+                    task = progress.add_task(
+                        f"Quarto ({output_format.upper()}): converting figures / rendering document", total=None)
+            elif line.startswith('[typst]:') and 'Compiling' in line:
+                progress.remove_task(task)
+                task = progress.add_task("Quarto (PDF): compiling document with Typst", total=None)
             elif line.startswith("Output created:"):
                 pending.append(("info", _short_quarto_output_path(line)))
             if re.match(r"^(?:ERROR|FATAL):\s+.+", line, re.IGNORECASE) or re.match(
@@ -449,6 +475,8 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
     # Use the CLI environment unless the caller explicitly selects another one.
     env.setdefault("QUARTO_PYTHON", sys.executable)
     env["REPORT_CONFIG"] = config_path
+    from .pdf_parallel import worker_count
+    env['BIOREPORT_PDF_WORKERS'] = str(worker_count(config, use_environment=False))
     env["XDG_CACHE_HOME"] = str(template_dir.parent / "cache")
     env["XDG_DATA_HOME"] = str(template_dir.parent / "share")
     # Typst scans TYPST_FONT_PATHS for the built-in font stack, so reports
@@ -513,8 +541,13 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
             )
             cause = f": {error_summary}" if error_summary else ""
             log_hint = log_file or Path(output_dir) / "pipeline.log"
+            termination = f"; exit code: {return_code}"
+            if return_code < 0:
+                termination += f" ({signal.Signals(-return_code).name})"
+            if return_code in (-signal.SIGKILL, 128 + signal.SIGKILL):
+                termination += "; process killed (check kernel OOM logs)"
             raise RuntimeError(
-                f"Quarto {output_format} render failed{detail}{cause}; full output: {log_hint}"
+                f"Quarto {output_format} render failed{detail}{cause}{termination}; full output: {log_hint}"
             )
         if output_format == "html" and asset_audit.exists():
             events = [json.loads(line) for line in asset_audit.read_text().splitlines() if line.strip()]
@@ -665,6 +698,8 @@ def main():
         config = load_config_with_fallback(args.config, show_help_on_missing=True)
     else:
         config = load_config_with_fallback(args.config)
+    if args.workers is not None:
+        config.setdefault('report', {}).setdefault('pdf', {})['workers'] = args.workers
     if args.command == "validate":
         try:
             formats = output_formats(config)
@@ -778,6 +813,15 @@ def main():
                 render_report(config, config["_config_path"], args.output, template_dir, log_file)
         except Exception as exc:
             logger.error("{}", exc)
+            try:
+                from .utils.render_recovery import preserve_failed_render
+                saved = preserve_failed_render(template_dir, args.output, exc)
+                logger.error("Failed render project preserved: {}", saved)
+                if (saved / 'templates/compile-pdf.sh').is_file():
+                    logger.info("Retry PDF typesetting without rerunning Python: {}",
+                                shlex.join(['sh', str(saved / 'templates/compile-pdf.sh')]))
+            except Exception as recovery_error:
+                logger.warning("Could not preserve failed render project: {}", recovery_error)
             _record_run("failed")
             raise SystemExit(1) from None
 

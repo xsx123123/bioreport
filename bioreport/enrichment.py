@@ -93,3 +93,16 @@ def validate_enrichment_inputs(config):
             record = config['enrichment'][result.database.lower()]['contrasts'][result.comparison][result.direction]
             if 'term_count' in record and record['term_count'] != len(frame):
                 raise ValueError(f'Enrichment term_count differs from table: {result.result_id}')
+
+
+def select_enrichment_terms(frame, cutoff, top_n):
+    """Shared stable selection for interactive and prepared PDF results."""
+    import pandas as pd
+    from omics.rna.analysis.enrichment_plotly import parse_gene_ratios
+    filtered = frame[pd.to_numeric(frame['p.adjust'], errors='coerce') < cutoff].sort_values(
+        'p.adjust', kind='stable')
+    valid = parse_gene_ratios(filtered['GeneRatio']).notna() & pd.to_numeric(
+        filtered['Count'], errors='coerce').ge(0)
+    chosen = filtered[valid].head(top_n).copy()
+    chosen['Count'] = pd.to_numeric(chosen['Count'])
+    return filtered, chosen

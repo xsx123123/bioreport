@@ -523,6 +523,14 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
                 return identifier
             return ' vs '.join(f"Group {p}" if p.isdigit() else p for p in parts)
 
+        comparison_text = ("; " if english else "；").join(map(comparison_name, comparisons[:3]))
+        if len(comparisons) > 3 or len(comparison_text) > 150:
+            examples = comparison_text[:150] + ('…' if len(comparison_text) > 150 else '')
+            comparison_text = (
+                f"{len(comparisons)} comparisons; examples: {examples}. Full list in the report."
+                if english else f"共 {len(comparisons)} 个比较组；示例：{examples}。完整列表见正文。"
+            )
+
         checksums = provenance.get('input_checksums') or {}
         integrity = (f"已记录 SHA-256 指纹（{len(checksums)} 个输入文件）"
                      if checksums else "未提供校验结果")
@@ -530,7 +538,7 @@ def compose_report(config: dict, template_dir: Path, pdf: bool = False, website:
             ("委托单位", clean(lines[1]), False),
             ("研究物种", clean(lines[2]), True),
             ("参考基因组", clean(lines[3]), False),
-            ("核心比较组", ("; " if english else "；").join(map(comparison_name, comparisons)), False),
+            ("核心比较组", comparison_text, False),
         ]
         analysis = [
             ("项目编号", clean(project.get('project_id') or project.get('id')), False),

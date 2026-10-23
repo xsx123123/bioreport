@@ -356,9 +356,25 @@ def _prepare_print_qc(fig, identifier, title, *, aggregate=True):
             ('min_fraction','max_categories','aggregate_other') if k in legend})
     coverage_note = ''
     if coverage_plot:
+        known_samples = {entry[0] for entry in aliases.values()}
+        unannotated = [trace.name for trace in fig.data if trace.name not in known_samples]
         fig, coverage_note = _apply_coverage_options(identifier, fig)
         fig = _group_coverage(fig)
         coverage_note += '横轴截断至 0–100X；每组曲线为样本均值，色带为 min–max 范围。'
+        from bioreport.i18n import language
+        members = fig.layout.meta['coverage_members']
+        sample_count = sum(len(samples) for samples in members.values())
+        if language() == 'en':
+            coverage_note += (f'{sample_count} input samples are summarized into {len(members)} curves; '
+                              'curve count is not sample count. No random subsampling. ')
+            if unannotated:
+                coverage_note += (f'{len(unannotated)} samples without group annotations in the sample sheet '
+                                  'are retained as individual curves. ')
+        else:
+            coverage_note += (f'本图将 {sample_count} 个输入样本汇总为 {len(members)} 条曲线，'
+                              '曲线数不等于样本数；未随机抽样。')
+            if unannotated:
+                coverage_note += f'其中 {len(unannotated)} 个未在样本表获得分组注释的样本按各自样本名保留为单独曲线。'
     label = plain(title)
     x = plain(fig.layout.xaxis.title.text)
     y = plain(fig.layout.yaxis.title.text)
@@ -396,7 +412,9 @@ def _group_coverage(fig):
             name=group,legendgroup=group,showlegend=False,hoverinfo='skip'))
         result.add_trace(go.Scatter(x=bins,y=np.nanmean(values,axis=0),mode='lines',
             name=group,legendgroup=group,line=dict(color=color,dash='solid'),showlegend=True))
-    result.update_layout(meta={**(fig.layout.meta or {}),'coverage_groups':True},
+    result.update_layout(meta={**(fig.layout.meta or {}),'coverage_groups':True,
+                               'coverage_members':{group:[trace.name for trace in traces]
+                                                   for group,traces in members.items()}},
                          legend=dict(orientation='h',y=1.03,yanchor='bottom'),
                          margin=dict(t=110,b=60,l=75,r=35),
                          title=dict(y=.98,yanchor='top'))

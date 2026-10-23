@@ -66,6 +66,54 @@ def test_mermaid_failure_includes_quarto_error_and_rendering_phase(monkeypatch, 
     assert str(log_file) in message
 
 
+@pytest.mark.parametrize('code', [-9, 137])
+def test_killed_render_reports_exit_code_and_kernel_log_hint(monkeypatch, tmp_path, code):
+    class Process:
+        stdout = StringIO("Cell 23/23: 'pdf-delivery'...Done\n[typst]: Compiling...\n")
+
+        def wait(self):
+            return code
+
+    monkeypatch.setattr('bioreport.cli.subprocess.Popen', lambda *args, **kwargs: Process())
+    with pytest.raises(RuntimeError) as error:
+        render_report({'report': {'output_format': 'pdf'}}, 'config.json', str(tmp_path), tmp_path)
+    assert f'exit code: {code}' in str(error.value)
+    assert 'check kernel OOM logs' in str(error.value)
+    assert 'post-execution' in str(error.value)
+    assert 'Cell 23/23' not in str(error.value)
+
+
+def test_failure_in_final_cell_is_still_identified_as_a_cell_failure(monkeypatch, tmp_path):
+    class Process:
+        stdout = StringIO("Cell 23/23: 'pdf-delivery'...\nValueError: invalid input\n")
+
+        def wait(self):
+            return 1
+
+    monkeypatch.setattr('bioreport.cli.subprocess.Popen', lambda *args, **kwargs: Process())
+    with pytest.raises(RuntimeError) as error:
+        render_report({'report': {'output_format': 'pdf'}}, 'config.json', str(tmp_path), tmp_path)
+    assert 'pdf-delivery' in str(error.value)
+    assert 'post-execution' not in str(error.value)
+
+
+def test_progress_switches_from_cells_to_document_compilation(monkeypatch):
+    from rich.progress import Progress
+    from bioreport import cli
+    progress = Progress(disable=True)
+    monkeypatch.setattr(cli, 'Progress', lambda *args, **kwargs: progress)
+
+    class Process:
+        stdout = StringIO("Cell 23/23: 'pdf-delivery'...Done\n"
+                          "[typst]: Compiling report_pdf.typ to report_pdf.pdf...\n")
+
+    _, _, completed = cli._stream_quarto_output(Process(), 'pdf')
+    assert completed
+    assert progress.tasks[0].total is None
+    assert progress.tasks[0].completed == 0
+    assert 'compiling document with Typst' in progress.tasks[0].description
+
+
 def test_rna_html_render_delivers_one_combined_file(monkeypatch, tmp_path):
     from base64 import b64decode
     import gzip
