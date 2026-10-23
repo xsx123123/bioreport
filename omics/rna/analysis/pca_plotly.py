@@ -165,6 +165,7 @@ def draw_pca_plotly(tpm_file, meta_file, height_num=600, width_num=900, scale_nu
     # --- 5. 样式美化 ---
     style_figure(
         fig,
+        palette_menu=True,
         meta={"bioreport_responsive_pca": True},
         height=height_num,
         # 图例提取为左右两子图的顶部公共图例，避免压在左图点位上。

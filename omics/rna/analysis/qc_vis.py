@@ -120,7 +120,7 @@ def _dataset_figure(identifier, plot, dataset):
     if is_screen and horizontal and len(fig.data) and _percent_axis_enabled():
         fig = _to_percent(fig)
     x_title = axis_title('xaxis') or config.get('xlab') or ''
-    style_figure(fig, title=title, height=500,
+    style_figure(fig, title=title, height=500, palette_menu=True,
         xaxis_title=x_title,
         yaxis_title=axis_title('yaxis') or ('Sample' if plot.get('plot_type')=='bar plot' and horizontal else dconfig.get('ylab') or config.get('ylab') or ''))
     if is_screen and horizontal and len(fig.data) and _percent_axis_enabled():
@@ -135,7 +135,7 @@ def _dataset_figure(identifier, plot, dataset):
 
 def _prepare_html_qc_figure(fig):
     """Keep the report heading as the sole title for HTML QC charts."""
-    style_figure(fig, title=None)
+    style_figure(fig, title=None, palette_menu=True)
     return fig
 
 
@@ -470,7 +470,7 @@ def visualize_fastq_screen_pair(r1_dir, r2_dir):
             pair.add_trace(go.Bar(x=values,y=list(fig.data[0].y),orientation='h',name=trace.name,
                 marker_color=PALETTE[i%len(PALETTE)],legendgroup=trace.name,showlegend=col==1),row=1,col=col)
         maximum = max(maximum,float(np.nanmax(total)))
-    style_figure(pair, barmode='stack', height=540, width=1100,
+    style_figure(pair, barmode='stack', height=540, width=1100, palette_menu=True,
         meta={'paired_screen':True},legend=dict(orientation='h',y=1.24,yanchor='bottom',x=0),margin=dict(t=120,l=80,r=40,b=50))
     pair.update_xaxes(range=[0,100 if _percent_axis_enabled() else maximum*1.02],title_text=figures[0].layout.xaxis.title.text)
     pair.update_yaxes(autorange='reversed')

@@ -125,6 +125,12 @@
   | `candy` | `#9b5de5 #f15bb5 #fee440 #00bbf9 #00f5d4` | 备选 |
 
   切换方式：`group_palette(groups, palette='apple')`，或改 `PALETTE = PALETTES['seaside']` 的默认指向。
+- **交互配色切换（updatemenus）**：分组图（PCA、分布小提琴图、交互 PCA、MultiQC 质控图、FastQ Screen 双面板）右上角带 `Palette: …` 下拉，可在四套 `PALETTES` 间切换；连续色带图（聚类热图、相关性热图、富集气泡图）带 `Scale: …` 下拉，可切换 Viridis / Blues / Cividis / RdBu_r / RdYlBu / Portland（当前色带恒排第一）。实现于 `palette_updatemenu()` / `colorscale_updatemenu()`，经 `style_figure(palette_menu=True)` / `style_figure(colorscale_menu='<当前色带>')` 开启：
+  - 按钮 payload 是纯静态 JSON（`restyle` / `relayout` / `update`），离线 HTML 中可用，不依赖任何后端。
+  - 分组切换保持"同组同色"（按基色去重后映射新色板）；小提琴图填充保留原 alpha；无显式颜色的 trace 依次接在已有颜色后分配。
+  - px 图常把色带放在 `layout.coloraxis` 上，此时按钮用 `method='relayout'` 改 `coloraxis.colorscale`；trace 级 `colorscale` / `marker.colorscale` 则用 `restyle`；两者并存时合并为 `method='update'`。
+  - 图例占位哑 trace（坐标全 None）会被跳过；重复调用 `style_figure` 时同类菜单先移除再追加，不会叠加。
+  - 火山图不加切换：Up/Down/NS 是语义色，轮换会破坏含义。
 - **语义色不参与轮换**：火山图固定 Up `#ef4444` / Down `#3b82f6` / NS `#cbd5e1`，阈值虚线 `#8795a5`。
 - **图表文字固定英文**（两个语言版本都不出现中文）：富集图 colorbar 恒为 `Adjusted P value`，FastQ Screen 百分比轴为英文标题。正文标题/图注仍跟随报告语言。
 - 火山图版式：图例底部横向居中，图高 500。
@@ -140,5 +146,5 @@ HTML 图在 PDF 中经 `print_theme.export_vector()` 用 matplotlib 重绘为 SV
 
 1. 改色值 → 优先改语义变量（第 2 节），不改组件。
 2. 新增组件 → 浅色 + 深色两套规则一起写，深色引用 `--br-card-*`。
-3. 新增 Plotly 图 → 走 `style_figure()` + `export_config()`，分组色走 `group_palette()`。
+3. 新增 Plotly 图 → 走 `style_figure()` + `export_config()`，分组色走 `group_palette()`；分组图传 `palette_menu=True`、连续色带图传 `colorscale_menu='<当前色带>'` 即获得右上角交互切换（语义色图不加）。
 4. 验证：`python -m pytest tests/test_modules.py tests/test_report_layout.py` + 已有渲染产物用 Playwright 截图目检（参考 `scripts/verify_report_theme.py`）。

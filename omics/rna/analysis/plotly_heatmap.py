@@ -112,6 +112,7 @@ def draw_interactive_heatmap(
 
     style_figure(
         fig,
+        colorscale_menu='RdBu_r',
         title=f"Clustered Heatmap ({title_suffix})",
         xaxis={'side': 'bottom', 'showgrid': False, 'showline': False, 'ticks': ''},
         yaxis={'visible': True if len(df_z) < 100 else False,

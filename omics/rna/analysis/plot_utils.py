@@ -101,7 +101,7 @@ def plot_pca_interactive(
         height=500,
         hover_data=[col_group]
     )
-    style_figure(fig)
+    style_figure(fig, palette_menu=True)
 
     # 统一美化点的样式：增加边框让点更清晰
     fig.update_traces(marker=dict(size=12, line=dict(width=1, color=INK)))
@@ -362,6 +362,7 @@ def plot_sample_correlation(tpm_file, meta_file, width=800, height=700):
 
         style_figure(
             fig,
+            colorscale_menu='RdBu_r',
             title="Sample Correlation Heatmap",
             width=width,
             height=height,

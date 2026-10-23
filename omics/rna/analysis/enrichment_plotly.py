@@ -132,6 +132,7 @@ def draw_fancy_dotplot(enrich_file,
     # --- 3. 精细化修饰 ---
     style_figure(
         fig,
+        colorscale_menu='RdYlBu',
         height=max(height_num, computed_height),
 
         title=dict(text=f"<b>Top {len(df)} Enriched Pathways</b>", pad=dict(t=8)),

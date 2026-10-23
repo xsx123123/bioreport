@@ -110,6 +110,7 @@ def draw_expression_distribution_plotly(tpm_file, meta_file,
     # --- 4. 样式美化 ---
     style_figure(
         fig,
+        palette_menu=True,
         height=height_num,
 
         title=dict(
