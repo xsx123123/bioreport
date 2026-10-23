@@ -154,6 +154,8 @@ def test_serial_and_process_output_have_identical_order_evidence_and_figures(pro
         output.mkdir()
         outputs, interpretations = [], []
         manifest = output / 'blocks.jsonl'
+        progress_file = output / 'progress.jsonl'
+        monkeypatch.setenv('BIOREPORT_PROGRESS_FILE', str(progress_file))
         monkeypatch.setenv('BIOREPORT_ASSET_DIR', str(output))
         monkeypatch.setenv('BIOREPORT_BLOCK_MANIFEST', str(manifest))
         monkeypatch.setattr(render_output, '_figure_count', 0)
@@ -167,6 +169,11 @@ def test_serial_and_process_output_have_identical_order_evidence_and_figures(pro
         render_enrichment(config, ['B_vs_A', 'C_vs_A'], interpretations.append, pdf=True, english=english)
         records = manifest.read_text().replace(str(output), '<assets>')
         text = '\n'.join(item.data for item in outputs).replace(str(output), '<assets>')
+        events = [json.loads(line) for line in progress_file.read_text().splitlines()]
+        for kind, prepared_count, rendered_count in [('DEG',2,2), ('enrichment',4,8)]:
+            for stage, count in [('prepare',prepared_count), ('render',rendered_count)]:
+                assert [event['completed'] for event in events if event['kind']==kind and event['stage']==stage] == list(range(count+1))
+        assert 'progress.jsonl' not in text
         captures.append((records, text, interpretations,
                          [normalized_svg(path) for path in sorted(output.glob('*.svg'))]))
     assert captures[0] == captures[1]

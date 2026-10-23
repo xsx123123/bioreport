@@ -65,6 +65,8 @@ python -m bioreport run -c tests/report.rna.pdf.ai.json -o output/rna-pdf-report
 
 PDF DEG and enrichment figures are prepared in **8 worker processes by default**. Workers read and filter individual results, draw figures, and export independent SVGs. The main process preserves comparison/database/direction order while assigning figure numbers and emitting tables, AI cards, and evidence records. HTML and final Typst document composition retain their existing execution flow.
 
+The terminal keeps the module progress and adds live `plots` (prepared results) and `results` (ordered report output) bars, including the current comparison. Enrichment counts database/comparison/direction entries; output also counts missing, disabled, and empty result notices, so the two totals may differ. A separate progress file updates the terminal while Jupyter is still capturing cell output.
+
 Set `report.pdf.workers` in JSON/YAML, or override it with `--workers` (`-t` and `--threads` are aliases for the same **process count**). Use `1` for serial preparation. The pool starts at most one process per available task, limits in-flight tasks, and uses one BLAS/OpenMP thread per worker.
 
 ```bash

@@ -20,6 +20,8 @@ def _emit_preview(table, path, *, sort_by, caption, evidence):
 
 
 def _progress(label, index, total, name):
+    from .result_progress import report_result_progress
+    report_result_progress(label, 'render', index, total, name)
     if index == 1 or index == total or index % 10 == 0:
         from loguru import logger
         logger.info('PDF {} [{}/{}]: {}', label, index, total, name)
@@ -49,6 +51,7 @@ def render_pdf_deg(config, comparisons, display_ai, *, english=False):
                             local_base_dir=config['input_files'].get('deg_dir'))
         jobs.append({'kind': 'deg', 'label': comp, 'comparison': comp, 'path': path,
                      'config': parameters, 'english': english})
+    _progress('DEG', 0, len(jobs), '')
     with prepared_results(jobs, worker_count(config), 'DEG') as results:
         for index, (comp, job, result) in enumerate(zip(comparisons, jobs, results), 1):
             up, down, fc, p = (result[key] for key in ('up', 'down', 'fc', 'p'))
@@ -95,9 +98,9 @@ def render_pdf_enrichment(config, comparisons, display_ai, *, english=False):
              'result': asdict(r), 'top_n': count, 'english': english}
             for r in records if r.status == 'available']
     current_database = None
-    completed = 0
+    _progress('enrichment', 0, len(records), '')
     with prepared_results(jobs, worker_count(config), 'enrichment') as prepared:
-        for result in records:
+        for index, result in enumerate(records, 1):
             database = result.database
             if current_database != database:
                 markdown(f"### {database or ('Enrichment' if english else '功能富集')}")
@@ -111,18 +114,18 @@ def render_pdf_enrichment(config, comparisons, display_ai, *, english=False):
                              'disabled': '未启用分析', 'failed': '上游分析失败'})
                 markdown(statuses.get(result.status, result.status)
                          + (': ' + '; '.join(result.messages) if result.messages else ''))
+                _progress('enrichment', index, len(records), f'{database} {title}')
                 continue
             prepared_result = next(prepared)
-            completed += 1
             source = display_path(result.path, config) if result.path else 'enrichment terms'
             markdown((f'{database} {title}: source {source}. Terms are selected using adjusted P < {result.cutoff} '
                       f'and ranked by adjusted P; up to {count} terms are shown.' if english else
                       f'{database} {title}：数据来自 {source}。按校正后 P < {result.cutoff} 筛选并依显著性排序，最多展示 {count} 个条目。'))
-            _progress('enrichment', completed, len(jobs), f'{database} {title}')
             chosen = prepared_result['chosen']
             if not chosen:
                 markdown((f'No valid terms with adjusted P < {result.cutoff}.' if english
                           else f'无满足校正后 P < {result.cutoff} 的有效富集条目。'))
+                _progress('enrichment', index, len(records), f'{database} {title}')
                 continue
             evidence = {'kind': 'enrichment', 'database': database, 'comparison': result.comparison,
                         'direction': result.direction, 'top_n': count, 'p_cutoff': result.cutoff}
@@ -145,3 +148,4 @@ def render_pdf_enrichment(config, comparisons, display_ai, *, english=False):
             if result.full_table:
                 markdown(('Full results: ' if english else '完整结果：') + display_path(result.full_table, config))
             display_ai(result.result_id)
+            _progress('enrichment', index, len(records), f'{database} {title}')

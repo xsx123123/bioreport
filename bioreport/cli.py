@@ -409,8 +409,43 @@ def _short_quarto_output_path(line: str) -> str:
     return f"[Quarto] Render output: {display_path} (before delivery processing)"
 
 
-def _stream_quarto_output(process: subprocess.Popen, output_format: str) -> tuple[str, str, bool]:
-    """读取 Quarto stdout：原始行全部写入运行日志，终端仅显示单行动态进度条。
+def _quarto_output_lines(process, poll_progress):
+    """Poll the result channel while Quarto waits for a complete output line."""
+    from queue import Empty, Queue
+    from threading import Thread
+    lines = Queue()
+
+    def read_output():
+        try:
+            for line in iter(process.stdout.readline, ''):
+                lines.put(line)
+        except Exception as exc:
+            lines.put(exc)
+        finally:
+            lines.put(None)
+
+    reader = Thread(target=read_output, name='quarto-output', daemon=True)
+    reader.start()
+    try:
+        while True:
+            poll_progress()
+            try:
+                line = lines.get(timeout=.1)
+            except Empty:
+                continue
+            if line is None:
+                poll_progress()
+                return
+            if isinstance(line, Exception):
+                raise line
+            yield line
+    finally:
+        reader.join(timeout=1)
+
+
+def _stream_quarto_output(process: subprocess.Popen, output_format: str,
+                          progress_file: Path | None = None) -> tuple[str, str, bool]:
+    """读取 Quarto stdout 与结果进度；原始行写入日志，终端展示模块和结果进度。
 
     返回 (last_cell, error_summary, cells_completed)。
     """
@@ -427,10 +462,44 @@ def _stream_quarto_output(process: subprocess.Popen, output_format: str) -> tupl
         MofNCompleteColumn(),
         TimeElapsedColumn(),
     ]
-    with Progress(*progress_columns, console=console, transient=True) as progress:
+    from .result_progress import ResultProgressReader
+    from rich.markup import escape
+    with Progress(*progress_columns, console=console, transient=True) as progress, ResultProgressReader(progress_file) as result_events:
         task = progress.add_task(f"Rendering Quarto ({output_format.upper()})", total=None)
+        result_tasks = {}
+        result_kind = None
 
-        for raw_line in iter(process.stdout.readline, ""):
+        def clear_results():
+            nonlocal result_kind
+            for result_task in result_tasks.values():
+                progress.remove_task(result_task)
+            result_tasks.clear()
+            result_kind = None
+
+        def poll_results():
+            nonlocal result_kind
+            for event in result_events.read():
+                kind, stage = event['kind'], event['stage']
+                if result_kind != kind:
+                    clear_results()
+                    result_kind = kind
+                    for name in ('prepare', 'render'):
+                        result_tasks[name] = progress.add_task('', total=None, visible=False)
+                title = 'DEG' if kind == 'DEG' else 'Enrichment'
+                label = escape(event.get('label', ''))
+                if stage == 'prepare':
+                    workers = event.get('workers', '')
+                    description = f'  {title} plots ({workers} processes): {label}'
+                else:
+                    description = f'  {title} results: {label}'
+                progress.update(result_tasks[stage], total=event['total'], completed=event['completed'],
+                                description=description, visible=event['total'] > 0)
+                # A Jupyter cell-start line may itself be buffered until Done.
+                # Keep the active module accurate using the live result channel.
+                cell = 'pdf-deg' if kind == 'DEG' else 'pdf-enrichment'
+                progress.update(task, description=f'Modules: {cell}')
+
+        for raw_line in _quarto_output_lines(process, poll_results):
             line = re.sub(r"\x1b\[[0-9;]*m", "", raw_line).strip()
             if not line:
                 continue
@@ -439,6 +508,9 @@ def _stream_quarto_output(process: subprocess.Popen, output_format: str) -> tupl
             if match:
                 index, total, cell_name = int(match.group(1)), int(match.group(2)), match.group(3)
                 last_cell = line
+                expected = 'pdf-deg' if result_kind == 'DEG' else 'pdf-enrichment'
+                if cell_name != expected:
+                    clear_results()
                 progress.update(
                     task,
                     total=total,
@@ -447,10 +519,12 @@ def _stream_quarto_output(process: subprocess.Popen, output_format: str) -> tupl
                 )
                 if index == total and re.search(r'\bDone\b', line):
                     cells_completed = True
+                    clear_results()
                     progress.remove_task(task)
                     task = progress.add_task(
                         f"Quarto ({output_format.upper()}): converting figures / rendering document", total=None)
             elif line.startswith('[typst]:') and 'Compiling' in line:
+                clear_results()
                 progress.remove_task(task)
                 task = progress.add_task("Quarto (PDF): compiling document with Typst", total=None)
             elif line.startswith("Output created:"):
@@ -520,6 +594,15 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
         block_manifest = Path(abs_output_dir) / f'report-blocks-{output_format}.jsonl'
         block_manifest.unlink(missing_ok=True)
         env['BIOREPORT_BLOCK_MANIFEST'] = str(block_manifest)
+        progress_file = None
+        if output_format == 'pdf':
+            # Quarto may reuse the Jupyter kernel between language editions.
+            # Keep its channel path stable, with fresh events for every render.
+            progress_file = template_dir / 'result-progress.jsonl'
+            progress_file.unlink(missing_ok=True)
+            env['BIOREPORT_PROGRESS_FILE'] = str(progress_file)
+        else:
+            env.pop('BIOREPORT_PROGRESS_FILE', None)
         if layout == "single":
             stem = "report_pdf" if output_format == "pdf" else "report"
             (Path(abs_output_dir) / "qmd" / f"{stem}.{output_format}").unlink(missing_ok=True)
@@ -531,7 +614,7 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
             cmd, cwd=template_dir, env=env, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, text=True,
         )
-        last_cell, error_summary, cells_completed = _stream_quarto_output(process, output_format)
+        last_cell, error_summary, cells_completed = _stream_quarto_output(process, output_format, progress_file)
         process.stdout.close()
         return_code = process.wait()
 

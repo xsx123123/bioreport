@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from threading import Lock
 import time
 import traceback
 
@@ -54,6 +55,7 @@ class _Worker:
         env['MPLBACKEND'] = 'Agg'
         env.pop('BIOREPORT_BLOCK_MANIFEST', None)
         env.pop('BIOREPORT_ASSET_AUDIT_FILE', None)
+        env.pop('BIOREPORT_PROGRESS_FILE', None)
         root = str(Path(__file__).resolve().parents[1])
         env['PYTHONPATH'] = os.pathsep.join(filter(None, [root, env.get('PYTHONPATH')]))
         try:
@@ -112,6 +114,16 @@ def prepared_results(jobs, workers, label):
     count = min(workers, len(jobs))
     from loguru import logger
     logger.info('PDF {}: {} results, {} worker processes', label, len(jobs), count)
+    from .result_progress import report_result_progress
+    report_result_progress(label, 'prepare', 0, len(jobs), workers=count)
+    completed = 0
+    completion_lock = Lock()
+
+    def mark_prepared(job):
+        nonlocal completed
+        with completion_lock:
+            completed += 1
+            report_result_progress(label, 'prepare', completed, len(jobs), job['label'], workers=count)
     with tempfile.TemporaryDirectory(prefix='bioreport-pdf-') as temporary:
         root = Path(temporary)
         tasks = [dict(job, output_dir=str(root / f'result-{index:06}'))
@@ -120,7 +132,9 @@ def prepared_results(jobs, workers, label):
             def sequential():
                 for job in tasks:
                     try:
-                        yield prepare_job(job)
+                        result = prepare_job(job)
+                        mark_prepared(job)
+                        yield result
                     finally:
                         shutil.rmtree(job['output_dir'], ignore_errors=True)
             iterator = sequential()
@@ -142,7 +156,9 @@ def prepared_results(jobs, workers, label):
             def request(job):
                 child = available.get()
                 try:
-                    return child.request(job)
+                    result = child.request(job)
+                    mark_prepared(job)
+                    return result
                 finally:
                     available.put(child)
 
