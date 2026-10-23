@@ -9,7 +9,7 @@
       open: '下载图表', title: '下载图表', format: '文件格式', width: '宽度（px）',
       height: '高度（px）', dpi: '分辨率（DPI）', lock: '锁定宽高比', reset: '恢复默认', cancel: '取消',
       download: '下载', busy: '正在导出…',
-      hint: '宽高为导出图像的实际像素尺寸；DPI 写入 PNG 元数据，决定出版软件中的物理尺寸。SVG 保留矢量图形；PDF 内嵌无损图像。',
+      hint: '宽高为导出图像的实际像素尺寸；DPI 决定物理打印尺寸并写入 PNG 元数据——提高 DPI 会保持物理尺寸、自动增加像素（图像更清晰）。SVG 保留矢量图形；PDF 内嵌无损图像。',
       invalid: '宽度和高度须为 100–16000 之间的整数。',
       invalidDpi: 'DPI 须为 72–2400 之间的整数。',
       large: 'PNG 和 PDF 最多支持 1600 万像素，请减小宽度或高度。',
@@ -20,7 +20,7 @@
       open: 'Download chart', title: 'Download chart', format: 'File format',
       width: 'Width (px)', height: 'Height (px)', dpi: 'Resolution (DPI)', lock: 'Lock aspect ratio',
       reset: 'Reset', cancel: 'Cancel', download: 'Download', busy: 'Exporting…',
-      hint: 'Width and height are the exported image dimensions; the DPI is stored in PNG metadata and sets the physical size for publishing. SVG retains vectors; PDF embeds a lossless image.',
+      hint: 'Width and height are the exported image dimensions. DPI sets the physical print size stored in PNG metadata — raising it keeps the physical size and adds pixels (a sharper image). SVG retains vectors; PDF embeds a lossless image.',
       invalid: 'Width and height must be integers between 100 and 16000.',
       invalidDpi: 'DPI must be an integer between 72 and 2400.',
       large: 'PNG and PDF support up to 16 million pixels. Reduce the width or height.',
@@ -136,6 +136,26 @@
       if (Number(fields.width.value) > 0 && Number(fields.height.value) > 0)
         active.ratio = Number(fields.width.value) / Number(fields.height.value);
     });
+    // DPI and pixels are coupled through the physical print size: raising the
+    // DPI keeps the physical size and therefore grows the pixel dimensions.
+    // 'change' (not 'input') avoids rounding drift from per-keystroke scaling.
+    dialog.querySelector('[name=dpi]').addEventListener('change', () => {
+      const fields = dialog.querySelector('form').elements;
+      const dpi = Number(fields.dpi.value);
+      const previous = active.dpi;
+      if (!Number.isInteger(dpi) || dpi < 72 || dpi > 2400 || !previous) return;
+      active.dpi = dpi;
+      const factor = dpi / previous;
+      let width = Math.round(Number(fields.width.value) * factor);
+      let height = Math.round(Number(fields.height.value) * factor);
+      const shrink = Math.min(1, 16000 / width, 16000 / height,
+                              Math.sqrt(16000000 / (width * height)));
+      width = Math.max(100, Math.round(width * shrink));
+      height = Math.max(100, Math.round(height * shrink));
+      fields.width.value = width;
+      fields.height.value = height;
+      if (fields.lock.checked) active.ratio = width / height;
+    });
     dialog.querySelector('[name=format]').addEventListener('change', syncDpiVisibility);
     dialog.querySelector('form').addEventListener('submit', exportChart);
   }
@@ -145,6 +165,7 @@
     for (const name of ['format', 'width', 'height', 'dpi']) fields[name].value = value[name];
     fields.lock.checked = value.lock;
     active.ratio = value.width / value.height;
+    active.dpi = value.dpi;
     syncDpiVisibility();
     dialog.querySelector('.report-export-status').textContent = '';
   }
