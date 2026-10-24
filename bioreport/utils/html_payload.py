@@ -32,7 +32,13 @@ def payload_markup(data, class_name, encoding):
     if directory:
         identity = payload_reference(data, directory)
         reference = f' data-payload-ref="{identity}"'
-        data = ''
+        # Quarto's embed-resources pass serializes an EMPTY <script> without
+        # its closing tag, so the next sibling script (chart registration or
+        # the table module initializer) becomes inert raw text. A hyphenated
+        # placeholder keeps the element non-empty; the hyphen is outside the
+        # base64 character class, so staging/merge regexes never rematch it,
+        # and consumers with data-payload-ref never read the text content.
+        data = 'await-delivery'
     return (f'<script type="application/octet-stream" class="{class_name}" '
             f'data-encoding="{encoding}"{reference}>{data}</script>')
 
@@ -53,9 +59,13 @@ def embed_payloads(path, directory):
     references = set(re.findall(r'data-payload-ref="(report-payload-[a-f0-9]+)"', document))
     if not references:
         return
-    index = document.lower().rfind('</body>')
-    if index < 0:
-        index = len(document)
+    # Case-insensitive search, but index into the ORIGINAL text: str.lower()
+    # expands İ (U+0130) to two code points, which would shift every later
+    # index and split the closing </body> tag.
+    match = None
+    for match in re.finditer(r'</body\s*>', document, re.I):
+        pass
+    index = match.start() if match else len(document)
     temporary = path.with_name(path.name + '.payloads.tmp')
     with temporary.open('w', encoding='utf-8') as output:
         output.write(document[:index])
