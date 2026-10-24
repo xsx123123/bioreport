@@ -108,8 +108,20 @@
       location.hash = '#' + encodeURIComponent(page.id);
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     }
-    for (let parent = element.parentElement; parent; parent = parent.parentElement)
+    let unfoldedCard = null;
+    for (let parent = element.parentElement; parent; parent = parent.parentElement) {
       if (parent.tagName === 'DETAILS') parent.open = true;
+      // Folded comparison cards collapse via Bootstrap, not <details>.
+      if (parent.classList?.contains('report-comparison-card')) {
+        parent.hidden = false;
+        const body = parent.querySelector('.callout-collapse');
+        if (body && !body.classList.contains('show')) {
+          unfoldedCard = parent;
+          parent.querySelector('.callout-header')?.click();
+        }
+      }
+    }
+    if (unfoldedCard) await new Promise(resolve => setTimeout(resolve, 360));
     const panes = [];
     for (let pane = element.closest('.tab-pane'); pane; pane = pane.parentElement?.closest('.tab-pane'))
       panes.unshift(pane);

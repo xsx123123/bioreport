@@ -1,0 +1,106 @@
+<script>
+/* Folded comparison cards with a synced search box (see bioreport/utils/comparisons_ui.py). */
+(() => {
+  'use strict';
+  function cardTitle(card) {
+    const container = card.querySelector('.callout-title-container');
+    if (!container) return card.textContent.trim();
+    return [...container.childNodes]
+      .filter(node => !(node.nodeType === 1 && node.classList.contains('screen-reader-only')))
+      .map(node => node.textContent).join(' ').trim();
+  }
+  function isOpen(card) {
+    const body = card.querySelector('.callout-collapse');
+    return Boolean(body && body.classList.contains('show'));
+  }
+  function openCard(card) {
+    card.hidden = false;
+    if (!isOpen(card)) card.querySelector('.callout-header')?.click();
+  }
+  function apply(scope, query) {
+    const q = query.trim().toLowerCase();
+    const lists = [...scope.querySelectorAll('.report-comparison-cards')];
+    const boxes = [...scope.querySelectorAll('.report-comparison-search')];
+    // Rendered in document order: each search box pairs with the card list
+    // that follows it, so counts stay per-section (table vs volcano vs GO...).
+    let first = null, matched = 0;
+    const titles = new Set();
+    lists.forEach((list, index) => {
+      let hits = 0;
+      for (const card of list.querySelectorAll('.report-comparison-card')) {
+        const hit = !q || cardTitle(card).toLowerCase().includes(q);
+        card.hidden = !hit;
+        if (!hit) continue;
+        hits++; matched++;
+        if (!first) first = card;
+        titles.add(cardTitle(card));
+      }
+      const box = boxes[index];
+      if (box) {
+        const input = box.querySelector('input');
+        const count = box.querySelector('.report-comparison-count');
+        if (input.value !== query) input.value = query;
+        count.textContent = q ? `${hits} / ${count.dataset.total || ''}` : '';
+      }
+      let hint = list.querySelector('.report-comparison-empty');
+      if (q && !hits) {
+        if (!hint) {
+          hint = document.createElement('p');
+          hint.className = 'report-comparison-empty';
+          list.append(hint);
+        }
+        hint.textContent = scope.querySelector('.report-comparison-search input')?.dataset.emptyText || '';
+        hint.hidden = false;
+      } else if (hint) hint.hidden = true;
+    });
+    return {matched, first, unique: matched > 0 && titles.size === 1};
+  }
+  function init() {
+    for (const box of document.querySelectorAll('.report-comparison-search')) {
+      if (box._reportFoldSearch) continue;
+      box._reportFoldSearch = true;
+      const scope = box.closest('.report-page') || document;
+      const input = box.querySelector('input');
+      let lastAuto = '';
+      input.addEventListener('input', () => {
+        const state = apply(scope, input.value);
+        // One distinct comparison left: open it everywhere (table + volcano
+        // sections) and bring it into view once per distinct query.
+        if (state.unique && input.value.trim() && lastAuto !== input.value.trim()) {
+          lastAuto = input.value.trim();
+          for (const card of scope.querySelectorAll('.report-comparison-card'))
+            if (!card.hidden) openCard(card);
+          state.first.scrollIntoView({block: 'start', behavior: 'smooth'});
+        } else if (!input.value.trim()) lastAuto = '';
+      });
+      input.addEventListener('keydown', event => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        const state = apply(scope, input.value);
+        if (!state.first) return;
+        openCard(state.first);
+        state.first.scrollIntoView({block: 'start', behavior: 'smooth'});
+      });
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once: true});
+  else init();
+})();
+</script>
+<style>
+.report-comparison-search{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;
+  margin:.25rem 0 1rem;padding:.55rem .75rem;border:1px solid var(--br-border,#e2e8f0);
+  border-radius:8px;background:var(--br-surface-soft,#f8fafc)}
+.report-comparison-search input{flex:1 1 220px;max-width:340px;padding:.4rem .7rem;
+  font:inherit;color:var(--br-text,#334155);background:var(--br-surface,#fff);
+  border:1px solid var(--br-border,#e2e8f0);border-radius:6px}
+.report-comparison-search input:focus{outline:2px solid var(--br-primary,#2563eb);
+  outline-offset:1px;border-color:var(--br-primary,#2563eb)}
+.report-comparison-count{min-width:3.5em;color:var(--br-muted,#52657d);font-variant-numeric:tabular-nums}
+.report-comparison-hint{color:var(--br-muted,#52657d);font-size:.8rem}
+.report-comparison-card{margin-block:.55rem}
+.report-comparison-card .callout-header{cursor:pointer}
+.report-comparison-card .callout-title-container{font-weight:600;word-break:break-all}
+.report-comparison-empty{margin:.75rem 0;color:var(--br-muted,#52657d);text-align:center}
+@media(max-width:575.98px){.report-comparison-hint{display:none}}
+</style>

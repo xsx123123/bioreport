@@ -5,9 +5,10 @@ def render_enrichment(config, comparisons, display_ai, *, pdf=False, english=Fal
     if pdf:
         from .pdf_views import render_pdf_enrichment
         return render_pdf_enrichment(config, comparisons, display_ai, english=english)
-    from IPython.display import display, Markdown
+    from IPython.display import display, Markdown, HTML
     from .enrichment import enrichment_results, select_enrichment_terms
     from .utils.render_output import show_figure
+    from .utils.comparisons_ui import fold_comparisons, comparison_search_markup, cards_open, cards_close, card_open, card_close
     from .utils.visualize_utils import display_gene_expression_table
     from .config import display_path
     from omics.rna.analysis.enrichment_plotly import draw_fancy_dotplot
@@ -17,20 +18,31 @@ def render_enrichment(config, comparisons, display_ai, *, pdf=False, english=Fal
         display(Markdown('\n\n' + body + '\n\n'))
 
     results = list(enrichment_results(config, comparisons))
+    fold = fold_comparisons(len(comparisons), config)
     count = config.get('analysis', {}).get('enrichment', {}).get('top_n', 12)
     databases = list(dict.fromkeys(r.database for r in results))
     for database in databases:
         heading = database or ('Enrichment' if english else '功能富集')
         markdown(f'### {heading}')
-        markdown(':::: {.panel-tabset .enrichment-comparisons}')
+        if fold:
+            grouped = {r.comparison for r in results if r.database == database}
+            display(HTML(comparison_search_markup(len(grouped), english)))
+            markdown(cards_open())
+        else:
+            markdown(':::: {.panel-tabset .enrichment-comparisons}')
         current_comparison = None
         for result in (r for r in results if r.database == database):
             title = f'{result.comparison} {result.direction}'
             if result.comparison != current_comparison:
                 if current_comparison is not None:
                     markdown(':::')
+                    if fold:
+                        markdown(card_close())
                 current_comparison = result.comparison
-                markdown(f'#### {result.comparison}')
+                if fold:
+                    markdown(card_open(result.comparison))
+                else:
+                    markdown(f'#### {result.comparison}')
                 markdown('::: {.panel-tabset .enrichment-directions}')
             label = ({'UP':'Upregulated (UP)', 'DOWN':'Downregulated (DOWN)'} if english else
                      {'UP':'上调（UP）', 'DOWN':'下调（DOWN）'})[result.direction]
@@ -68,4 +80,6 @@ def render_enrichment(config, comparisons, display_ai, *, pdf=False, english=Fal
             display_ai(result.result_id)
         if current_comparison is not None:
             markdown(':::')
-        markdown('::::')
+            if fold:
+                markdown(card_close())
+        markdown(cards_close() if fold else '::::')
