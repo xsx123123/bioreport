@@ -1,4 +1,4 @@
-/* BioReport offline chart downloads. No server or third-party PDF runtime. */
+/* BioReport offline chart downloads. Local pdfmake runtime; no server or network required. */
 (() => {
   'use strict';
   if (window.BioReportPlotlyExport) return;
@@ -9,9 +9,10 @@
       open: '下载图表', title: '下载图表', format: '文件格式', width: '宽度（px）',
       height: '高度（px）', lock: '锁定宽高比', reset: '恢复默认', cancel: '取消',
       download: '下载', busy: '正在导出…',
-      hint: '宽高为导出图像的实际像素尺寸；PNG 固定按 1000 DPI 写入元数据（物理尺寸 = 像素 ÷ 1000 英寸）。SVG 保留矢量图形；PDF 内嵌无损图像。',
+      hint: '宽高为图表布局尺寸（96 px/英寸）。PNG 按 1000 DPI 高清渲染，输出宽高约为输入的 10.42 倍。SVG、PDF 保留矢量线条和文字。',
+      output: '实际输出',
       invalid: '宽度和高度须为 100–16000 之间的整数。',
-      large: 'PNG 和 PDF 最多支持 1600 万像素，请减小宽度或高度。',
+      pngLarge: '1000 DPI PNG 输出单边最多 16000 像素、总计最多 1.28 亿像素，请减小宽高或选择 SVG。',
       failed: '导出失败，请重试或减小尺寸。',
       tipPalette: '切换分组配色方案', tipScale: '切换连续色带',
     },
@@ -19,15 +20,17 @@
       open: 'Download chart', title: 'Download chart', format: 'File format',
       width: 'Width (px)', height: 'Height (px)', lock: 'Lock aspect ratio',
       reset: 'Reset', cancel: 'Cancel', download: 'Download', busy: 'Exporting…',
-      hint: 'Width and height are the exported image dimensions; PNG metadata is fixed at 1000 DPI (physical size = pixels ÷ 1000 inches). SVG retains vectors; PDF embeds a lossless image.',
+      hint: 'Width and height set the chart layout (96 px/inch). PNG renders at 1000 DPI, with output dimensions about 10.42 times the input. SVG and PDF retain vector lines and text.',
+      output: 'Output size',
       invalid: 'Width and height must be integers between 100 and 16000.',
-      large: 'PNG and PDF support up to 16 million pixels. Reduce the width or height.',
+      pngLarge: '1000 DPI PNG supports up to 16000 pixels per side and 128 million pixels total. Reduce the dimensions or choose SVG.',
       failed: 'Export failed. Please retry or reduce the dimensions.',
       tipPalette: 'Switch group color palette', tipScale: 'Switch color scale',
     },
   };
   // PNG resolution is not a user choice: every download carries 1000 DPI metadata.
   const PNG_DPI = 1000;
+  const CSS_DPI = 96;
   let dialog, active, returnFocus;
 
   // Theme the Plotly color-switch dropdowns like the rest of the report and
@@ -107,7 +110,8 @@
         <label><span data-label="height"></span><input name="height" type="number" min="100" max="16000" step="1" required></label>
       </div>
       <label class="report-export-lock"><input name="lock" type="checkbox"><span data-label="lock"></span></label>
-      <p data-label="hint"></p><p class="report-export-status" role="status" aria-live="polite"></p>
+      <p data-label="hint"></p><p class="report-export-output" aria-live="polite"></p>
+      <p class="report-export-status" role="status" aria-live="polite"></p>
       <div class="report-export-actions">
         <button type="button" data-label="reset"></button>
         <button type="button" data-label="cancel"></button>
@@ -127,6 +131,7 @@
         if (form.elements.lock.checked && value > 0) {
           form.elements[other].value = Math.round(dimension === 'width' ? value / active.ratio : value * active.ratio);
         }
+        updateOutput();
       });
     }
     dialog.querySelector('[name=lock]').addEventListener('change', () => {
@@ -134,7 +139,21 @@
       if (Number(fields.width.value) > 0 && Number(fields.height.value) > 0)
         active.ratio = Number(fields.width.value) / Number(fields.height.value);
     });
+    dialog.querySelector('[name=format]').addEventListener('change', updateOutput);
     dialog.querySelector('form').addEventListener('submit', exportChart);
+  }
+
+  function outputSize(format, width, height) {
+    const scale = format === 'png' ? PNG_DPI / CSS_DPI : 1;
+    return {width: Math.round(width * scale), height: Math.round(height * scale)};
+  }
+
+  function updateOutput() {
+    const fields = dialog.querySelector('form').elements;
+    const size = outputSize(fields.format.value, Number(fields.width.value), Number(fields.height.value));
+    const text = messages[active.language] || messages.en;
+    dialog.querySelector('.report-export-output').textContent =
+      `${text.output}: ${size.width} × ${size.height} px${fields.format.value === 'png' ? ' · 1000 DPI' : ''}`;
   }
 
   function fill(value) {
@@ -143,6 +162,7 @@
     fields.lock.checked = value.lock;
     active.ratio = value.width / value.height;
     dialog.querySelector('.report-export-status').textContent = '';
+    updateOutput();
   }
 
   function open(chart, button) {
@@ -193,12 +213,13 @@
     const status = dialog.querySelector('.report-export-status');
     const width = Number(fields.width.value), height = Number(fields.height.value);
     const format = fields.format.value;
+    const output = outputSize(format, width, height);
     if (![width, height].every(value => Number.isInteger(value) && value >= 100 && value <= 16000)) {
       status.textContent = text.invalid;
       return;
     }
-    if (format !== 'svg' && width * height > 16000000) {
-      status.textContent = text.large;
+    if (format === 'png' && (output.width > 16000 || output.height > 16000 || output.width * output.height > 128000000)) {
+      status.textContent = text.pngLarge;
       return;
     }
     state.value = {format, width, height, lock: fields.lock.checked};
@@ -210,20 +231,19 @@
     submit.textContent = text.busy;
     status.textContent = '';
     let canvas;
-    // Interactive color-switch dropdowns are part of the on-screen chart, not
-    // of the exported image: hide them for the snapshot, then put them back.
-    const menus = state.chart.layout?.updatemenus;
-    if (menus?.length) await Plotly.relayout(state.chart, {updatemenus: []});
     try {
       await document.fonts.ready;
-      const url = await Plotly.toImage(state.chart, {format: 'svg', width, height, scale: 1});
+      const url = await Plotly.toImage(exportSnapshot(state.chart), {format: 'svg', width, height, scale: 1});
       const svg = await portableSvg(url);
       let blob;
       if (format === 'svg') blob = new Blob([svg], {type: 'image/svg+xml;charset=utf-8'});
+      else if (format === 'pdf') blob = await vectorPdf(svg, width, height,
+        state.pdfFonts || window.BioReportPlotlyFonts?.[state.pdfFontsKey]);
       else {
-        canvas = await rasterize(svg, width, height, format === 'pdf');
-        if (format === 'pdf') blob = await imagePdf(canvas);
-        else blob = await withDpi(await new Promise((resolve, reject) => canvas.toBlob(
+        // Rasterize the vector at the target resolution, keeping the original
+        // layout and relative font sizes rather than enlarging a low-res PNG.
+        canvas = await rasterize(svg, output.width, output.height, false);
+        blob = await withDpi(await new Promise((resolve, reject) => canvas.toBlob(
           value => value ? resolve(value) : reject(new Error('PNG encoding failed')), 'image/png')), PNG_DPI);
       }
       download(blob, state.filename + '.' + format);
@@ -232,13 +252,23 @@
       console.error('BioReport chart export failed', error);
       status.textContent = text.failed;
     } finally {
-      if (menus?.length) await Plotly.relayout(state.chart, {updatemenus: menus});
       if (canvas) { canvas.width = 0; canvas.height = 0; }
       state.busy = false;
       controls.forEach(node => { node.disabled = false; });
       dialog.removeAttribute('aria-busy');
       submit.textContent = text.download;
     }
+  }
+
+  function exportSnapshot(chart) {
+    const data = structuredClone(chart.data);
+    const layout = structuredClone(chart.layout);
+    // GWAS uses scattergl for interaction. Its default SVG export contains a
+    // screen-resolution bitmap; convert only the export copy to vector points.
+    // Keep every currently displayed point, including typed-array coordinates.
+    for (const trace of data) if (trace.type === 'scattergl') trace.type = 'scatter';
+    layout.updatemenus = [];
+    return {data, layout, config: {...chart._context}};
   }
 
   async function portableSvg(url) {
@@ -306,45 +336,62 @@
     } finally { URL.revokeObjectURL(url); }
   }
 
-  // A single-page PDF with a lossless RGB image. PDF points use 72/inch,
-  // whereas the dialog dimensions are CSS pixels (96/inch). No print dialog.
-  async function imagePdf(canvas) {
-    const width = canvas.width, height = canvas.height;
-    const rgba = canvas.getContext('2d').getImageData(0, 0, width, height).data;
-    let rgb = new Uint8Array(width * height * 3);
-    for (let i = 0, j = 0; i < rgba.length; i += 4) {
-      rgb[j++] = rgba[i]; rgb[j++] = rgba[i + 1]; rgb[j++] = rgba[i + 2];
+  // TrueType subsets are prepared with fontTools during report generation.
+  // Keep text searchable and preserve the actual glyph outlines offline.
+  async function vectorPdf(source, width, height, embeddedFonts) {
+    const svg = new DOMParser().parseFromString(source, 'image/svg+xml').documentElement;
+    const fonts = {Helvetica: {normal: 'Helvetica', bold: 'Helvetica-Bold',
+      italics: 'Helvetica-Oblique', bolditalics: 'Helvetica-BoldOblique'}};
+    const vfs = {}, families = new Map();
+    for (const [family, variants] of Object.entries(embeddedFonts || {})) {
+      families.set(family.toLowerCase(), family);
+      fonts[family] = {};
+      for (const [variant, data] of Object.entries(variants)) {
+        const file = `report-font-${Object.keys(vfs).length}.ttf`;
+        vfs[file] = data;
+        fonts[family][variant] = file;
+      }
     }
-    let filter = '';
-    if (window.CompressionStream) {
-      const stream = new Blob([rgb]).stream().pipeThrough(new CompressionStream('deflate'));
-      rgb = new Uint8Array(await new Response(stream).arrayBuffer());
-      filter = '/Filter /FlateDecode ';
+    for (const style of svg.querySelectorAll('style')) {
+      style.textContent = style.textContent.replace(/@font-face\s*\{[^}]+\}/g, '');
     }
-    const encode = value => new TextEncoder().encode(value);
+    for (const family of families.values()) {
+      const variants = fonts[family];
+      const normal = variants.normal || Object.values(variants)[0];
+      for (const variant of ['normal', 'bold', 'italics', 'bolditalics']) variants[variant] ||= normal;
+    }
+    // SVG-to-PDFKit picks one font for each text element rather than doing
+    // browser glyph fallback. Explicitly select the report's CJK face for Han.
+    for (const node of svg.querySelectorAll('text,tspan')) {
+      let stack = '';
+      for (let parent = node; parent && !stack; parent = parent.parentElement)
+        stack = parent.style?.fontFamily || parent.getAttribute('font-family') || '';
+      const candidates = stack.split(',').map(name => families.get(name.trim().replace(/["']/g, '').toLowerCase())).filter(Boolean);
+      const cjk = /[\u2e80-\u9fff\uf900-\ufaff\uff00-\uffef]/u.test(node.textContent);
+      const family = (cjk && [...candidates, ...families.values()].find(name => /(?:-CN|CJK|HarmonyOS)/i.test(name))) ||
+        candidates[0] || families.values().next().value;
+      if (cjk && !family) throw new Error('An embedded CJK font is required for Chinese PDF text');
+      node.style.fontFamily = family || 'Helvetica';
+    }
+    return encodeSvgPdf(new XMLSerializer().serializeToString(svg), width, height, fonts, vfs);
+  }
+
+  function encodeSvgPdf(svg, width, height, fonts, vfs) {
     const pageWidth = width * .75, pageHeight = height * .75;
-    const contents = `q ${pageWidth} 0 0 ${pageHeight} 0 0 cm /Chart Do Q\n`;
-    const objects = [
-      ['<< /Type /Catalog /Pages 2 0 R >>'],
-      ['<< /Type /Pages /Kids [3 0 R] /Count 1 >>'],
-      [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /XObject << /Chart 5 0 R >> >> /Contents 4 0 R >>`],
-      [`<< /Length ${encode(contents).length} >>\nstream\n${contents}endstream`],
-      [`<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 ${filter}/Length ${rgb.length} >>\nstream\n`, rgb, '\nendstream'],
-    ];
-    const parts = [encode('%PDF-1.4\n%BioReport\n')], offsets = [0];
-    let size = parts[0].length;
-    const append = value => { const bytes = typeof value === 'string' ? encode(value) : value; parts.push(bytes); size += bytes.length; };
-    objects.forEach((object, index) => {
-      offsets.push(size);
-      append(`${index + 1} 0 obj\n`);
-      object.forEach(append);
-      append('\nendobj\n');
+    return new Promise((resolve, reject) => {
+      // Synchronous getStream uses only supplied local fonts and propagates
+      // conversion errors to the dialog instead of leaving it stuck exporting.
+      const stream = window.BioReportPdfMake.createPdf({
+        pageSize: {width: pageWidth, height: pageHeight}, pageMargins: 0,
+        defaultStyle: {font: Object.keys(fonts)[0]},
+        content: [{svg, width: pageWidth, height: pageHeight, absolutePosition: {x: 0, y: 0}}],
+      }, {}, fonts, vfs).getStream();
+      const chunks = [];
+      stream.on('data', chunk => chunks.push(chunk));
+      stream.on('error', reject);
+      stream.on('end', () => resolve(new Blob(chunks, {type: 'application/pdf'})));
+      stream.end();
     });
-    const xref = size;
-    append(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`);
-    offsets.slice(1).forEach(offset => append(`${String(offset).padStart(10, '0')} 00000 n \n`));
-    append(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
-    return new Blob(parts, {type: 'application/pdf'});
   }
 
   // PNG pHYs chunk: pixels-per-metre metadata so publishing tools render the
@@ -379,11 +426,17 @@
     view.setUint32(12, ppm);
     chunk[16] = 1;                              // unit: metre
     view.setUint32(17, crc32(chunk.subarray(4, 17)));
-    const out = new Uint8Array(buffer.length + chunk.length);
-    out.set(buffer.subarray(0, insertAt));
-    out.set(chunk, insertAt);
-    out.set(buffer.subarray(insertAt), insertAt + chunk.length);
-    return new Blob([out], {type: 'image/png'});
+    // Replace any density emitted by the browser: PNG permits only one pHYs.
+    const parts = [buffer.subarray(0, insertAt), chunk];
+    for (let offset = insertAt; offset < buffer.length;) {
+      const length = new DataView(buffer.buffer).getUint32(offset);
+      const end = offset + 12 + length;
+      const isDensity = buffer[offset + 4] === 0x70 && buffer[offset + 5] === 0x48 &&
+        buffer[offset + 6] === 0x59 && buffer[offset + 7] === 0x73;
+      if (!isDensity) parts.push(buffer.subarray(offset, end));
+      offset = end;
+    }
+    return new Blob(parts, {type: 'image/png'});
   }
 
   function download(blob, filename) {

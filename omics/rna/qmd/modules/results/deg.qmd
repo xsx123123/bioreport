@@ -18,7 +18,7 @@ for comp in comparisons:
     if not deg_file or not os.path.exists(deg_file):
         raise FileNotFoundError(f"DEG result is missing for {comp}: {deg_file or deg_file_key}")
     df_deg = pd.read_csv(deg_file)
-    display_gene_expression_table(df_deg)
+    display_gene_expression_table(df_deg, volcano_comparison=comp)
 
 display(Markdown(":::"))
 ```
@@ -42,7 +42,7 @@ for comp in comparisons:
         col_logfc = 'log2FoldChange', col_pval = 'pvalue',
         col_padj = 'padj', col_symbol = 'Symbol', col_status='Status_By_Pval',
         fc_cutoff=deg_settings.get('log2fc_threshold', 1.0),
-        pval_cutoff=deg_settings.get('pvalue_threshold', 0.05))
+        pval_cutoff=deg_settings.get('pvalue_threshold', 0.05), comparison=comp)
     show_figure(fig)
     display_result_ai(f"rna.results.deg__{comp}")
 

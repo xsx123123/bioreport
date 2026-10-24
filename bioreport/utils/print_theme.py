@@ -38,8 +38,32 @@ def group_palette(groups, palette=None):
 
 
 def plain(value):
-    value = re.sub(r'<sup>.*?</sup>', '', str(value or ''), flags=re.S)
-    return html.unescape(re.sub(r'<[^>]*>', '', value.replace('<br>', '\n'))).strip()
+    value = str(value or '')
+    scripts = {
+        'sup': str.maketrans('0123456789+-=()ni', '⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿⁱ'),
+        'sub': str.maketrans('0123456789+-=()aehijklmnoprstuvx', '₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ'),
+    }
+    def script(match):
+        text = html.unescape(re.sub(r'<[^>]*>', '', match[2]))
+        mapping = scripts[match[1].lower()]
+        # Short scientific indices retain their meaning; prose subtitles stay
+        # readable normal text. Never discard the contents of a script tag.
+        return text.translate(mapping) if all(ord(c) in mapping for c in text) else text
+    value = re.sub(r'<(sup|sub)\b[^>]*>(.*?)</\1>', script, value, flags=re.S | re.I)
+    value = re.sub(r'<br\s*/?>', '\n', value, flags=re.I)
+    return html.unescape(re.sub(r'<[^>]*>', '', value)).strip()
+
+
+def vector_snapshot(figure):
+    """Export 2-D WebGL scatter as SVG paths without changing the live figure."""
+    if not any(trace.type == 'scattergl' for trace in figure.data):
+        return figure
+    import plotly.graph_objects as go
+    spec = figure.to_plotly_json()
+    for trace in spec['data']:
+        if trace['type'] == 'scattergl':
+            trace['type'] = 'scatter'
+    return go.Figure(spec)
 
 
 # Heatmaps retain the full clustering until more than 40 sample columns.

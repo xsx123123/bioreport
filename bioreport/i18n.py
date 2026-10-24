@@ -2,6 +2,7 @@
 from copy import deepcopy
 import base64
 import gzip
+import hashlib
 import html
 import json
 import os
@@ -112,16 +113,25 @@ def add_language_switch(path, config, lang, layout='single'):
         page.write_text(str(soup), encoding='utf-8')
 
 
-def combine_language_editions(chinese_path, english_path, output_path, title='BioReport'):
+def combine_language_editions(chinese_path, english_path, output_path, title='BioReport', *, payload_directory=None):
     """Pack two rendered editions into one offline HTML with an in-page switch."""
     chinese_path, english_path, output_path = map(Path, (chinese_path, english_path, output_path))
     shell_title = html.escape(title, quote=True)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    payloads = {}
+    raw_bytes = 0
+    lite_bytes = 0
+    packed = re.compile(r'(<script\b[^>]*\bdata-encoding="(?:columnar-)?gzip-base64"[^>]*>)([A-Za-z0-9+/=\s]+)(</script\s*>)', re.I)
+    def share_payload(match):
+        data = re.sub(r'\s+', '', match[2])
+        identity = 'report-payload-' + hashlib.sha256(data.encode('ascii')).hexdigest()
+        payloads.setdefault(identity, data)
+        return match[1][:-1] + f' data-payload-ref="{identity}">' + match[3]
     with output_path.open('w', encoding='utf-8', newline='') as output:
         output.write(f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{shell_title}</title><style>
-*{{box-sizing:border-box}}html,body{{height:100%;margin:0}}body{{font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#26364a;background:#f3f7fb}}
+*{{box-sizing:border-box}}html,body{{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}}body{{font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#26364a;background:#f3f7fb}}
 iframe{{position:absolute;inset:0;display:block;width:100%;height:100%;border:0;background:#fff}}
 iframe[hidden]{{display:block;visibility:hidden;pointer-events:none}}
 iframe:not([hidden]){{animation:report-edition-in 200ms ease}}
@@ -264,17 +274,40 @@ iframe:not([hidden]){{animation:report-edition-in 200ms ease}}
 </script>
 ''')
         for language, source_path in (('zh', chinese_path), ('en', english_path)):
+            raw_bytes += source_path.stat().st_size
+            document = packed.sub(share_payload, source_path.read_text(encoding='utf-8'))
+            references = set(re.findall(r'data-payload-ref="(report-payload-[a-f0-9]+)"', document))
+            for identity in references - payloads.keys():
+                if payload_directory is None:
+                    raise ValueError(f'Missing staged HTML payload directory for {identity}')
+                path = Path(payload_directory) / (identity + '.b64')
+                if not path.is_file():
+                    raise FileNotFoundError(f'Missing staged HTML payload: {path}')
+                payloads[identity] = path
+            lite_bytes += len(document.encode('utf-8'))
             output.write(f'<script id="edition-{language}" type="application/octet-stream">\n')
             with tempfile.TemporaryFile() as compressed:
-                with source_path.open('rb') as source, gzip.GzipFile(fileobj=compressed, mode='wb', mtime=0) as archive:
-                    while chunk := source.read(1024 * 1024):
-                        archive.write(chunk)
+                with gzip.GzipFile(fileobj=compressed, mode='wb', mtime=0) as archive:
+                    archive.write(document.encode('utf-8'))
                 compressed.seek(0)
                 output.flush()
                 base64.encode(compressed, output.buffer)
                 output.flush()
             output.write('</script>\n')
+        for identity, data in payloads.items():
+            output.write(f'<script id="{identity}" type="application/octet-stream" class="report-shared-payload">')
+            if isinstance(data, Path):
+                with data.open(encoding='ascii') as source:
+                    while chunk := source.read(1024 * 1024):
+                        output.write(chunk)
+            else:
+                output.write(data)
+            output.write('</script>\n')
         output.write('</body></html>\n')
+    return {'raw_edition_bytes':raw_bytes, 'lightweight_edition_bytes':lite_bytes,
+            'unique_payloads':len(payloads),
+            'shared_payload_bytes':sum(value.stat().st_size if isinstance(value, Path) else len(value)
+                                       for value in payloads.values())}
 
 
 def localize_figure(figure):

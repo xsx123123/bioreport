@@ -75,9 +75,10 @@ def test_html_table_includes_offline_assets(monkeypatch):
 
     render_output.show_table(pd.DataFrame({"sample": ["S1"], "value": [8.2]}))
 
-    assert len(shown) == 3
+    assert len(shown) == 4
     assert len(shown[1].data) > 100_000
-    assert "S1" in shown[2].data
+    assert "BioReportHtmlPayload" in shown[2].data
+    assert "S1" in shown[3].data
     for item in shown:
         assert not re.search(r'<(?:script|link|img)[^>]+(?:src|href)=[\'"]https?://', item.data)
 

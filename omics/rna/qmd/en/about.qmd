@@ -236,7 +236,7 @@ Four engineering principles guide the ecosystem:
 <div class="footer-vision"><span class="footer-vision-kicker">FROM STARDUST, TO DISCOVERY</span><span class="footer-vision-text">Let every computation leave evidence, and every report carry discovery.</span></div>
 <div class="footer-notes">
 <div class="footer-note">Built for real life-science analysis and delivery needs, this project supports open collaboration and reproducible research. Issues and module contributions are welcome on <a href="https://github.com/xsx123123/bioreport" target="_blank" rel="noopener">GitHub</a>.</div>
-<div class="footer-note">We thank participating research teams at <strong>Huazhong Agricultural University</strong> for their support with research use cases, analysis requirements and tool testing.</div>
+<div class="footer-note">We thank the <strong>Genomics Laboratory, College of Horticulture and Forestry Sciences, Huazhong Agricultural University</strong> for their support with research use cases, analysis requirements and tool testing.</div>
 </div>
 <div class="footer-meta"><span class="footer-label">Development and maintenance</span><span class="footer-value">BioReport / CygnusX BioOps team</span><a class="footer-gh" href="https://github.com/xsx123123/bioreport" target="_blank" rel="noopener">GitHub repository ↗</a></div>
 :::

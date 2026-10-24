@@ -199,7 +199,12 @@ def test_compose_report_footer_cover_and_provenance_page(tmp_path):
     report_qmd = compose_report(config, staged)
     html_doc = Path(report_qmd).read_text(encoding="utf-8")
     assert '<footer class="report-footer">' in html_doc
-    assert f"Powered by BioReport v{bioreport.__version__}" in html_doc
+    from bs4 import BeautifulSoup
+    footer = BeautifulSoup(html_doc, 'html.parser').select_one('footer.report-footer')
+    assert [image['alt'] for image in footer.select('img')] == ['BioReport', 'Quarto']
+    assert [image['src'] for image in footer.select('img')] == ['../logo/bioreport.png', '../logo/quarto.png']
+    assert footer.select_one('.report-footer-version').text == f'v{bioreport.__version__}'
+    assert footer.select_one('time')['datetime'] == provenance['generated_at']
     assert provenance["generated_at"] in html_doc
 
     # 溯源是独立页面：导航栏位于「分析结果」之后、「关于」之前
@@ -247,4 +252,4 @@ def test_integration_provenance_json_written(tmp_path):
     assert "prov-card" in html
     assert "自动采集 · 不可修改" in html
     assert "SHA256" in html
-    assert "Powered by BioReport" in html
+    assert 'class="report-footer-bioreport"' in html and 'class="report-footer-quarto"' in html

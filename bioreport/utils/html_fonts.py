@@ -18,15 +18,38 @@ _FONT_FACE = re.compile(r'@font-face\s*\{[^{}]*\}', re.I)
 _FONT_URL = re.compile(r'''url\(\s*['"]?(data:[^,()]+;base64,([A-Za-z0-9+/=\s]+))['"]?\s*\)''', re.I)
 _CJK_FAMILY = re.compile(r'''font-family\s*:\s*['"]?BioReport-CN\b''', re.I)
 _CACHE: OrderedDict[tuple[str, str], bytes] = OrderedDict()
+_RUNTIME = re.compile(r'<script\b(?=[^>]*\bdata-bioreport-(?:runtime|dependency)=)[^>]*>.*?</script\s*>', re.I | re.S)
+_PACKED = re.compile(r'<script\b[^>]*\bdata-encoding="(?:columnar-)?gzip-base64"[^>]*>([A-Za-z0-9+/=\s]+)</script\s*>', re.I)
 
 
-def report_codepoints(documents: list[str]) -> set[int]:
+def report_codepoints(documents: list[str], *, payload_directory=None) -> set[int]:
     """Include rendered text, escaped chart/UI strings and embedded SVG text."""
     # ASCII covers numeric formatting, searches and identifiers; common symbols
     # cover controls, typography and hover labels generated after page load.
     points = set(range(32, 127)) | set(range(0x2000, 0x2070)) | set(range(0x2080, 0x20A0))
     points.update(map(ord, '±×÷°µμΔαβγπ≤≥≠∞−→←↗✓✗'))
-    for source in documents:
+    seen_payloads = set()
+    def collect(source):
+        from .html_payload import unpacked_text
+        # Library encoding tables are not report text. In particular pdfmake's
+        # CMaps otherwise keep tens of thousands of unnecessary CJK glyphs.
+        def omit_library(match):
+            tag = match[0].split('>', 1)[0]
+            if 'data-bioreport-dependency=' in tag or re.search(r'data-bioreport-runtime=["\']pdfmake-', tag):
+                return ''
+            return match[0]
+        source = _RUNTIME.sub(omit_library, source)
+        for identity in re.findall(r'data-payload-ref="(report-payload-[a-f0-9]+)"', source):
+            if identity in seen_payloads:
+                continue
+            if payload_directory is None:
+                raise ValueError(f'Missing staged HTML payload directory for {identity}')
+            seen_payloads.add(identity)
+            collect(unpacked_text((Path(payload_directory) / (identity + '.b64')).read_text(encoding='ascii')))
+        def unpack(match):
+            collect(unpacked_text(match[1]))
+            return ''
+        source = _PACKED.sub(unpack, source)
         text = html.unescape(source)
         points.update(map(ord, text))
         for match in re.finditer(r'(?:\\u[0-9a-fA-F]{4})+', text):
@@ -35,6 +58,8 @@ def report_codepoints(documents: list[str]) -> set[int]:
             points.update(map(ord, base64.b64decode(match[1]).decode('utf-8')))
         for match in re.finditer(r'''data:image/svg\+xml(?:;charset=[^,]+)?,([^'"\s)]+)''', text):
             points.update(map(ord, unquote(match[1])))
+    for source in documents:
+        collect(source)
     return {point for point in points if not 0xD800 <= point <= 0xDFFF}
 
 
@@ -72,14 +97,14 @@ def subset_font_bytes(data: bytes, points: set[int]) -> bytes:
     return result
 
 
-def subset_html_fonts(paths: list[Path]) -> list[dict]:
+def subset_html_fonts(paths: list[Path], *, payload_directory=None) -> list[dict]:
     """Use both languages' character union, rewrite CJK faces and report sizes.
 
     This is a delivery step after Quarto embeds resources and before bilingual
     compression/manifests. Full staged TTF files remain intact for PDF rendering.
     """
     documents = [path.read_text(encoding='utf-8') for path in paths]
-    points = report_codepoints(documents)
+    points = report_codepoints(documents, payload_directory=payload_directory)
     metrics = []
     for path, source in zip(paths, documents):
         before = len(source.encode('utf-8'))

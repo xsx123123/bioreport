@@ -1,0 +1,13 @@
+{
+  "library": "pdfmake",
+  "version": "0.2.7",
+  "upstream": "https://github.com/bpampuch/pdfmake/tree/0.2.7",
+  "source": "DT htmlwidgets vendored pdfmake.js (upstream browser distribution)",
+  "source_sha256": "e4c64b6a228b8860a05541dc0bad128eef52266919d2db7502e59bd7d25d56be",
+  "bundle": "pdfmake-0.2.7.min.js",
+  "bundle_sha256": "8679fd3a4946e174745d9c19c634202fa289177d1db0a3e5236a473420cc07fc",
+  "build_command": "python scripts/build_pdf_runtime.py /path/to/pdfmake-0.2.7/build/pdfmake.js",
+  "license": "MIT; bundled dependency notices in pdfmake-LICENSE.txt",
+  "minifier": "terser 5.19.2",
+  "local_changes": "Rename pdfMake global to BioReportPdfMake; bypass AMD registration and isolate UMD browser export; minify."
+}

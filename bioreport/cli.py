@@ -608,6 +608,10 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
         source = f"qmd/report{'_pdf' if output_format == 'pdf' else ''}.qmd" if layout == "single" else "."
         cmd = ["quarto", "render", source, "--output-dir", abs_output_dir, "--to", quarto_format]
         env["BIOREPORT_OUTPUT_FORMAT"] = output_format
+        if output_format == 'html' and layout == 'single':
+            env['BIOREPORT_HTML_PAYLOAD_DIR'] = str(template_dir / '.html-payloads')
+        else:
+            env.pop('BIOREPORT_HTML_PAYLOAD_DIR', None)
         block_manifest = Path(abs_output_dir) / f'report-blocks-{output_format}.jsonl'
         block_manifest.unlink(missing_ok=True)
         env['BIOREPORT_BLOCK_MANIFEST'] = str(block_manifest)
@@ -682,12 +686,16 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
             chinese = Path(abs_output_dir) / report_artifact_name(config, output_format, "zh")
             english = Path(abs_output_dir) / report_artifact_name(config, output_format, "en")
             from .utils.html_fonts import subset_html_fonts
-            font_metrics = subset_html_fonts([chinese, english])
+            font_metrics = subset_html_fonts([chinese, english],
+                                            payload_directory=env.get('BIOREPORT_HTML_PAYLOAD_DIR'))
             (Path(abs_output_dir) / "font-subset-metrics.json").write_text(
                 json.dumps(font_metrics, ensure_ascii=False, indent=2), encoding="utf-8")
             title = original_config.get("report", {}).get("title", "BioReport bilingual report")
             combined = expected.with_name(expected.name + ".combined")
-            combine_language_editions(chinese, english, combined, title)
+            payload_metrics = combine_language_editions(chinese, english, combined, title,
+                payload_directory=env.get('BIOREPORT_HTML_PAYLOAD_DIR'))
+            (Path(abs_output_dir) / 'html-payload-metrics.json').write_text(
+                json.dumps(payload_metrics, indent=2), encoding='utf-8')
             combined.replace(expected)
             if chinese != expected:
                 chinese.unlink()
@@ -698,6 +706,9 @@ def render_report(config: dict, config_path: str, output_dir: str, template_dir:
             )
         elif not expected.exists() and not (paired_html and output_format == "html" and lang == "zh"):
             raise RuntimeError(f"Quarto finished but expected artifact is missing: {expected}")
+        if output_format == 'html' and layout == 'single' and not paired_html:
+            from .utils.html_payload import embed_payloads
+            embed_payloads(expected, env['BIOREPORT_HTML_PAYLOAD_DIR'])
         if output_format == "pdf" and expected.suffix == ".pdf":
             from .utils.pdf_metadata import set_pdf_metadata
             set_pdf_metadata(expected, config)

@@ -3,6 +3,7 @@
 import os
 import re
 import json
+import hashlib
 import shutil
 from pathlib import Path
 from contextlib import contextmanager
@@ -23,6 +24,7 @@ _itables_loaded = False
 _figure_count = 0
 _table_count = 0
 _figure_group = None
+_pdf_font_payloads = set()
 
 # Plotly's browser exporter exposes ``scale`` rather than a DPI setting.
 # Plotly renders CSS pixels at 96 DPI, so this scale produces PNG dimensions
@@ -43,7 +45,7 @@ def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
     if is_pdf():
         if figure is None:
             raise ValueError("Cannot export an empty figure")
-        from .print_theme import export_vector, plain, print_panels, UnsupportedTrace
+        from .print_theme import export_vector, plain, print_panels, vector_snapshot, UnsupportedTrace
         directory = Path(os.environ.get("BIOREPORT_ASSET_DIR", "pdf-figures"))
         directory.mkdir(parents=True, exist_ok=True)
         text = caption or plain(figure.layout.title.text) or "分析图表"
@@ -54,12 +56,13 @@ def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
                 export_vector(panel, path)
             except UnsupportedTrace:
                 # Preserve custom/third-party trace support on normal Kaleido hosts.
-                path.write_bytes(panel.to_image(format='svg',scale=4))
+                path.write_bytes(vector_snapshot(panel).to_image(format='svg',scale=4))
             _emit_pdf_figure(path, text, evidence, detail)
 
     else:
         if not _plotly_loaded:
             _plotly_trace_types.clear()
+            _pdf_font_payloads.clear()
         encountered = {trace.type for trace in figure.data}
         if encountered - _plotly_trace_types:
             _plotly_trace_types.update(encountered)
@@ -81,18 +84,48 @@ def show_figure(figure, config=None, caption=None, *, evidence=None) -> None:
                 dependency = f'<script data-bioreport-dependency="plotly">{runtime_source}</script>'
             # Keep export controls with the runtime dependency, so standalone
             # and website reports both work without a network connection.
-            exporter = Path(__file__).resolve().parents[1] / 'assets/js/plotly-export.js'
-            if shared:
-                shutil.copyfile(exporter, directory / exporter.name)
-                export_html = f'<script src="{escape_html(url, quote=True)}/{exporter.name}"></script>'
-            else:
-                export_html = '<script>' + exporter.read_text(encoding='utf-8') + '</script>'
+            export_html = ''
+            for name in ('pdfmake-0.2.7.min.js', 'plotly-export.js', 'volcano-link.js', 'html-payload.js', 'plotly-loader.js'):
+                exporter = Path(__file__).resolve().parents[1] / 'assets/js' / name
+                if shared:
+                    shutil.copyfile(exporter, directory / exporter.name)
+                    export_html += f'<script src="{escape_html(url, quote=True)}/{exporter.name}"></script>'
+                else:
+                    export_html += (f'<script data-bioreport-runtime="{exporter.name}">'
+                                    + exporter.read_text(encoding='utf-8') + '</script>')
             display(HTML(dependency + export_html))
             _plotly_loaded = True
-        display(HTML(_responsive_figure_html(figure, config, caption=caption)))
+        from .pdf_export_fonts import chart_pdf_fonts
+        fonts = json.dumps(chart_pdf_fonts(figure), ensure_ascii=True, separators=(',', ':'))
+        font_key = hashlib.sha256(fonts.encode()).hexdigest()[:24]
+        registration = ''
+        if font_key not in _pdf_font_payloads:
+            registration = ('<script>window.BioReportPlotlyFonts ||= {};window.BioReportPlotlyFonts['
+                            + json.dumps(font_key) + ']=' + fonts + ';</script>')
+            _pdf_font_payloads.add(font_key)
+        serialized = figure
+        if isinstance(figure.layout.meta, dict) and figure.layout.meta.get('bioreport_volcano'):
+            from .html_payload import linked_tables
+            metadata = figure.layout.meta['bioreport_volcano']
+            table_id = linked_tables.get((metadata['comparison'], metadata.get('sourceDigest')))
+            if table_id and metadata.get('idColumn') and metadata.get('textColumn'):
+                import plotly.graph_objects as go
+                serialized = go.Figure(figure)
+                for trace in serialized.data:
+                    if trace.type in ('scatter', 'scattergl') and trace.name in ('NS', 'Down', 'Up'):
+                        trace.x, trace.y, trace.text, trace.customdata = [], [], [], []
+                serialized.update_layout(meta={**serialized.layout.meta,
+                    'bioreport_table_source': {**metadata, 'tableId': table_id}})
+        markup = _responsive_figure_html(serialized, config, caption=caption,
+                                         pdf_fonts_key=font_key, notify_ready=True)
+        if serialized is not figure:
+            markup = markup.replace('Plotly.newPlot(', 'window.BioReportPlotlyLoader.newPlot(', 1)
+        lazy = _lazy_figure_html(markup, figure)
+        display(HTML(registration + lazy))
         from .asset_audit import record_asset
         record_asset({'kind':'plotly','language':language(),
-                      'traces':sorted(encountered),'bundle':_plotly_bundle})
+                      'traces':sorted(encountered),'bundle':_plotly_bundle,
+                      'raw_html_bytes':len(markup.encode()),'html_bytes':len((registration + lazy).encode())})
 
 
 def _emit_pdf_figure(path, caption, evidence, detail=''):
@@ -210,7 +243,7 @@ def _html_plotly_config(figure, config=None, caption=None):
     return normalized
 
 
-def _responsive_figure_html(figure, config, caption=None):
+def _responsive_figure_html(figure, config, caption=None, *, pdf_fonts_key=None, notify_ready=False):
     """Render a plotly figure inside an aspect-ratio box.
 
     Plotly pins the graph div and its drawing size to the layout's pixel
@@ -229,15 +262,27 @@ def _responsive_figure_html(figure, config, caption=None):
     figure.layout.width = None
     figure.layout.height = None
     try:
+        from .pdf_export_fonts import chart_pdf_fonts
+
         options = dict(full_html=False, include_plotlyjs=False, config=config)
-        export_settings = json.dumps({
+        metadata = {
             'width': export_options.get('width') or width,
             'height': export_options.get('height') or height,
             'filename': export_options['filename'],
             'language': language(),
-        }, ensure_ascii=True).replace('<', '\\u003c')
+        }
+        if pdf_fonts_key:
+            metadata['pdfFontsKey'] = pdf_fonts_key
+        else:
+            metadata['pdfFonts'] = chart_pdf_fonts(figure)
+        export_settings = json.dumps(metadata, ensure_ascii=True).replace('<', '\\u003c')
         scripts = ["window.BioReportPlotlyExport.attach(document.getElementById('{plot_id}'), "
                    + export_settings + ');']
+        if isinstance(figure.layout.meta, dict) and figure.layout.meta.get('bioreport_volcano'):
+            link_settings = json.dumps({**figure.layout.meta['bioreport_volcano'], 'language': language()},
+                                      ensure_ascii=True).replace('<', '\\u003c')
+            scripts.append("window.BioReportVolcanoLink.attachChart(document.getElementById('{plot_id}'), "
+                           + link_settings + ');')
         if isinstance(figure.layout.meta, dict) and figure.layout.meta.get('bioreport_responsive_pca'):
             scripts.append(_responsive_pca_script(width, height))
             config['responsive'] = False
@@ -249,6 +294,8 @@ def _responsive_figure_html(figure, config, caption=None):
               const hint = region.querySelector('.report-chart-scroll-hint');
               new ResizeObserver(() => {hint.hidden = region.scrollWidth <= region.clientWidth + 1;}).observe(region);
             })();""")
+        if notify_ready:
+            scripts.append("window.BioReportPlotlyLoader?.ready('{plot_id}');")
         options['post_script'] = scripts
         html = figure.to_html(**options)
     finally:
@@ -273,6 +320,26 @@ def _responsive_figure_html(figure, config, caption=None):
         return (f'<div class="report-chart-scroll" tabindex="0" role="region" aria-label="{escape_html(title, quote=True)}">'
                 f'<p class="report-chart-scroll-hint" hidden>{hint}</p>{result}</div>')
     return result
+
+
+def _lazy_figure_html(markup, figure):
+    """Compress before notebook output; build Plotly only when its tab is visible."""
+    from .html_payload import packed_text, payload_markup
+    chart_id = re.search(r'<div id="([^"]+)" class="plotly-graph-div"', markup)[1]
+    container_id = 'report-lazy-' + chart_id
+    width, height = figure.layout.width or 700, figure.layout.height or 450
+    metadata = {'chartId':chart_id, 'language':language()}
+    if isinstance(figure.layout.meta, dict) and figure.layout.meta.get('bioreport_volcano'):
+        metadata['volcano'] = figure.layout.meta['bioreport_volcano']
+    options = json.dumps(metadata, ensure_ascii=True).replace('<', '\\u003c')
+    hint = '图表将在进入视野时加载' if language() == 'zh' else 'Chart loads when visible'
+    return (f'<div id="{container_id}" class="report-lazy-plot" '
+            f'style="position:relative;width:100%;min-height:280px;aspect-ratio:{width}/{height}">'
+            '<div class="plotly-graph-div"></div>'
+            f'<p class="report-plot-status" role="status">{hint}</p>'
+            + payload_markup(packed_text(markup), 'report-plot-data', 'gzip-base64')
+            + '<script>window.BioReportPlotlyLoader.register('
+            + json.dumps(container_id) + ',' + options + ');</script></div>')
 
 
 def _responsive_pca_script(width, height):
@@ -389,6 +456,9 @@ def ensure_table_runtime():
     global _itables_loaded
     if not _itables_loaded:
         init_notebook_mode(all_interactive=False, connected=False)
+        from IPython.display import display as publish
+        payload = Path(__file__).resolve().parents[1] / 'assets/js/html-payload.js'
+        publish(HTML('<script data-bioreport-runtime="html-payload.js">' + payload.read_text() + '</script>'))
         _itables_loaded = True
     from itables.javascript import _ITABLES_UNDERSCORE_VERSION
     return 'window.' + _ITABLES_UNDERSCORE_VERSION

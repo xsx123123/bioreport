@@ -157,7 +157,8 @@ def plot_volcano_pvalue(
     pval_cutoff: float = 0.05,     # 现在的含义是 P-value < 0.05
     palette: Optional[dict] = None,
     display_cap: Optional[float] = None,
-    annotate_top: int = 0
+    annotate_top: int = 0,
+    comparison: Optional[str] = None,
 ) -> go.Figure:
     """
     绘制交互式火山图 (使用 Raw P-value 进行筛选).
@@ -185,6 +186,14 @@ def plot_volcano_pvalue(
     c_logfc = resolved_cols['logfc']
     c_pval = resolved_cols['pval']
     c_symbol = resolved_cols['symbol']
+
+    if comparison is not None:
+        from bioreport.utils.volcano_link import gene_id_column, source_digest
+        identity_column = gene_id_column(df)
+        digest = source_digest(df)
+        # Positional fallback also works when the source frame has a custom index.
+        identities = (df[identity_column].astype(str).to_numpy() if identity_column is not None
+                      else np.arange(len(df)).astype(str))
 
     # --- 2. 核心修改：使用 P-value 确定状态 ---
     if fc_cutoff <= 0 or not 0 < pval_cutoff < 1:
@@ -218,6 +227,7 @@ def plot_volcano_pvalue(
             mode='markers', name=status,
             marker=dict(color=colors.get(status, 'grey'), size=size, opacity=opacity),
             text=sub_df[c_symbol] if c_symbol in sub_df else sub_df.index.astype(str),
+            customdata=identities[(df[col_status] == status).to_numpy()].tolist() if comparison is not None else None,
             # 悬停显示详细信息
             hovertemplate=(
                 "<b>%{text}</b><br>" +
@@ -253,6 +263,13 @@ def plot_volcano_pvalue(
 
     if annotate_top and annotate_top > 0:
         _annotate_top_genes(fig, df, col_status, c_logfc, c_pval, c_symbol, display_cap, annotate_top)
+    if comparison is not None:
+        fig.update_layout(meta={**(fig.layout.meta or {}), 'bioreport_volcano': {
+            'comparison': str(comparison), 'idColumn': str(identity_column) if identity_column is not None else None,
+            'sourceDigest': digest, 'xColumn': c_logfc, 'pColumn': c_pval,
+            'textColumn': c_symbol if c_symbol in df else None,
+            'fcCutoff': fc_cutoff, 'pCutoff': pval_cutoff, 'displayCap': display_cap,
+        }})
     return fig
 
 

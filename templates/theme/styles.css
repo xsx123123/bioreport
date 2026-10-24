@@ -87,7 +87,12 @@
 /* Global report footer: a real HTML element (injected by the composer from
    provenance.json), kept in document flow so it never covers content. */
 .report-footer {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: 16px;
+  row-gap: 8px;
   max-width: 46em;
   width: 100%;
   margin: 0 auto;
@@ -99,8 +104,49 @@
   text-align: center;
   letter-spacing: 0.02em;
 }
+.report-footer-branding { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.report-footer-brand { display: inline-flex; align-items: center; flex-shrink: 0; }
+.report-footer-brand img { display: block; object-fit: contain; max-width: 100%; }
+.report-footer-bioreport { width: 99px; height: 24px; }
+.report-footer-quarto { width: 83px; height: 20px; }
+.report-footer-version, .report-footer-generated { white-space: nowrap; }
+.report-footer-separator { opacity: .6; }
+.report-footer-brand:focus-visible { outline: 2px solid var(--br-primary,#2563eb); outline-offset: 4px; }
+:root[data-report-theme="dark"] .report-footer-brand img { filter: brightness(1.6) saturate(.85); }
+@media (max-width: 480px) {
+  .report-footer { padding-inline: 8px; }
+  .report-footer-generated { font-size: .75rem; }
+}
 
 body { padding-bottom: 0; }
+
+/* Routed reports end at their own footer. Quarto otherwise reserves a 60px
+   pagination row below main, even though these reports have no pagination. */
+html { overscroll-behavior-y: none; }
+body.report-routing-ready #quarto-content.page-rows-contents {
+  grid-template-rows: [content-top] minmax(max-content, 1fr) [content-bottom] 0 [page-bottom];
+  min-height: calc(100vh - var(--report-navbar-height, 5rem));
+  min-height: calc(100dvh - var(--report-navbar-height, 5rem));
+  padding-block: 0;
+}
+body.report-routing-ready #quarto-document-content {
+  display: flex;
+  flex-direction: column;
+  margin-block: 0;
+  min-width: 0;
+}
+body.report-routing-ready .report-page { flex-shrink: 0; }
+body.report-routing-ready .report-page > section:first-child > :is(h1,h2,h3):first-child {
+  margin-top: 0;
+}
+body.report-routing-ready #quarto-document-content > .report-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+@media print {
+  body.report-routing-ready #quarto-document-content { display: block; }
+  body.report-routing-ready #quarto-content.page-rows-contents { min-height: 0; }
+}
 
 /* Weakened hint callout (e.g. table column legend): small gray text, thin border. */
 .report-note-hint.callout {

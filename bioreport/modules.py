@@ -72,12 +72,24 @@ def _report_footer(template_dir: Path, english: bool = False) -> str:
             generated_at = data.get("generated_at") or ""
     except Exception:
         pass
-    text = f"Powered by BioReport v{version}"
+    generated = ''
     if generated_at:
-        text += f" · {'Generated at' if english else '生成于'} {generated_at}"
+        generated = (f'<span class="report-footer-generated">{"Generated at" if english else "生成于"} '
+                     f'<time datetime="{escape(str(generated_at), quote=True)}">{escape(str(generated_at))}</time></span>')
     return (
         '```{=html}\n'
-        f'<footer class="report-footer">{escape(text)}</footer>\n'
+        '<footer class="report-footer">'
+        '<span class="report-footer-branding"><span>Powered by</span>'
+        '<a class="report-footer-brand" href="https://github.com/xsx123123/bioreport" '
+        'target="_blank" rel="noopener noreferrer">'
+        '<img class="report-footer-bioreport" src="../logo/bioreport.png" alt="BioReport" '
+        'width="99" height="24"></a>'
+        f'<span class="report-footer-version">v{escape(str(version))}</span>'
+        '<span class="report-footer-separator" aria-hidden="true">×</span>'
+        '<a class="report-footer-brand" href="https://quarto.org/" target="_blank" rel="noopener noreferrer">'
+        '<img class="report-footer-quarto" src="../logo/quarto.png" alt="Quarto" '
+        'width="83" height="20"></a></span>'
+        f'{generated}</footer>\n'
         '```\n'
     )
 

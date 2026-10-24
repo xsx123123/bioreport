@@ -566,7 +566,8 @@ def display_fastq_screen_table(r1_path: str, r2_path: str, sample_sheet_path: st
         allow_html=True
     )
 
-def display_gene_expression_table(data: Union[str, pd.DataFrame], top_n: Optional[int] = None):
+def display_gene_expression_table(data: Union[str, pd.DataFrame], top_n: Optional[int] = None,
+                                  *, volcano_comparison: Optional[str] = None):
     """
     展示基因表达量表 (Notion 风格 + 科学计数法优化)
     """
@@ -597,4 +598,7 @@ def display_gene_expression_table(data: Union[str, pd.DataFrame], top_n: Optiona
         show(df_display)
     else:
         from .html_table import show_compact_table
-        show_compact_table(df_display)
+        if volcano_comparison is None:
+            show_compact_table(df_display)
+        else:
+            show_compact_table(df_display, volcano_comparison=volcano_comparison)

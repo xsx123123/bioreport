@@ -50,6 +50,7 @@ def stage_table_runtime():
     for name in ('dt_bundle.js', 'dt_bundle.css'):
         if not (directory / name).exists():
             shutil.copyfile(bundle / name, directory / name)
+    shutil.copyfile(Path(__file__).resolve().parents[1] / 'assets/js/html-payload.js', directory / 'html-payload.js')
     return directory
 
 
@@ -108,7 +109,7 @@ def export_button_text(kind):
     return '<svg viewBox="0 0 24 24" aria-hidden="true">' + path + '</svg>' + label
 
 
-def show_compact_table(frame):
+def show_compact_table(frame, *, volcano_comparison=None):
     payload = json.dumps(compact_payload(frame), ensure_ascii=False, separators=(',', ':'), allow_nan=False)
     digest = hashlib.sha256(payload.encode()).hexdigest()[:20]
     table_id = f'report-table-{digest}-{next(_ids)}'
@@ -118,7 +119,8 @@ def show_compact_table(frame):
         filename = f'table-{digest}.json'
         (directory / filename).write_text(payload, encoding='utf-8')
         root = os.environ['BIOREPORT_SHARED_ASSET_URL']
-        css = f'<link rel="stylesheet" href="{escape(root, quote=True)}/dt_bundle.css">'
+        css = (f'<link rel="stylesheet" href="{escape(root, quote=True)}/dt_bundle.css">'
+               f'<script src="{escape(root, quote=True)}/html-payload.js"></script>')
         runtime = 'import(' + json.dumps(root + '/dt_bundle.js') + ')'
         dataset = ' data-source=' + json.dumps(root + '/' + filename)
         embedded = ''
@@ -127,8 +129,15 @@ def show_compact_table(frame):
         runtime = ensure_table_runtime()
         css, dataset = '', ''
         # Script raw-text elements must not be closable by data or column names.
-        safe = payload.replace('&', '\\u0026').replace('<', '\\u003c').replace('>', '\\u003e')
-        embedded = f'<script type="application/json" class="report-table-data">{safe}</script>'
+        from .html_payload import MIN_COMPRESS_BYTES, columnar_table, packed_text, payload_markup
+        if len(payload.encode()) >= MIN_COMPRESS_BYTES:
+            packed = json.dumps(columnar_table(json.loads(payload)), ensure_ascii=False,
+                                separators=(',', ':'), allow_nan=False)
+            safe = packed_text(packed)
+            embedded = payload_markup(safe, 'report-table-data', 'columnar-gzip-base64')
+        else:
+            safe = payload.replace('&', '\\u0026').replace('<', '\\u003c').replace('>', '\\u003e')
+            embedded = f'<script type="application/json" class="report-table-data">{safe}</script>'
     english = language() == 'en'
     waiting = 'Table loads when visible' if english else '表格将在进入视野时加载'
     loading = 'Loading table…' if english else '正在加载表格…'
@@ -142,8 +151,21 @@ def show_compact_table(frame):
     enrichment = {'Description', 'GeneRatio', 'p.adjust'} <= set(frame.columns)
     table_class = ' report-enrichment-table' if enrichment else ''
     column_definitions = json.dumps(table_column_defs(frame), ensure_ascii=True).replace('<', '\\u003c')
+    link_settings = None
+    if volcano_comparison is not None:
+        from .volcano_link import gene_id_column, source_digest
+        from .html_payload import linked_tables
+        identity_column = gene_id_column(frame)
+        digest = source_digest(frame)
+        if digest:
+            linked_tables[(str(volcano_comparison), digest)] = table_id
+        link_settings = {'comparison': str(volcano_comparison), 'language': language(),
+                         'idColumn': str(identity_column) if identity_column is not None else None}
+    link_json = json.dumps(link_settings, ensure_ascii=True).replace('<', '\\u003c')
+    link_attribute = (f' data-volcano-comparison="{escape(str(volcano_comparison), quote=True)}"'
+                      if volcano_comparison is not None else '')
     markup = f'''{css}
-<div class="report-data-table report-table-pending{table_class}" data-row-count="{len(frame)}">
+<div class="report-data-table report-table-pending{table_class}" data-row-count="{len(frame)}"{link_attribute}>
 <p class="report-table-status" role="status">{len(frame):,} {'rows' if english else '行'} · <span>{waiting}</span></p>
 <table id="{table_id}" style="width:100%"{dataset}></table>{embedded}
 <script type="module">
@@ -159,12 +181,7 @@ def show_compact_table(frame):
    try {{
      const module = await {runtime};
      const DataTable = module.default;
-     let payload;
-     if (table.dataset.source) {{
-       const response = await fetch(table.dataset.source);
-       if (!response.ok) throw new Error('HTTP ' + response.status);
-       payload = await response.json();
-     }} else payload = JSON.parse(region.querySelector('.report-table-data').textContent);
+     const payload = await window.BioReportHtmlPayload.load(table);
      const numeric = new Set(payload.numeric);
      const numberRender = {NUMBER_RENDER_JS};
      const geneListRender = {GENE_LIST_RENDER_JS};
@@ -178,7 +195,11 @@ def show_compact_table(frame):
        if (title === 'Description') columns[index].render = descriptionRender;
        if (title.toLowerCase() === 'geneid') columns[index].render = geneListRender;
      }});
+     const volcanoLink = {link_json};
+     if (volcanoLink) window.BioReportVolcanoLink.decorateColumns(columns, payload.columns, volcanoLink);
      const rawExport = {{orthogonal:'export', columns:':visible'}};
+     if (volcanoLink && volcanoLink.idColumn == null)
+       rawExport.columns = ':visible:not(.report-volcano-action)';
      table._reportTable = new DataTable(table, {{data:payload.data,columns,
        columnDefs:{column_definitions},
        deferRender:true, scrollX:true, autoWidth:false, pageLength:10, order:[],
@@ -201,6 +222,7 @@ def show_compact_table(frame):
            scroll.setAttribute('aria-label',{json.dumps('Scrollable report data table' if english else '可横向滚动的数据表格')});}}
        }}
      }});
+     if (volcanoLink) window.BioReportVolcanoLink.attachTable(table, volcanoLink);
      table.dataset.ready='true';
      region.classList.remove('report-table-pending');
      status.textContent={json.dumps(ready)};
@@ -221,4 +243,8 @@ def show_compact_table(frame):
     from loguru import logger
     logger.info('Compact table: {} rows, {} columns, {} bytes; lazy initialization',
                 len(frame), len(frame.columns), len(payload.encode()))
+    from .asset_audit import record_asset
+    record_asset({'kind':'table', 'language':language(), 'rows':len(frame),
+                  'raw_payload_bytes':len(payload.encode()),
+                  'embedded_payload_bytes':0 if shared else len(safe.encode())})
     display(HTML(markup))
