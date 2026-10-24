@@ -104,6 +104,8 @@ report_data/
 
 使用显式 `enrichment.go/kegg` 后，不再要求额外配置 `input_files.enrichment_dir`；版本内嵌后，不再要求 `input_files.software_versions_file`。单独调用部分报告模块可以使用较少输入；这里的严格交付 Schema 面向完整 RNA 项目。
 
+未配置显式 `enrichment` 块时，报告在 `enrichment_dir` 下按文件名自动发现：先匹配旧命名 `{比较名}_{UP|DOWN}.csv`；找不到再按数据库拆分命名 `{比较名}_{GO|KEGG}_{UP|DOWN}*.csv`（如 `Salt_A_vs_WTSalt_GO_UP.csv`、`Salt_A_vs_WTSalt_KEGG_UP_enrichments.csv`）发现，并按数据库分别展示；两者都无才标记为未提供。
+
 ## 3. 软件版本直接放在 JSON
 
 ```json

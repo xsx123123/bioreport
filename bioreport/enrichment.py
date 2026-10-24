@@ -1,4 +1,5 @@
 """Shared GO/KEGG result contract for renderers, validation and interpretation."""
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -71,11 +72,31 @@ def enrichment_results(config, comparisons=None):
             p.stem.rsplit('_', 1)[0] for p in Path(root).glob('*.csv')
             if p.stem.endswith(('_UP','_DOWN'))
         }) if root else []
+    # Delivery tables are split per database: {comparison}_{GO|KEGG}_{UP|DOWN}*.csv.
+    split = re.compile(r'([A-Za-z0-9]+)_(UP|DOWN)(_.*)?$')
     for comparison in comparisons:
         for direction in ('UP','DOWN'):
             path = get_file_path(config, f'{comparison}_{direction}.csv', root) if root else None
-            yield EnrichmentResult('',comparison,direction,'available' if path and Path(path).is_file() else 'unavailable',
-                                   path=path, cutoff=settings.get('p_cutoff', .1))
+            if path and Path(path).is_file():
+                yield EnrichmentResult('', comparison, direction, 'available',
+                                       path=path, cutoff=settings.get('p_cutoff', .1))
+                continue
+            databases = {}
+            if root:
+                for candidate in sorted(Path(root).glob(f'{comparison}_*_{direction}*.csv')):
+                    stem = candidate.stem
+                    if not stem.startswith(f'{comparison}_'):
+                        continue
+                    match = split.match(stem[len(comparison) + 1:])
+                    if match and match.group(2) == direction:
+                        databases.setdefault(match.group(1).upper(), str(candidate))
+            if databases:
+                for database, db_path in databases.items():
+                    yield EnrichmentResult(database, comparison, direction, 'available',
+                                           path=db_path, cutoff=settings.get('p_cutoff', .1))
+            else:
+                yield EnrichmentResult('', comparison, direction, 'unavailable',
+                                       cutoff=settings.get('p_cutoff', .1))
 
 
 def validate_enrichment_inputs(config):

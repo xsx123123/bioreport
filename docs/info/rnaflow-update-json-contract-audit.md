@@ -23,7 +23,7 @@ python -m bioreport validate -c examples/X101SC26098749-Z01-J001_UPDATE/project_
 | 版本识别 | schema_version 为 2.0.0 | 旧格式转换未保留或处理该版本字段 | 当前代码没有针对这个上游版本的契约分派 |
 | 必需输入 | 未声明 enrichment_dir、software_versions_file | 默认 results 与 workflow 模块分别要求这两项 | 修正项目 ID 和路径后，模块检查仍然拒绝运行 |
 | 富集数据入口 | 顶层 enrichment.go/kegg，按 contrasts、UP/DOWN 保存 status/table/full_table/term_count/terms/messages | 旧格式转换不保留顶层 enrichment；模板读取文件路径与 analysis.enrichment 展示参数 | 内嵌结果、状态、参数均未接入 |
-| 富集文件名 | 比较组_GO_UP.csv；比较组_KEGG_UP_enrichments.csv 等 | HTML、PDF 按比较组_UP.csv / 比较组_DOWN.csv 查找，或从 files 精确映射 | 即使补齐 enrichment_dir，12 次当前规则查找仍全部落空；不能仅补目录 |
+| 富集文件名 | 比较组_GO_UP.csv；比较组_KEGG_UP_enrichments.csv 等 | HTML、PDF 按比较组_UP.csv / 比较组_DOWN.csv 查找，或从 files 精确映射 | 已解决：自动发现在旧命名落空后按 `{比较名}_{GO|KEGG}_{UP|DOWN}*.csv` 拆分命名查找，按数据库各生成一条结果（2026-10-24） |
 | 软件版本 | 只有各 MultiQC 的 multiqc_software_versions.txt，未提供统一版本 JSON/YAML | load_software_data 只解析 YAML/JSON | 直接把 TSV 填给 software_versions_file 会解析失败；需提供真实流程版本清单 |
 | 日期 | project_meta.analysis_date | 封面读取 project.report_date/date，再回退报告生成日期 | 上游分析日期不会自动作为报告日期使用；应明确两种日期语义 |
 | 交付清单 | delivery_manifest.json 的 files 是原机器绝对路径 | 配置加载器不会自动导入该独立清单；当前 files 路径需可在本机访问 | 75 项原路径在本机均不存在，按 output_location 迁移到交付根目录后均存在 |
@@ -54,7 +54,7 @@ stats.total_samples=15、group_count=5 与样本表一致。首页从样本表�
 
 1. 明确映射 project_name → project_id；保留 analysis_date，报告生成日期单独处理。保存上游 schema_version 供溯源和版本校验。
 2. 对此版本按 JSON 所在目录 + path_base 解析所有交付路径，避免再次拼接 data_dir。若暂时只生成当前格式的配置，可令 data_dir 为 . 并保留 data/... 路径。
-3. 上游补充真实的 software_versions_file（当前格式为 Software/Version 记录的 JSON/YAML），并声明 enrichment_dir=data/res/Enrichments。仅补两项仍不足以解决富集结果发现问题。
+3. 上游补充真实的 software_versions_file（当前格式为 Software/Version 记录的 JSON/YAML），并声明 enrichment_dir=data/res/Enrichments。富集结果发现问题已随拆分命名自动发现解决（2026-10-24），剩余缺口是 software_versions_file。
 4. 消费 enrichment 下显式的 table/full_table/status，保留 GO/KEGG、比较组、方向三个维度；no_results 用状态表达，不把占位行算作功能条目。不要把 GO 与 KEGG 的两张表任意映射到当前单个比较组_UP.csv 槽位而丢掉其中一类。
 5. 显式约定 DEG 显著性列（pvalue 或 padj）、阈值及边界运算；富集展示 cutoff 应与上游声明一致，或在报告中说明差异。
 6. 交付清单采用可迁移的相对路径；保留旧机器绝对路径作为来源记录即可。上游清单与 BioReport 自身生成的交付 manifest 是不同契约，不能直接互换。

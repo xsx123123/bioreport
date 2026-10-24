@@ -15,6 +15,7 @@
 
 ### 修复
 
+- 旧格式配置（无显式 `enrichment` 块）下富集结果显示"未提供结果"：自动发现在原有 `{比较名}_{UP|DOWN}.csv` 之外，支持按数据库拆分的交付命名 `{比较名}_{GO|KEGG}_{UP|DOWN}*.csv`（如 `Salt_A_vs_WTSalt_KEGG_UP_enrichments.csv`），按数据库各生成一条结果；旧命名行为不变。
 - 富集气泡图的 Count 图例圆点大小不再全部相同：px.scatter 默认 `legend.itemsizing='constant'` 会压平图例符号，且 plotly 图例按 marker.size 像素值绘制（上限约 16px）；现在以 ∝√Count 的像素直径绘制并设 `itemsizing='trace'`，图例圆点按数值成比例且升序排列。
 - PDF 密集散点层以 400 dpi 嵌入 SVG，保留全部点位、矢量坐标轴和标注；续表检测按表格查询首行，跳过已确定超高图表组合的重复测量，降低大量差异分析和富集结果排版时的内存开销；布局校验查询超时延长至 10 分钟。
 - Quarto 失败日志包含退出码及信号提示；失败项目保存在输出目录，已完成 Python 执行的 Typst 文档可直接重试排版。
