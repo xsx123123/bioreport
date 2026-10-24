@@ -317,7 +317,9 @@ bioreport/
 │   ├── ai/                     # Providers, evidence, validation, persistence
 │   ├── report/                 # PDF semantic model and validation
 │   └── utils/                  # Rendering, provenance, fonts, PDF helpers
-├── omics/rna/                 # RNA-seq modules and shared analysis functions
+├── omics/                     # Registered omics packages; see omics/README.md
+│   ├── rna/                   # RNA-seq content and analysis
+│   └── gwas/                  # GWAS content and analysis
 ├── templates/                 # Shared QMD pages, themes, PDF styles, assets
 ├── configs/                   # Example configurations
 ├── examples/                  # RNA-seq and generic assay examples
@@ -328,11 +330,11 @@ bioreport/
 
 ## Output and extension boundaries
 
-- The active generation path uses `bioreport/`, `omics/rna/`, and `templates/`; `archive/` is not part of the current pipeline.
+- The active generation path uses `bioreport/`, the selected package under `omics/`, and `templates/`; `archive/` is not part of the current pipeline.
 - `single` layout combines selected QMD modules and embeds HTML resources; `website` renders independent HTML pages.
-- Built-in `qc.*` and `results.*` modules use RNA-seq data contracts. Other assays can use `report.module_definitions` with custom QMD files and parameters.
+- `rna.*` and `gwas.*` modules use their respective data contracts. Other assays can use `report.module_definitions` with custom QMD files and parameters.
 - HTML figures and tables are emitted through shared display helpers. PDF figures use static SVG export and Typst layout.
-- New omics packages should register modules, provide QMD templates and analysis functions, and add package data as needed.
+- Follow the [omics development and registration guide](omics/README.md) for new packages, including CLI/language integration and package data. See the [shared template guide](templates/README.md) and [PDF guide](templates/pdf/README.md) for what to reuse and what to create.
 
 ## Workspace v1 and Web roadmap
 

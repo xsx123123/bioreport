@@ -311,7 +311,9 @@ BioReport 根据配置组合领域模块与共享模板，在 Quarto 执行阶�
 
 ### 共用内置页面（所有报告类型通用）
 
-`templates/shared/` 中的 `about.qmd`、`faq.qmd`、`license.qmd`、`trademark.qmd`、`AI.qmd` 是**所有报告模版共用**的内置页面：它们由 `bioreport/modules.py` 的 `MODULES` 注册为组学无关的内置模块，随核心模板一起分发。`bioreport/cli.py` 在渲染任何 assay 类型（RNA-seq 或通用 assay）时都会先把 `templates/shared/` stage 为临时 Quarto 项目的 `qmd/` 根目录，再让各组学包（如 `omics/rna/qmd/`）覆盖叠加自己的页面——因此核心引擎不依赖任何具体组学，修改这些共享文件会影响全部报告类型，只有 `rna.*` 注册模块及 `pdf/` 子目录下的内容才是 RNA-seq 专属。
+`templates/shared/` 中的 `about.qmd`、`faq.qmd`、`license.qmd`、`trademark.qmd`、`provenance.qmd`、`AI.qmd` 是所有报告共用的内置页面，由 `bioreport/modules.py` 的 `MODULES` 注册并随核心模板分发。CLI 先将共享页面复制为临时项目的 `qmd/`，再叠加由 `--omics` 或配置选出的唯一一个组学包。不能依次复制 RNA 和 GWAS 到同一目录，否则同名页面会互相覆盖。`templates/pdf/` 同时包含公共规则和组学专属文件，并非全部属于 RNA。
+
+新增组学请遵循 [模板开发与注册规范](../omics/README.md)。哪些文件可复用、哪些需要手工创建，分别见 [共享模板规范](../templates/README.md) 和 [PDF 模板规范](../templates/pdf/README.md)。模块注册后还需完成 CLI、双语、专属 PDF 及打包接入，并按声明的支持范围验收。
 
 ## 📝 配置文件 (`configs/report.example.json`) 关键字段
 
