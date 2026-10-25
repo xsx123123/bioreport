@@ -43,3 +43,20 @@ for comp in comparisons:
     display_result_ai(f'rna.results.deg__{comp}')
 display(Markdown(':::'))
 ```
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Figure Notes: Volcano Plot (Differential Genes)**
+
+This plot visualizes both the magnitude and the statistical significance of expression differences between two groups, and is used to quickly screen differentially expressed genes (DEGs).
+
+1. **Axes Interpretation**:
+   * **X-axis ($\text{log}_2\text{FoldChange}$)**: fold change in gene expression (log scale).
+     * Positive values (right): **upregulated** in the treatment/comparison group.
+     * Negative values (left): **downregulated** in the treatment/comparison group.
+   * **Y-axis ($-\text{log}_{10}\text{P-value}$)**: statistical significance. Higher values mean smaller P values (closer to 0) and more reliable differences.
+2. **Color Legend**:
+   * <span style="color:#e41749">●</span> **Up (upregulated genes)**: raw P < `{python} f"{deg_settings.get('pvalue_threshold', 0.05):g}"` and log2FoldChange > `{python} f"{deg_settings.get('log2fc_threshold', 1.0):g}"`; thresholds come from the current JSON configuration.
+   * <span style="color:#41b6e6">●</span> **Down (downregulated genes)**: significant genes meeting the fold-change cutoff in the down direction.
+   * <span style="color:#c7c7c7">●</span> **Normal (not significant)**: genes that fail the screening criteria; usually considered not differentially expressed.
+3. **Threshold Lines**:
+   * The dark dashed lines mark the configured screening cutoffs. Genes outside the vertical cutoffs and above the horizontal cutoff are the selected differentially expressed genes.
+:::

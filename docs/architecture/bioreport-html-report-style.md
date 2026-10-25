@@ -97,6 +97,13 @@
 
 只保留语义色左边框（note=primary / tip=success / warning / important=danger），无阴影。Quarto 默认风格 callout 的头部在浅色下为浅蓝底，深色下压暗为 `--br-card`。
 
+**图表注（Figure/Table Notes）与中英文一致性规范（2026-10-25 起）**：
+
+- 每个模块的图/表注使用 `::: {.callout-note appearance="minimal" icon=false collapse="true"}`（三冒号围栏，首尾配对），放在对应图/表代码块之后。
+- `omics/rna/qmd/modules/**` 与 `omics/rna/qmd/en/modules/**` 是同一模块的中英文两个版本：**顶部导语、图注/表注必须在两个语言版本中同时存在，结构一致、信息等价，仅语言不同**。
+- 图注中的颜色值（如 `<span style="color:#…">●</span>`）、动态阈值插值（`{python} f"{…}"`）必须与图表实际渲染配置一致；改图表样式时同步改两种语言的图注。
+- 修改任一语言版本的内容时，必须在**同一次变更**中同步另一语言版本；`tests/test_bilingual_modules.py` 校验中英对应模块的 callout 数量对齐，作为最低门槛。
+
 ### 5.4 控件
 
 `.report-control`（语言切换、主题切换、校徽链接）：36px 高、8px 圆角、细边框，悬停变 `$surface`。主题切换按钮用太阳/月亮 SVG 双图标切换。

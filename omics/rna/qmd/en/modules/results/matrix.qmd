@@ -12,3 +12,15 @@ if tpm_file and os.path.exists(tpm_file):
 else:
     raise FileNotFoundError(f'TPM matrix is missing: {tpm_file}')
 ```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Table Notes: Gene Expression Units**
+
+This table shows normalized gene expression levels. Notes on the common unit:
+
+1. **TPM (Transcripts Per Million)**:
+   * **Meaning**: transcripts per million; currently the preferred normalization unit.
+   * **Features**: similar to FPKM but computed differently. **TPM sums to exactly $10^6$ in every sample**, which makes it more accurate than FPKM for **sample-to-sample** comparisons.
+2. **Data Filtering**:
+   * For readability this table previews a subset of the input matrix rows. The CSV button in the HTML table exports the current preview; the complete expression matrix remains as delivered in the input files.
+:::

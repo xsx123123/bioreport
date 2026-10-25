@@ -11,3 +11,13 @@ visualize_fastq_screen_pair(input_files['fastq_screen_r1_dir'], input_files['fas
 display_result_ai('rna.qc.screen__R1')
 display_result_ai('rna.qc.screen__R2')
 ```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Figure Notes: FastQ Screen Species Alignment**
+
+This figure shows the proportion of reads aligned to each reference genome in the preset database, for assessing the purity of the sample's species composition and detecting potential biological contamination.
+
+1. **Reference species bars**: the proportion of reads aligned to each reference genome. In an uncontaminated target-species sample, non-target entries should stay near zero.
+2. **No Hit**: the proportion of reads with no alignment to any reference genome — the dominant fraction for a clean target sample.
+3. **Contamination check**: an abnormally high proportion on a reference species (e.g. bacteria or fungi) suggests exogenous contamination or index hopping (barcode cross-talk); cross-check with laboratory records and the wet-lab workflow.
+:::

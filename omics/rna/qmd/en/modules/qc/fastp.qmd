@@ -17,3 +17,30 @@ display_result_ai('rna.qc.fastp__table')
 visualize_multiqc_logs(analysis_dir=input_files['fastp_report_dir'], target_modules=['fastp'])
 display_result_ai('rna.qc.fastp__figure')
 ```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Table Notes**:
+
+1. **Sample**: sample ID.
+2. **% Duplication**: **duplication rate**. The percentage of reads identified as PCR or optical duplicates; a high value may indicate low library complexity.
+3. **% Q30**: **Q30 base percentage**. The proportion of bases with quality $\ge$ 30 (sequencing error rate $< 0.1\%$); the core sequencing-quality metric.
+4. **Q30 Bases**: **total high-confidence bases**. The total number (bp) of Q30 bases after filtering.
+5. **Read1/2 Len**: **raw read length**. The mean sequence length of Read 1 and Read 2 before filtering.
+6. **% Surviving**: **filtering survival rate**. The proportion of clean reads retained after fastp QC (low-quality, N-base and too-short sequences removed).
+7. **% Adapter**: **adapter removal rate**. The proportion of reads in which adapter sequence was detected and trimmed.
+:::
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Figure Notes**:
+
+1. **Filtered Reads Visualization**: **read filtering statistics**. Read counts before and after filtering. The dominant portion is the retained high-quality clean reads; the other colors are reads dropped for various reasons (too many low-quality bases, N bases, too short, etc.).
+   * <span style="color:#7cb5ec">■</span> **Passed Filter**: **QC-passed (Clean Reads)**; high-quality reads retained for alignment and downstream analysis.
+   * <span style="color:#434348">■</span> **Low Quality**: **dropped for low quality**; reads containing too many low-quality bases (below the threshold), usually caused by poor sequencer state.
+   * <span style="color:#90ed7d">■</span> **Too Many N**: reads with more undetermined (N) bases than the threshold (usually 5 by default).
+   * <span style="color:#f7a35c">■</span> **Low Complexity**: **low-complexity sequences** (e.g. `AAAAA` runs or simple repeat patterns); these usually lack biological specificity.
+   * <span style="color:#8085e9">■</span> **Too Short**: reads whose remaining length after adapter trimming or low-quality tail trimming falls below the threshold (e.g. 15 bp); too short for reliable alignment.
+2. **Insert Sizes Visualization**: **insert-size distribution**. The frequency distribution of library insert sizes. For paired-end sequencing the peak should match the expected library size (e.g. $350\text{bp}$ or $500\text{bp}$); a narrower distribution means better fragment uniformity.
+3. **Sequence Quality Visualization**: **base-quality profile**. The X-axis is the base position (cycle); the Y-axis is the mean quality value (Phred score). Quality typically drops toward the read ends but should stay high overall (green zone, $Q > 30$).
+4. **GC Content Visualization**: **GC-content profile**. The combined G/C proportion at each read position. Ideally, apart from possible fluctuation in the first few bases (random-primer bias), the curve should stay stable and close to the species' genomic average GC content.
+5. **N content Visualization**: **N-base content profile**. The proportion of bases the sequencer could not determine ($N$). In high-quality data the N content stays very low (near the zero line); visible peaks usually indicate sequencing anomalies.
+:::

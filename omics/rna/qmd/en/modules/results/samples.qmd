@@ -20,6 +20,20 @@ else:
     raise FileNotFoundError(f'PCA requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}')
 ```
 
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Figure Notes: Global PCA Analysis**
+
+This figure uses dimensionality reduction to show the overall similarity and difference between samples in gene expression patterns.
+
+1. **PC1/PC2/PC3 (Principal Components)**:
+   * **Meaning**: the axes represent the dimensions with the largest variance in the data. The percentages in the axis labels (Variance Explained) are the share of total variance each dimension captures; a higher share means the dimension matters more for separating samples.
+2. **Sample Clustering**:
+   * **Meaning**: each point is a sample; the Euclidean distance between points reflects the similarity of their expression profiles — closer points are more similar.
+   * **Within-group repeatability**: ideally, samples of the same group (same color/shape) cluster tightly on the plot, forming compact groups, which indicates good experimental reproducibility.
+3. **Group Separation**:
+   * **Meaning**: different colors or shapes usually represent different experimental groups or treatments. The more clearly the sample groups separate (typically along PC1 or PC2), the stronger the biological difference between groups — favorable for screening differentially expressed genes.
+:::
+
 ```{python}
 #| label: plot-dist
 #| fig-cap: "Gene Distribution"
@@ -32,3 +46,17 @@ if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
 else:
     raise FileNotFoundError(f'Expression distribution requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}')
 ```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Figure Notes: Sample TPM Distribution**
+
+This violin plot shows the overall distribution of gene expression levels in each sample, for assessing between-sample consistency and the effect of normalization.
+
+1. **Y-axis: Log2(TPM + 1)**:
+   * **Meaning**: log-transformed expression values. TPM (Transcripts Per Million) is a normalized unit that removes sequencing-depth and gene-length effects; the $Log_2(TPM + 1)$ transform compresses the dynamic range so that low- and high-expression genes can be shown on the same scale.
+2. **Violin Structure**:
+   * **Outer shape (density)**: the width of the "violin" represents gene density (frequency) at that expression level. Since most genes sit at low-to-medium expression, the shape is usually wide at the bottom and narrow at the top.
+   * **Inner box (Box Plot)**: the inner box shows the statistical distribution — the middle line is the **median**, and the box edges are the upper (75%) and lower (25%) quartiles.
+3. **Distribution Consistency**:
+   * **Interpretation**: after effective normalization, the distribution shapes of different samples (violin width, median height) should be broadly similar. A sample whose distribution clearly shifts from the others (e.g. a global offset) may indicate library construction bias or sequencing quality issues.
+:::

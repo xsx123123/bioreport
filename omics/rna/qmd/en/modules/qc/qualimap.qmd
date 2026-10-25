@@ -9,3 +9,16 @@ QualiMap summarizes genomic coverage, the fraction of the genome covered at diff
 visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['QualiMap'])
 display_result_ai('rna.qc.qualimap__figure')
 ```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Figure Notes**:
+
+1. **Coverage Histogram**: **coverage histogram**. The frequency distribution of sequencing depth across the reference genome.
+    - **Meaning**: a concentrated, right-leaning peak indicates even sequencing coverage; an unexpected tall peak at zero may indicate divergence between the reference genome and the sample, or unsequenced regions.
+2. **Genome Fraction Covered**: **cumulative genome coverage**. The proportion of the genome reaching given depth thresholds.
+    - **Meaning**: the more slowly the curve descends (high Y values persisting at high X depths), the larger the share of the genome covered at high depth, and the better the data completeness.
+3. **Insert Size Histogram**: **insert-size distribution**. The frequency distribution of insert sizes in the paired-end library.
+    - **Meaning**: reflects the fragmentation step of library preparation; ideally a single normal peak. Two or more peaks may indicate size-selection bias or adapter contamination during library preparation.
+4. **GC Content Distribution**: **GC-content distribution**. The GC distribution of mapped reads compared with the theoretical distribution of the reference genome.
+    - **Meaning**: the solid curve is the observed GC distribution; the dashed/shaded curve is the theoretical reference. Closer agreement means weaker PCR amplification bias and no obvious exogenous contamination.
+:::

@@ -11,3 +11,13 @@ visualize_fastq_screen_pair(input_files['fastq_screen_r1_dir'], input_files['fas
 display_result_ai('rna.qc.screen__R1')
 display_result_ai('rna.qc.screen__R2')
 ```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**图注说明: FastQ Screen 物种比对比例 (Reads Screening)**
+
+此图展示了各样本 Reads 与预设参考基因组数据库的比对比例，用于评估样本物种组成的纯度、检测潜在生物污染。
+
+1. **参考物种条形**: 比对到各参考基因组的 Reads 比例。无污染的目标物种样本在非目标条目上的比例应接近 0。
+2. **No Hit**: 未比对到任何参考基因组的 Reads 比例，是干净样本的主体部分。
+3. **污染判断**: 若某参考物种（如细菌、真菌等）比例异常偏高，提示样本可能存在外源污染或索引串扰（Index Hopping），建议结合实验记录与湿实验室流程排查。
+:::

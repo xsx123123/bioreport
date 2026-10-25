@@ -9,3 +9,28 @@ STAR reports uniquely mapped, multiply mapped and unmapped reads [@dobin2013star
 visualize_multiqc_logs(analysis_dir=input_files['qualimap_dir'], target_modules=['STAR'])
 display_result_ai('rna.qc.star__figure')
 ```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Figure Notes: STAR Alignment Categories**
+
+This figure breaks down where reads went when aligned to the reference genome:
+
+1.  <span style="color:#437bb1">■</span> **Uniquely mapped**:
+    * **Definition**: reads with a single best mapping location on the reference genome.
+    * ✅ **Reference standard**: the core RNA-seq metric; ideally **> 80%**. If it falls below **60%**, check for a reference-genome version mismatch, severe sample degradation, or DNA contamination.
+2.  <span style="color:#7cb5ec">■</span> **Mapped to multiple loci**:
+    * **Definition**: reads with more than one mapping location, below the limit (default 10-20).
+    * ℹ️ **Note**: originates from paralogs or repetitive sequences. Polyploidy makes this slightly higher in plants than in animals (5%-15% is usually normal). Abnormally high values warrant an **rRNA contamination** check.
+3.  <span style="color:#f7a35c">■</span> **Mapped to too many loci**:
+    * **Definition**: reads with more mappings than the limit.
+    * ⚠️ **Note**: typically from transposons and highly repetitive regions. A very high share indicates repeat enrichment in the library, wasting sequencing data and hurting quantification accuracy.
+4.  <span style="color:#e63471">■</span> **Unmapped: too many mismatches**:
+    * **Definition**: alignment failed due to an excessive base-mismatch rate.
+    * ⛔ **Warning**: should be **< 1%**. Higher values suggest the wrong reference species or overly strict alignment parameters.
+5.  <span style="color:#a90e2d">■</span> **Unmapped: too short**:
+    * **Definition**: the remaining effective length after trimming is insufficient.
+    * ⛔ **Warning**: should be **< 1%**. Higher values suggest overly aggressive fastp filtering or short insert sizes during library preparation.
+6.  <span style="color:#90558b">■</span> **Unmapped: other**:
+    * **Definition**: unaligned reads that fit no category.
+    * ⚠️ **Note**: includes chimeras and unclassified sequences; if the share is notable, BLAST a sample of these reads to check for exogenous contamination (bacteria / mycoplasma).
+:::

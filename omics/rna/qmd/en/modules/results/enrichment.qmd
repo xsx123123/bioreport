@@ -16,3 +16,36 @@ Long labels may require multiple panels, which retain a shared color and bubble 
 from bioreport.enrichment_views import render_enrichment
 render_enrichment(project_info, comparisons, display_result_ai, pdf=False, english=True)
 ```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Table Notes: Enrichment Result Columns**
+
+This table lists the detailed statistics of the functional enrichment analysis:
+
+* **ID**: unique database identifier (GO ID or KEGG Pathway ID).
+* **Description**: name/description of the functional term or pathway.
+* **GeneRatio**: DEG ratio ($k/n$) — DEGs assigned to the pathway / total input DEGs.
+* **BgRatio**: background gene ratio ($M/N$) — background genes in the pathway / total background genes in the database.
+* **RichFactor**: enrichment factor, typically `Count / Background_Match_Count` ($k/M$); larger values indicate stronger enrichment.
+* **FoldEnrichment**: fold enrichment, computed as `GeneRatio / BgRatio`; values above 1 indicate positive enrichment.
+* **zScore**: standardized Z score, used to infer pathway activation or suppression (usually combined with Log2FC); $z > 0$ suggests activation, $z < 0$ suppression.
+* **pvalue**: raw P value; statistical significance from the hypergeometric distribution or Fisher's exact test.
+* **p.adjust**: adjusted P value, usually by the BH (Benjamini-Hochberg) method, controlling the false-positive rate.
+* **qvalue**: another FDR (false discovery rate) measure for multiple-testing correction, similar to p.adjust.
+* **geneID**: DEGs assigned to the pathway ("/"-separated gene symbols or IDs).
+* **Count**: number of DEGs assigned to the pathway ($k$).
+* **Input_Gene_Count**: total number of input DEGs ($n$).
+* **Background_Match_Count**: total number of genes of the pathway in the background database ($M$).
+:::
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+### Figure Notes: Enrichment Dotplot
+
+This dot plot visualizes significantly enriched biological pathways (GO Terms or KEGG Pathways).
+
+1. **Y-axis (Description)**: enriched functional terms or pathway names.
+2. **X-axis (GeneRatio)**: **gene ratio** (DEGs assigned to the term / total input DEGs). A higher ratio means the term is more prominent among the DEGs.
+3. **Dot Size (Count)**: number of **DEGs** enriched in the term; larger dots carry more genes.
+4. **Dot Color (p.adjust)**: statistical significance of the enrichment (adjusted P value).
+    * **Red** usually marks stronger significance (smaller P values); **blue** marks weaker significance.
+:::

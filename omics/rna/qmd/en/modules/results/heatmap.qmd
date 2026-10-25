@@ -21,3 +21,19 @@ if tpm_file and os.path.exists(tpm_file) and os.path.exists(meta_file):
 else:
     raise FileNotFoundError(f'Heatmap requires a TPM matrix and sample metadata: {tpm_file}, {meta_file}')
 ```
+
+::: {.callout-note appearance="minimal" icon=false collapse="true"}
+**Figure Notes: Clustered Heatmap**
+
+This heatmap is based on the TPM expression matrix and shows the genes with the highest between-sample variance, giving a direct view of group differences.
+
+1. **Data Selection**:
+   * **High-variance genes**: the genes with the largest between-sample variance are plotted; the exact number is set by the report configuration.
+2. **Color Scale: Z-Score**:
+   * Colors show relative expression after **Z-score** standardization (per gene / row), not raw TPM values.
+   * <span style="color:#b2182b">■</span> **Red (Z > 0)**: expression **above** the gene's average across samples (relatively high).
+   * <span style="color:#2166ac">■</span> **Blue (Z < 0)**: expression **below** the gene's average (relatively low).
+   * **White**: close to the average.
+3. **Cluster Analysis**:
+   * **Gene clustering (rows)**: clustering places genes with similar expression patterns next to each other; whether color blocks emerge and match the experimental treatments must be judged against the actual figure and the experimental design.
+:::
