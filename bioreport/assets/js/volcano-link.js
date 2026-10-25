@@ -24,26 +24,62 @@
   const words = options => messages[options.language] || messages.en;
   const escape = value => String(value ?? '').replace(/[&<>"']/g, character =>
     ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
+  const haloKey = 'bioreport_gene_highlight_halo';
+  const ICONS = {
+    target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 7.8h.01"/></svg>',
+  };
   const style = document.createElement('style');
   style.textContent = `
-    .report-gene-locate {display:inline-flex;align-items:center;gap:.5em;max-width:100%;
-      border:0;background:transparent;padding:3px 0;color:var(--br-primary,#2563eb);
+    .report-gene-locate {display:inline-flex;align-items:center;gap:.45em;max-width:100%;
+      border:0;background:transparent;padding:2px 0;color:inherit;
       font:inherit;text-align:left;cursor:pointer;white-space:nowrap;}
-    .report-gene-locate span {font-size:.8em;text-decoration:underline;}
+    .report-locate-chip {display:inline-flex;align-items:center;gap:.32em;padding:.08em .6em .12em;
+      border:1px solid transparent;border-radius:999px;font-size:.76em;font-weight:600;line-height:1.6;
+      color:var(--br-primary,#2563eb);background:var(--br-surface-hover,#eff6ff);
+      transition:border-color .15s ease,background .15s ease,color .15s ease;}
+    .report-locate-chip svg {width:1em;height:1em;flex:none;}
+    .report-gene-locate:hover .report-locate-chip,.report-gene-locate:focus-visible .report-locate-chip {
+      border-color:var(--br-primary,#2563eb);}
     .report-gene-locate:focus-visible,.report-volcano-tools button:focus-visible {
       outline:2px solid var(--br-primary,#2563eb);outline-offset:3px;}
     .report-gene-locate:disabled {opacity:.6;cursor:wait;}
-    .report-volcano-hint {font-size:.875rem;color:var(--br-muted,#52657d);margin:.5rem 0;}
-    .report-volcano-tools {position:relative;z-index:1;display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;
-      margin:.5rem 0;padding:.75rem;border:1px solid var(--br-border,#cbd5e1);
-      border-radius:8px;background:var(--br-surface,#fff);
+    .report-volcano-hint {display:flex;align-items:flex-start;gap:.5rem;margin:.5rem 0;padding:.5rem .8rem;
+      font-size:.85rem;line-height:1.55;color:var(--br-muted,#52657d);
+      border:1px solid var(--br-border,#e2e8f0);border-left:3px solid var(--br-primary,#2563eb);
+      border-radius:8px;background:var(--br-surface-soft,#f8fafc);}
+    .report-hint-icon {flex:none;display:inline-flex;margin-top:.15em;color:var(--br-primary,#2563eb);}
+    .report-hint-icon svg {width:1em;height:1em;}
+    .report-hint-text {flex:1;min-width:0;}
+    .report-volcano-tools {position:relative;z-index:1;display:flex;align-items:center;flex-wrap:wrap;
+      gap:.45rem .6rem;margin:.5rem 0;padding:.5rem .75rem;
+      border:1px solid var(--br-border,#e2e8f0);border-radius:10px;
+      background:var(--br-surface,#fff);box-shadow:0 1px 3px rgba(15,23,42,.07);
       scroll-margin-top:calc(var(--report-navbar-height,80px) + 16px);}
     .report-volcano-tools[hidden] {display:none;}
-    .report-volcano-tools [role=status] {flex:1 1 260px;overflow-wrap:anywhere;}
-    .report-volcano-tools button {padding:.35rem .65rem;border:1px solid var(--br-border,#cbd5e1);
-      border-radius:6px;background:var(--br-surface,#fff);color:inherit;font:inherit;cursor:pointer;
+    .report-volcano-badge {flex:none;display:inline-flex;align-items:center;justify-content:center;
+      width:30px;height:30px;border-radius:8px;
+      color:var(--br-primary,#2563eb);background:var(--br-surface-hover,#eff6ff);}
+    .report-volcano-badge svg {width:16px;height:16px;}
+    .report-volcano-info {flex:1 1 280px;display:flex;align-items:center;flex-wrap:wrap;
+      gap:.3rem .6rem;min-width:0;font-size:.88rem;}
+    .report-volcano-comparison {padding:.08em .6em;border-radius:999px;font-size:.8em;font-weight:600;
+      color:var(--br-primary,#2563eb);background:var(--br-surface-hover,#eff6ff);}
+    .report-volcano-gene {font-weight:600;overflow-wrap:anywhere;}
+    .report-volcano-stat {white-space:nowrap;}
+    .report-volcano-stat i {font-style:normal;color:var(--br-muted,#52657d);}
+    .report-volcano-stat b {font-weight:600;}
+    .report-volcano-tools button {padding:.38rem .8rem;border-radius:7px;font:inherit;font-size:.85rem;
+      font-weight:500;cursor:pointer;transition:background .15s ease,border-color .15s ease,color .15s ease;
       scroll-margin-top:calc(var(--report-navbar-height,80px) + 16px);}
-    @media print {.report-volcano-tools,.report-volcano-hint,.report-gene-locate span {display:none;}}
+    .report-volcano-tools .report-btn-ghost {border:1px solid var(--br-border,#cbd5e1);
+      background:var(--br-surface,#fff);color:inherit;}
+    .report-volcano-tools .report-btn-ghost:hover {border-color:var(--br-primary,#2563eb);
+      color:var(--br-primary,#2563eb);}
+    .report-volcano-tools .report-btn-primary {border:1px solid var(--br-primary,#2563eb);
+      background:var(--br-primary,#2563eb);color:#fff;}
+    :root[data-report-theme="dark"] .report-volcano-tools .report-btn-primary {color:#0b1526;}
+    @media print {.report-volcano-tools,.report-volcano-hint,.report-gene-locate .report-locate-chip {display:none;}}
   `;
   document.head.append(style);
 
@@ -55,7 +91,8 @@
       if (index >= 0 && (value == null || String(value).trim() === '')) return '';
       return `<button type="button" class="report-gene-locate" title="${escape(text.locate)}" ` +
         `aria-label="${escape(text.locate + (index >= 0 ? ': ' + value : ''))}">` +
-        `${index >= 0 ? escape(value) : ''}<span>${escape(text.action)}</span></button>`;
+        `${index >= 0 ? escape(value) : ''}` +
+        `<span class="report-locate-chip">${ICONS.target}${escape(text.action)}</span></button>`;
     };
     if (index >= 0) columns[index].render = render;
     else columns.push({title: text.action, data: null, orderable: false, searchable: false,
@@ -69,7 +106,15 @@
     const hint = document.createElement('p');
     hint.className = 'report-volcano-hint';
     hint.setAttribute('role', 'status');
-    hint.textContent = text.hint;
+    const icon = document.createElement('span');
+    icon.className = 'report-hint-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = ICONS.info;
+    const message = document.createElement('span');
+    message.className = 'report-hint-text';
+    message.textContent = text.hint;
+    hint.append(icon, message);
+    const setHint = value => { message.textContent = value; };
     table.closest('.report-data-table').prepend(hint);
     table.addEventListener('click', async event => {
       const button = event.target.closest('.report-gene-locate');
@@ -78,7 +123,7 @@
       const row = api.row(button.closest('tr'));
       if (!row.data()) return;
       let state = charts.get(options.comparison);
-      if (!state) { hint.textContent = text.missing; return; }
+      if (!state) { setHint(text.missing); return; }
       const names = api.settings()[0].aoColumns.map(column => column.sName);
       const column = names.indexOf(options.idColumn);
       const identity = column >= 0 ? row.data()[column] : row.index();
@@ -89,15 +134,15 @@
           await state.load();
           state = charts.get(options.comparison);
         }
-        if (!state?.chart?.isConnected) { hint.textContent = text.missing; return; }
+        if (!state?.chart?.isConnected) { setHint(text.missing); return; }
         state.pending = state.pending.catch(() => {}).then(() => locate(state, identity, {
           table, button, names, data: row.data(),
         }));
         const found = await state.pending;
-        hint.textContent = found ? text.hint : text.invalid;
+        setHint(found ? text.hint : text.invalid);
       } catch (error) {
         console.error('BioReport volcano gene location failed', error);
-        hint.textContent = text.failed;
+        setHint(text.failed);
       } finally { button.disabled = false; }
     });
   }
@@ -137,14 +182,19 @@
     const toolbar = document.createElement('div');
     toolbar.className = 'report-volcano-tools';
     toolbar.hidden = true;
-    const status = document.createElement('span');
+    const badge = document.createElement('span');
+    badge.className = 'report-volcano-badge';
+    badge.setAttribute('aria-hidden', 'true');
+    badge.innerHTML = ICONS.target;
+    const status = document.createElement('div');
+    status.className = 'report-volcano-info';
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
     const clear = document.createElement('button');
-    clear.type = 'button'; clear.textContent = text.clear;
+    clear.type = 'button'; clear.className = 'report-btn-ghost'; clear.textContent = text.clear;
     const back = document.createElement('button');
-    back.type = 'button'; back.textContent = text.back;
-    toolbar.append(status, clear, back);
+    back.type = 'button'; back.className = 'report-btn-primary'; back.textContent = text.back;
+    toolbar.append(badge, status, clear, back);
     const wrapper = chart.closest('.report-plot') || chart;
     wrapper.before(toolbar);
     const state = {chart, options, toolbar, status, clear, back, source: null, pending: Promise.resolve()};
@@ -169,7 +219,8 @@
   }
 
   async function removeHighlight(chart) {
-    const indices = chart.data.flatMap((trace, index) => trace.meta?.[highlightKey] ? [index] : []);
+    const indices = chart.data.flatMap((trace, index) =>
+      (trace.meta?.[highlightKey] || trace.meta?.[haloKey]) ? [index] : []);
     if (indices.length) await Plotly.deleteTraces(chart, indices);
   }
 
@@ -191,27 +242,64 @@
     if (!matches.length) return false;
     await reveal(chart);
     await removeHighlight(chart);
-    await Plotly.addTraces(chart, {
-      type: 'scatter', mode: 'markers+text', x: matches.map(point => point.x), y: matches.map(point => point.y),
-      text: matches.map(point => escape(point.label)), textposition: 'top center', cliponaxis: false,
-      marker: {symbol: 'circle-open', size: 22, color: '#d97706', line: {width: 3}},
-      textfont: {color: '#b45309', size: 13}, hoverinfo: 'skip', showlegend: false,
-      meta: {[highlightKey]: true},
-    });
+    const theme = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const accent = theme('--br-primary') || '#2563eb';
+    const labelColor = theme('--br-primary-dark') || '#203a5f';
+    const xs = matches.map(point => point.x), ys = matches.map(point => point.y);
+    await Plotly.addTraces(chart, [
+      {type: 'scatter', mode: 'markers', x: xs, y: ys, hoverinfo: 'skip', showlegend: false,
+        marker: {symbol: 'circle', size: 30, color: accent, opacity: .16},
+        meta: {[haloKey]: true}},
+      {type: 'scatter', mode: 'markers+text', x: xs, y: ys,
+        text: matches.map(point => escape(point.label)), textposition: 'top center', cliponaxis: false,
+        marker: {symbol: 'circle-open-dot', size: 16, color: accent, line: {width: 2.5, color: accent}},
+        textfont: {color: labelColor, size: 12.5}, hoverinfo: 'skip', showlegend: false,
+        meta: {[highlightKey]: true}},
+    ]);
     // Restore the plot extent when a previous zoom would hide the target gene.
     const visible = matches.every(point => ['x', 'y'].every(axis => {
       const range = chart._fullLayout[axis + 'axis'].range;
       return point[axis] >= Math.min(...range) && point[axis] <= Math.max(...range);
     }));
-    if (!visible) await Plotly.relayout(chart, {'xaxis.autorange': true, 'yaxis.autorange': true});
+    if (!visible) {
+      const restore = {'yaxis.autorange': true};
+      // Keep the x axis centered on zero when the figure declares a symmetric limit.
+      if (Number.isFinite(options.xLimit)) {
+        restore['xaxis.autorange'] = false;
+        restore['xaxis.range'] = [-options.xLimit, options.xLimit];
+      } else restore['xaxis.autorange'] = true;
+      await Plotly.relayout(chart, restore);
+    }
     await Plotly.Plots.resize(chart);
     const point = matches[0];
     const pIndex = source.names.findIndex(name => ['pvalue', 'p_value'].includes(name.toLowerCase()));
     const p = pIndex >= 0 ? source.data[pIndex] : null;
     const number = value => String(Number(Number(value).toPrecision(5)));
-    state.status.textContent = `${options.comparison} · ${point.label} · log2FC = ${number(point.x)}` +
-      (p != null ? ` · P = ${number(p)}` : ` · −log10(P) = ${number(point.y)}`) +
-      (matches.length > 1 ? ` · ${matches.length} ${words(options).matches}` : '');
+    const stat = (label, value) => {
+      const item = document.createElement('span');
+      item.className = 'report-volcano-stat';
+      const tag = document.createElement('i');
+      tag.textContent = label;
+      const strong = document.createElement('b');
+      strong.textContent = value;
+      item.append(tag, document.createTextNode(' = '), strong);
+      return item;
+    };
+    const chip = document.createElement('span');
+    chip.className = 'report-volcano-comparison';
+    chip.textContent = options.comparison;
+    const gene = document.createElement('strong');
+    gene.className = 'report-volcano-gene';
+    gene.textContent = point.label;
+    const info = [chip, gene, stat('log2FC', number(point.x)),
+      p != null ? stat('P', number(p)) : stat('−log10(P)', number(point.y))];
+    if (matches.length > 1) {
+      const extra = document.createElement('span');
+      extra.className = 'report-volcano-stat';
+      extra.textContent = `${matches.length} ${words(options).matches}`;
+      info.push(extra);
+    }
+    state.status.replaceChildren(...info);
     state.source = source;
     state.toolbar.hidden = false;
     state.toolbar.scrollIntoView({block: 'start', behavior: 'instant'});

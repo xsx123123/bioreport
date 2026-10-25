@@ -41,6 +41,31 @@ def test_link_without_identifier_uses_source_row_positions():
     assert sorted(key for trace in figure.data for key in trace.customdata) == ['0', '1', '2', '3']
 
 
+def test_volcano_x_axis_is_symmetric_and_palette_matches_publication_style():
+    figure = plot_volcano_pvalue(frame(), '', col_logfc='log2FoldChange', col_pval='pvalue',
+                                 comparison='Treat_vs_Control')
+    # max |log2FC| in frame() is 3.0 -> limit 3.6, centered on zero.
+    x_range = tuple(figure.layout.xaxis.range)
+    assert x_range[0] == pytest.approx(-3.6)
+    assert x_range[1] == pytest.approx(3.6)
+    assert figure.layout.meta['bioreport_volcano']['xLimit'] == pytest.approx(3.6)
+    markers = {trace.name: trace.marker for trace in figure.data}
+    assert markers['Up'].color == '#e41749' and markers['Up'].line.color == '#e41749'
+    assert markers['Down'].color == '#41b6e6' and markers['Down'].line.color == '#41b6e6'
+    assert markers['NS'].color == '#c7c7c7'
+    assert figure.layout.yaxis.rangemode == 'tozero'
+
+
+def test_volcano_x_limit_keeps_threshold_lines_visible_for_tiny_effects():
+    tiny = frame().assign(log2FoldChange=[0.1, -0.2, 0.05, 0.3])
+    figure = plot_volcano_pvalue(tiny, '', col_logfc='log2FoldChange', col_pval='pvalue')
+    x_range = tuple(figure.layout.xaxis.range)
+    assert x_range[0] == pytest.approx(-1.5)  # fc_cutoff * 1.5
+    assert x_range[1] == pytest.approx(1.5)
+    capped = plot_volcano_pvalue(frame(), '', col_logfc='log2FoldChange', col_pval='pvalue', display_cap=20)
+    assert tuple(capped.layout.yaxis.range)[0] == 0
+
+
 @pytest.mark.parametrize('language', ['zh', 'en'])
 def test_link_metadata_is_escaped_and_runtime_is_staged_once(monkeypatch, tmp_path, language):
     monkeypatch.setenv('BIOREPORT_LANGUAGE', language)

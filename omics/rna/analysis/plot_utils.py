@@ -205,27 +205,31 @@ def plot_volcano_pvalue(
     df.loc[(df[c_logfc] < -fc_cutoff) & (df[c_pval] < pval_cutoff), col_status] = 'Down'
 
     # --- 3. 绘图逻辑 ---
-    default_palette = {'Up': '#ef4444', 'Down': '#3b82f6', 'NS': '#cbd5e1'}
+    # 经典出版配色：上调玫红、下调青蓝、非显著中灰（shape-21 填充+同色描边风格）。
+    default_palette = {'Up': '#e41749', 'Down': '#41b6e6', 'NS': '#c7c7c7'}
     if palette:
         default_palette.update(palette)
     colors = default_palette
 
     fig = go.Figure()
-    
+
     # 按顺序绘制：NS -> Down -> Up (避免显著点被遮挡)
     for status in ['NS', 'Down', 'Up']:
         sub_df = df[df[col_status] == status]
         if sub_df.empty: continue
-        
-        # 视觉调整：NS 点稍微小一点、透一点
-        opacity = 0.5 if status == 'NS' else 0.8
-        size = 5 if status == 'NS' else 7
-        
+
+        # NS 为小而淡的背景点；显著点带同色细描边，呈现填充+描边的双层质感。
+        if status == 'NS':
+            marker = dict(color=colors['NS'], size=3.5, opacity=0.4)
+        else:
+            marker = dict(color=colors[status], size=6, opacity=0.55,
+                          line=dict(color=colors[status], width=0.8))
+
         fig.add_trace(go.Scatter(
-            x=sub_df[c_logfc], 
+            x=sub_df[c_logfc],
             y=np.minimum(-np.log10(sub_df[c_pval] + 1e-300), display_cap) if display_cap is not None else -np.log10(sub_df[c_pval] + 1e-300),
             mode='markers', name=status,
-            marker=dict(color=colors.get(status, 'grey'), size=size, opacity=opacity),
+            marker=marker,
             text=sub_df[c_symbol] if c_symbol in sub_df else sub_df.index.astype(str),
             customdata=identities[(df[col_status] == status).to_numpy()].tolist() if comparison is not None else None,
             # 悬停显示详细信息
@@ -237,11 +241,11 @@ def plot_volcano_pvalue(
             )
         ))
 
-    # --- 4. 辅助线 ---
-    fig.add_vline(x=fc_cutoff, line_dash="dash", line_color=GUIDE, line_width=1)
-    fig.add_vline(x=-fc_cutoff, line_dash="dash", line_color=GUIDE, line_width=1)
+    # --- 4. 辅助线：近黑细虚线，保证任何缩放下清晰可辨 ---
+    fig.add_vline(x=fc_cutoff, line_dash="dash", line_color=INK, line_width=1)
+    fig.add_vline(x=-fc_cutoff, line_dash="dash", line_color=INK, line_width=1)
     # 这里的横线现在完美对应颜色的分界了
-    fig.add_hline(y=-np.log10(pval_cutoff), line_dash="dash", line_color=GUIDE, line_width=1)
+    fig.add_hline(y=-np.log10(pval_cutoff), line_dash="dash", line_color=INK, line_width=1)
 
     style_figure(
         fig,
@@ -255,11 +259,20 @@ def plot_volcano_pvalue(
         margin=dict(t=60, b=110, l=60, r=40),
     )
 
+    # X 轴以 0 为中心对称展开，并保证阈值线不贴边。
+    x_numeric = pd.to_numeric(df[c_logfc], errors='coerce').to_numpy(dtype=float, na_value=np.nan)
+    x_abs = np.abs(x_numeric[np.isfinite(x_numeric)])
+    x_extent = float(x_abs.max()) if x_abs.size else fc_cutoff
+    x_limit = max(x_extent * 1.2, fc_cutoff * 1.5)
+    fig.update_xaxes(range=[-x_limit, x_limit])
+
     if display_cap is not None:
         fig.update_yaxes(range=[0, display_cap * 1.04],
                          tickvals=list(np.linspace(0, display_cap, 6)),
                          ticktext=[f'{v:g}' for v in np.linspace(0, display_cap, 6)[:-1]] + [f'{display_cap:g}+'])
         fig.update_layout(meta={'display_cap': display_cap})
+    else:
+        fig.update_yaxes(rangemode='tozero')
 
     if annotate_top and annotate_top > 0:
         _annotate_top_genes(fig, df, col_status, c_logfc, c_pval, c_symbol, display_cap, annotate_top)
@@ -269,6 +282,7 @@ def plot_volcano_pvalue(
             'sourceDigest': digest, 'xColumn': c_logfc, 'pColumn': c_pval,
             'textColumn': c_symbol if c_symbol in df else None,
             'fcCutoff': fc_cutoff, 'pCutoff': pval_cutoff, 'displayCap': display_cap,
+            'xLimit': x_limit,
         }})
     return fig
 
