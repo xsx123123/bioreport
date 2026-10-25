@@ -7,56 +7,37 @@
 #| output: asis
 
 from IPython.display import HTML
-from bioreport.utils.render_output import is_pdf
-from bioreport.utils.comparisons_ui import fold_comparisons, comparison_search_markup, cards_open, cards_close, card_open, card_close
+from bioreport.utils.comparisons_ui import search_threshold_meta
 
-fold_deg = not is_pdf() and fold_comparisons(len(comparisons), config)
-if fold_deg:
-    display(HTML(comparison_search_markup(len(comparisons))))
-    display(Markdown(cards_open()))
-else:
-    display(Markdown("::: {.panel-tabset .results-comparisons}"))
+display(HTML(search_threshold_meta(config)))
+display(Markdown("::: {.panel-tabset .results-comparisons}"))
 
 for comp in comparisons:
     deg_file_key = f"{comp}_DEG.csv"
     # 使用配置中的 deg_base_dir
     deg_file = get_file_path(config, deg_file_key, local_base_dir=deg_base_dir)
 
-    if fold_deg:
-        display(Markdown(card_open(comp)))
-    else:
-        display(Markdown(f"### {comp}"))
+    display(Markdown(f"### {comp}"))
 
     if not deg_file or not os.path.exists(deg_file):
         raise FileNotFoundError(f"DEG result is missing for {comp}: {deg_file or deg_file_key}")
     df_deg = pd.read_csv(deg_file)
     display_gene_expression_table(df_deg, volcano_comparison=comp)
 
-    if fold_deg:
-        display(Markdown(card_close()))
-
-display(Markdown(cards_close() if fold_deg else ":::"))
+display(Markdown(":::"))
 ```
 
 
 ```{python}
 #| label: fig-volcano-dynamic
 #| output: asis
-fold_volcano = not is_pdf() and fold_comparisons(len(comparisons), config)
-if fold_volcano:
-    display(HTML(comparison_search_markup(len(comparisons))))
-    display(Markdown(cards_open()))
-else:
-    display(Markdown("::: {.panel-tabset .results-comparisons}"))
+display(Markdown("::: {.panel-tabset .results-comparisons}"))
 for comp in comparisons:
     deg_file_key = f"{comp}_DEG.csv"
     # 使用配置中的 deg_base_dir
     deg_file = get_file_path(config, deg_file_key, local_base_dir=deg_base_dir)
 
-    if fold_volcano:
-        display(Markdown(card_open(comp)))
-    else:
-        display(Markdown(f"### {comp}"))
+    display(Markdown(f"### {comp}"))
 
     if not deg_file or not os.path.exists(deg_file):
         raise FileNotFoundError(f"DEG result is missing for {comp}: {deg_file or deg_file_key}")
@@ -69,10 +50,7 @@ for comp in comparisons:
     show_figure(fig)
     display_result_ai(f"rna.results.deg__{comp}")
 
-    if fold_volcano:
-        display(Markdown(card_close()))
-
-display(Markdown(cards_close() if fold_volcano else ":::"))
+display(Markdown(":::"))
 ```
 
 ::: {.callout-note appearance="minimal" icon=false collapse="true"}

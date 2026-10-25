@@ -1,0 +1,182 @@
+<script>
+/* Comparison tab strips: the pill nav scrolls horizontally (CSS), and once the
+ * tab count passes the threshold from bioreport/utils/comparisons_ui.py a
+ * search button appears next to the strip. It opens a small panel that filters
+ * groups by name and activates the chosen tab. */
+(() => {
+  'use strict';
+  const DEFAULT_THRESHOLD = 10;
+  const ICON = '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">'
+    + '<path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>';
+
+  function english() {
+    return (window.BIOREPORT_LANGUAGE_EDITION || document.documentElement.lang || '').startsWith('en');
+  }
+  function texts() {
+    return english() ? {
+      button: 'Search comparison groups', placeholder: 'Search comparison groups…',
+      empty: 'No matching comparison group',
+    } : {
+      button: '搜索比较组', placeholder: '搜索比较组…',
+      empty: '没有匹配的比较组',
+    };
+  }
+  function threshold() {
+    const meta = document.querySelector('meta[name="report-comparison-search-threshold"]');
+    const value = meta ? parseInt(meta.content, 10) : NaN;
+    return Number.isFinite(value) ? value : DEFAULT_THRESHOLD;
+  }
+
+  function activate(link) {
+    if (window.bootstrap?.Tab) window.bootstrap.Tab.getOrCreateInstance(link).show();
+    else link.click();
+    link.scrollIntoView({block: 'nearest', inline: 'center'});
+  }
+
+  function enhance(tabset) {
+    if (tabset._reportComparisonTabs) return;
+    tabset._reportComparisonTabs = true;
+    const limit = threshold();
+    if (limit <= 0) return;
+    const nav = tabset.querySelector(':scope > ul.nav');
+    if (!nav) return;
+    const links = [...nav.querySelectorAll('.nav-link')];
+    if (links.length <= limit) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'report-tabstrip';
+    nav.parentNode.insertBefore(wrap, nav);
+    wrap.append(nav);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'report-tabstrip-search';
+    button.setAttribute('aria-haspopup', 'dialog');
+    button.setAttribute('aria-expanded', 'false');
+
+    const panel = document.createElement('div');
+    panel.className = 'report-tabstrip-panel';
+    panel.hidden = true;
+    const input = document.createElement('input');
+    input.type = 'search';
+    input.autocomplete = 'off';
+    const count = document.createElement('span');
+    count.className = 'report-tabstrip-count';
+    const list = document.createElement('ul');
+    list.className = 'report-tabstrip-list';
+    const head = document.createElement('div');
+    head.className = 'report-tabstrip-head';
+    head.append(input, count);
+    panel.append(head, list);
+    wrap.append(button, panel);
+
+    const items = links.map(link => {
+      const li = document.createElement('li');
+      const pick = document.createElement('button');
+      pick.type = 'button';
+      pick.textContent = link.textContent.trim();
+      pick.addEventListener('click', () => { close(); activate(link); });
+      li.append(pick);
+      list.append(li);
+      return {li, pick, link, name: pick.textContent.toLowerCase()};
+    });
+
+    function apply() {
+      const q = input.value.trim().toLowerCase();
+      let hits = 0, first = null;
+      for (const item of items) {
+        const hit = !q || item.name.includes(q);
+        item.li.hidden = !hit;
+        if (hit) { hits++; if (!first) first = item; }
+      }
+      count.textContent = q ? `${hits} / ${items.length}` : '';
+      let empty = panel.querySelector('.report-tabstrip-empty');
+      if (q && !hits) {
+        if (!empty) {
+          empty = document.createElement('li');
+          empty.className = 'report-tabstrip-empty';
+          list.append(empty);
+        }
+        empty.textContent = texts().empty;
+        empty.hidden = false;
+      } else if (empty) empty.hidden = true;
+      return first;
+    }
+    function open() {
+      input.placeholder = texts().placeholder;
+      input.setAttribute('aria-label', texts().placeholder);
+      panel.hidden = false;
+      button.setAttribute('aria-expanded', 'true');
+      apply();
+      const current = items.find(item => item.link.classList.contains('active'));
+      if (current) {
+        for (const item of items) item.pick.classList.toggle('current', item === current);
+        current.li.scrollIntoView({block: 'nearest'});
+      }
+      input.focus();
+    }
+    function close() {
+      panel.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+    }
+    // Seed the button label before the first open.
+    button.insertAdjacentHTML('afterbegin', ICON);
+    button.insertAdjacentText('beforeend', ` ${items.length}`);
+    button.title = texts().button;
+    button.setAttribute('aria-label', texts().button);
+
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      if (panel.hidden) open(); else close();
+    });
+    input.addEventListener('input', apply);
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const first = apply();
+        if (first) { close(); activate(first.link); }
+      } else if (event.key === 'Escape') {
+        close(); button.focus();
+      }
+    });
+    document.addEventListener('click', event => {
+      if (!panel.hidden && !wrap.contains(event.target)) close();
+    });
+  }
+
+  function init() {
+    document.querySelectorAll('.panel-tabset.results-comparisons, .panel-tabset.enrichment-comparisons')
+      .forEach(enhance);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once: true});
+  else init();
+})();
+</script>
+<style>
+.report-tabstrip{display:flex;align-items:flex-start;gap:6px;position:relative}
+.report-tabstrip>ul.nav{flex:1 1 auto;min-width:0}
+.report-tabstrip-search{flex:0 0 auto;display:inline-flex;align-items:center;gap:.35rem;
+  padding:.45rem .8rem;border:0;border-radius:10px;cursor:pointer;font:inherit;font-size:14px;
+  font-variant-numeric:tabular-nums;color:var(--br-tab-accent,#1e6fff);
+  background:var(--br-tab-track,#f1f3f5);transition:background-color .2s ease,box-shadow .2s ease}
+.report-tabstrip-search:hover{box-shadow:var(--br-tab-shadow,0 1px 3px rgba(0,0,0,.12))}
+.report-tabstrip-search[aria-expanded="true"]{background:var(--br-tab-active,#fff);
+  box-shadow:var(--br-tab-shadow,0 1px 3px rgba(0,0,0,.12))}
+.report-tabstrip-panel{position:absolute;top:calc(100% + 6px);right:0;z-index:40;
+  width:min(340px,90vw);padding:.6rem;border:1px solid var(--br-border,#e2e8f0);border-radius:10px;
+  background:var(--br-surface,#fff);box-shadow:0 8px 24px rgba(15,23,42,.14)}
+.report-tabstrip-head{display:flex;align-items:center;gap:.5rem}
+.report-tabstrip-head input{flex:1 1 auto;min-width:0;padding:.4rem .7rem;font:inherit;
+  color:var(--br-text,#334155);background:var(--br-surface-soft,#f8fafc);
+  border:1px solid var(--br-border,#e2e8f0);border-radius:6px}
+.report-tabstrip-head input:focus{outline:2px solid var(--br-tab-accent,#1e6fff);
+  outline-offset:1px;border-color:var(--br-tab-accent,#1e6fff)}
+.report-tabstrip-count{color:var(--br-muted,#52657d);font-size:.8rem;font-variant-numeric:tabular-nums}
+.report-tabstrip-list{list-style:none;margin:.5rem 0 0;padding:0;max-height:15rem;overflow-y:auto;scrollbar-width:thin}
+.report-tabstrip-list button{display:block;width:100%;text-align:left;padding:.4rem .6rem;border:0;
+  border-radius:6px;background:transparent;color:var(--br-text,#334155);font:inherit;font-size:13px;
+  cursor:pointer;word-break:break-all}
+.report-tabstrip-list button:hover{background:var(--br-tab-hover,rgba(0,0,0,.05))}
+.report-tabstrip-list button.current{color:var(--br-tab-accent,#1e6fff);font-weight:600}
+.report-tabstrip-empty{list-style:none;padding:.6rem;color:var(--br-muted,#52657d);text-align:center;font-size:13px}
+</style>

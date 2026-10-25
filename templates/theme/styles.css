@@ -311,7 +311,6 @@ figcaption, .figure-caption {
 
 /* Reserve a readable table placeholder until viewport-triggered initialization. */
 .report-data-table { min-width: 0; margin-block: 1rem; }
-.enrichment-comparisons > .nav-tabs { flex-wrap: wrap; }
 .enrichment-comparisons > .tab-content { padding: 1rem; border-radius: 0 0 .5rem .5rem; }
 
 /* Results comparison controls: scoped independently of navbar and QC tabs. */
@@ -325,18 +324,24 @@ figcaption, .figure-caption {
   --br-tab-accent: #9bc2ff; --br-tab-hover: rgba(255,255,255,.07);
   --br-tab-shadow: 0 1px 3px rgba(0,0,0,.3);
 }
-#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav {
-  display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; margin-bottom: 12px;
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav,
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > .report-tabstrip > ul.nav {
+  display: flex; flex-wrap: nowrap; gap: 4px; padding: 4px; margin-bottom: 12px;
   background: var(--br-tab-track); border: 0; border-radius: 10px;
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior-inline: contain; scrollbar-width: thin;
 }
-#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item { margin: 0; }
-#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link {
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item,
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > .report-tabstrip > ul.nav > .nav-item { margin: 0; flex: 0 0 auto; }
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link,
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > .report-tabstrip > ul.nav > .nav-item > .nav-link {
   border: 0; border-radius: 8px; padding: 6px 14px; font-size: 14px;
   color: var(--br-tab-text); text-decoration: none; white-space: nowrap;
   transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
 }
-#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link:hover { background: var(--br-tab-hover); }
-#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link.active {
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link:hover,
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > .report-tabstrip > ul.nav > .nav-item > .nav-link:hover { background: var(--br-tab-hover); }
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link.active,
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > .report-tabstrip > ul.nav > .nav-item > .nav-link.active {
   background: var(--br-tab-active); color: var(--br-tab-accent); font-weight: 600; box-shadow: var(--br-tab-shadow);
 }
 #quarto-document-content .enrichment-directions > ul.nav { background: transparent; border: 0; gap: 4px; padding: 0; margin-bottom: 12px; }
@@ -345,15 +350,12 @@ figcaption, .figure-caption {
   border-radius: 0; color: var(--br-tab-text); background: transparent; text-decoration: none;
 }
 #quarto-document-content .enrichment-directions > ul.nav > .nav-item > .nav-link.active { color: var(--br-tab-accent); border-bottom-color: var(--br-tab-accent); font-weight: 600; }
-#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons,.enrichment-directions) > ul.nav > .nav-item > .nav-link:focus-visible { outline: 2px solid var(--br-tab-accent); outline-offset: 2px; }
-@media (max-width: 767px) {
-  #quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav {
-    flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-inline: contain;
-  }
-  #quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item { flex: 0 0 auto; }
-}
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link:focus-visible,
+#quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > .report-tabstrip > ul.nav > .nav-item > .nav-link:focus-visible,
+#quarto-document-content .panel-tabset.enrichment-directions > ul.nav > .nav-item > .nav-link:focus-visible { outline: 2px solid var(--br-tab-accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
-  #quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link { transition: none; }
+  #quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > ul.nav > .nav-item > .nav-link,
+  #quarto-document-content .panel-tabset:is(.results-comparisons,.enrichment-comparisons) > .report-tabstrip > ul.nav > .nav-item > .nav-link { transition: none; }
 }
 .report-table-status { color: var(--br-muted, #64748b); font-size: .85rem; margin: .25rem 0 .75rem; }
 .report-table-pending { min-height: 20rem; }
